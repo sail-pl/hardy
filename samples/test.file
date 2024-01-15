@@ -1,0 +1,23 @@
+input a b c;
+output d e f;
+var x y z;
+
+requires { True }
+ensures { True }
+
+setup :
+    ensures { True }
+    x = 0;
+
+loop :
+    invariant { True }
+    while x < y do
+        invariant { True }
+        if x then x = 1;
+        else x = 2;
+        end
+        x = 3;
+        y := !z;
+    done
+
+

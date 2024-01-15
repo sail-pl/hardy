@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
+"http://why3.lri.fr/why3session.dtd">
+<why3session shape_version="6">
+<file format="whyml" proved="true">
+<path name=".."/><path name="onoff.mlw"/>
+<theory name="Top">
+ <goal name="for_all&#39;vc" expl="VC for for_all">
+ </goal>
+ <goal name="for_some&#39;vc" expl="VC for for_some">
+ </goal>
+ <goal name="duplicate_env&#39;vc" expl="VC for duplicate_env">
+ </goal>
+ <goal name="store_history&#39;vc" expl="VC for store_history">
+ </goal>
+ <goal name="main&#39;vc" expl="VC for main">
+ </goal>
+</theory>
+</file>
+</why3session>

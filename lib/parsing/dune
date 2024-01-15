@@ -1,0 +1,8 @@
+(library 
+ (name arduinoParser)
+ (libraries arduinoSyntax zarith menhirLib))
+
+(ocamllex lexer)
+
+(menhir 
+ (modules parser))
