@@ -26,7 +26,9 @@
   dune
   menhir
   (ocamlformat (and (= 0.26.1) :with-dev-setup))
-  (ocaml-lsp-server :with-dev-setup))
+  (ocaml-lsp-server :with-dev-setup)
+   zarith	
+  )
  (tags
   (topics "to describe" your project)))
 
