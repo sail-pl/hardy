@@ -1,5 +1,10 @@
+# dune	
 _opam
 _build
 
 .vscode
 
+# why3
+*.bak
+# ignore why3 sessions
+samples/*/ 
