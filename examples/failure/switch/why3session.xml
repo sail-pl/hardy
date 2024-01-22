@@ -3,6 +3,7 @@
 "http://why3.lri.fr/why3session.dtd">
 <why3session shape_version="6">
 <prover id="0" name="Alt-Ergo" version="2.4.3" timelimit="5" steplimit="0" memlimit="1000"/>
+<prover id="1" name="Coq" version="8.16.1" timelimit="0" steplimit="0" memlimit="0"/>
 <file format="whyml">
 <path name=".."/><path name="switch.mlw"/>
 <theory name="Top">
@@ -28,21 +29,22 @@
    </goal>
   </transf>
   </goal>
-  <goal name="main&#39;vc.3" expl="precondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.01" steps="25"/></proof>
+  <goal name="main&#39;vc.3" expl="precondition">
+  <proof prover="0" obsolete="true"><result status="valid" time="0.01" steps="25"/></proof>
   </goal>
   <goal name="main&#39;vc.4" expl="loop invariant preservation">
-  <proof prover="0"><result status="timeout" time="5.00"/></proof>
+  <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+  <proof prover="1" obsolete="true"><path name="switch_Top_mainqtvc_1.v"/><result status="unknown" time="0.00" steps="0"/></proof>
   <transf name="split_vc" >
    <goal name="main&#39;vc.4.0" expl="loop invariant preservation">
    </goal>
   </transf>
   </goal>
-  <goal name="main&#39;vc.5" expl="precondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.01" steps="23"/></proof>
+  <goal name="main&#39;vc.5" expl="precondition">
+  <proof prover="0" obsolete="true"><result status="valid" time="0.01" steps="23"/></proof>
   </goal>
   <goal name="main&#39;vc.6" expl="loop invariant preservation">
-  <proof prover="0"><result status="timeout" time="5.00"/></proof>
+  <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
   </goal>
  </transf>
  </goal>
