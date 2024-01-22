@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
+"http://why3.lri.fr/why3session.dtd">
+<why3session shape_version="6">
+<prover id="0" name="Alt-Ergo" version="2.4.3" timelimit="5" steplimit="0" memlimit="1000"/>
+<file format="whyml" proved="true">
+<path name=".."/><path name="trad4.mlw"/>
+<theory name="Top" proved="true">
+ <goal name="for_all&#39;vc" expl="VC for for_all" proved="true">
+ <proof prover="0"><result status="valid" time="0.00" steps="65"/></proof>
+ </goal>
+ <goal name="for_some&#39;vc" expl="VC for for_some" proved="true">
+ <proof prover="0"><result status="valid" time="0.01" steps="65"/></proof>
+ </goal>
+ <goal name="duplicate_env&#39;vc" expl="VC for duplicate_env" proved="true">
+ <proof prover="0"><result status="valid" time="0.00" steps="1"/></proof>
+ </goal>
+ <goal name="store_history&#39;vc" expl="VC for store_history" proved="true">
+ <proof prover="0" obsolete="true"><result status="valid" time="0.02" steps="101"/></proof>
+ <transf name="split_vc" proved="true" >
+  <goal name="store_history&#39;vc.0" expl="precondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.00" steps="2"/></proof>
+  </goal>
+  <goal name="store_history&#39;vc.1" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.00" steps="10"/></proof>
+  </goal>
+  <goal name="store_history&#39;vc.2" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.04" steps="807"/></proof>
+  </goal>
+  <goal name="store_history&#39;vc.3" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.01" steps="26"/></proof>
+  </goal>
+  <goal name="store_history&#39;vc.4" expl="postcondition">
+  <proof prover="0"><undone/></proof>
+  </goal>
+  <goal name="store_history&#39;vc.5" expl="postcondition">
+  <proof prover="0"><undone/></proof>
+  </goal>
+  <goal name="store_history&#39;vc.6" expl="postcondition">
+  <proof prover="0"><undone/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="main&#39;vc" expl="VC for main" proved="true">
+ <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+ <transf name="split_vc" proved="true" >
+  <goal name="main&#39;vc.0" expl="assertion" proved="true">
+  <proof prover="0"><result status="valid" time="0.00" steps="3"/></proof>
+  </goal>
+  <goal name="main&#39;vc.1" expl="loop invariant init" proved="true">
+  <proof prover="0"><result status="valid" time="0.00" steps="3"/></proof>
+  </goal>
+  <goal name="main&#39;vc.2" expl="loop invariant init" proved="true">
+  <proof prover="0"><result status="valid" time="0.00" steps="6"/></proof>
+  </goal>
+  <goal name="main&#39;vc.3" expl="witness existence" proved="true">
+  <transf name="exists" proved="true" arg1="{input_a=1;output_b=None}">
+   <goal name="main&#39;vc.3.0" proved="true">
+   <proof prover="0"><result status="valid" time="0.00" steps="6"/></proof>
+   </goal>
+  </transf>
+  </goal>
+  <goal name="main&#39;vc.4" expl="precondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.01" steps="29"/></proof>
+  </goal>
+  <goal name="main&#39;vc.5" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="602"/></proof>
+  </goal>
+  <goal name="main&#39;vc.6" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.04" steps="1117"/></proof>
+  </goal>
+  <goal name="main&#39;vc.7" expl="precondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.11" steps="26"/></proof>
+  </goal>
+  <goal name="main&#39;vc.8" expl="loop invariant preservation" proved="true">
+  <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+  <transf name="simplify_computations" proved="true" >
+   <goal name="main&#39;vc.8.0" expl="loop invariant preservation" proved="true">
+   <transf name="destruct_term" proved="true" arg1="history">
+    <goal name="main&#39;vc.8.0.0" expl="loop invariant preservation" proved="true">
+    <transf name="subst" proved="true" arg1="history">
+     <goal name="main&#39;vc.8.0.0.0" expl="loop invariant preservation" proved="true">
+     <transf name="simplify_computations" proved="true" >
+      <goal name="main&#39;vc.8.0.0.0.0" expl="loop invariant preservation" proved="true">
+      <transf name="destruct" proved="true" arg1="Ensures1">
+       <goal name="main&#39;vc.8.0.0.0.0.0" expl="loop invariant preservation" proved="true">
+       <proof prover="0"><result status="valid" time="0.01" steps="70"/></proof>
+       </goal>
+      </transf>
+      </goal>
+     </transf>
+     </goal>
+    </transf>
+    </goal>
+    <goal name="main&#39;vc.8.0.1" expl="loop invariant preservation" proved="true">
+    <proof prover="0"><result status="valid" time="0.00" steps="10"/></proof>
+    </goal>
+   </transf>
+   </goal>
+  </transf>
+  </goal>
+  <goal name="main&#39;vc.9" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.00" steps="629"/></proof>
+  </goal>
+  <goal name="main&#39;vc.10" expl="loop invariant preservation">
+  <proof prover="0"><undone/></proof>
+  </goal>
+  <goal name="main&#39;vc.11" expl="loop invariant preservation">
+  <proof prover="0"><undone/></proof>
+  </goal>
+  <goal name="main&#39;vc.12" expl="loop invariant preservation">
+  <proof prover="0"><undone/></proof>
+  </goal>
+ </transf>
+ </goal>
+</theory>
+</file>
+</why3session>

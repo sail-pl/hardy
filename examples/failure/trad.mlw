@@ -1,0 +1,24 @@
+use int.Int
+use option.Option
+use ref.Ref
+
+type input_t = { temp : int }
+
+type output_t = { mutable signal : option int }
+  
+
+
+let main1 () : () 
+  diverges
+  =
+  let x = ref 0 in 
+    x := 0;
+    assert {true};
+    while (true) do
+      let input = any input_t ensures {true} in
+      let output = {signal = None} in 
+        if input.temp > 10 then output.signal <- Some 1
+        else output.signal <- Some 0;
+        assert {input.temp > 10 -> output.signal = Some 1}
+    done
+    
