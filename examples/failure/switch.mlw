@@ -8,34 +8,18 @@ use list.Length
 use List.HdTl
 
 (* Auxliary functions *)
-
-predicate mem (x: 'a) (l: list 'a) = match l with
-  | Nil      -> false
-  | Cons y r -> x = y \/ mem x r
-  end
-      
-predicate mem_i (i : int) (x : 'a) (l : list 'a) =
+   
+predicate at_time (i : int) (x : 'a) (l : list 'a) =
   match l with
     | Nil -> false 
-    | Cons y r -> i = 0 && x = y || mem_i (i - 1) x r
-  end
-        
-let rec function for_all (p: 'a -> bool) (l:list 'a) : bool
-  ensures { result <-> forall x. mem x l -> p x }
-=
-  match l with
-  | Nil -> true
-  | Cons x r -> p x && for_all p r
+    | Cons y r -> i = length r && x = y || at_time i x r
   end
   
-  let rec function for_some (p: 'a -> bool) (l:list 'a) : bool
-  ensures { result <-> exists x. mem x l /\ p x }
-=
-  match l with
-  | Nil -> false
-  | Cons x r -> p x || for_some p r
-  end
+predicate forall_i (p : int -> 'a -> list 'a -> bool) (h : list 'a) = 
+  forall i x. at_time i x h -> p i x h
   
+predicate exists_i (p : int -> 'a -> list 'a -> bool) (h : list 'a) =
+  exists i x. at_time i x h /\ p i x h 
 
 (* Environment *)
 
@@ -59,49 +43,13 @@ type h_env_t = {
 type history_t = {
   mutable h_envs : list h_env_t
 }
-  
-let rec function forall_i_aux 
-  (p : int -> h_env_t -> list h_env_t -> bool) 
-  (l h : list h_env_t) (i : int) : bool 
-  requires {length h - i = length l } 
-  ensures { result <-> forall i x. 0 <= i < length h - length l -> mem_i i x h -> p i x h }
-  =
-  match l with 
-    | Nil -> true
-    | Cons h_env m ->
-        (p i h_env h) && forall_i_aux p m h (i + 1)
-  end
 
-let rec function exists_i_aux 
-  (p : int -> h_env_t -> list h_env_t -> bool) 
-  (l h : list h_env_t) (i : int) : bool 
-  requires {length h - i = length l } 
-  ensures { result <-> exists i x. mem_i i x h /\ p i x h}
-  =
-  match l with 
-    | Nil -> true
-    | Cons h_env m ->
-        (p i h_env h) || forall_i_aux p m h (i + 1)
-  end
-  
-let function forall_i (p : int -> h_env_t -> list h_env_t -> bool) (h : list h_env_t) : bool 
-  ensures { result <-> forall i x. mem_i i x h -> p i x h}=
-  forall_i_aux p h h 0
-  
-let function exists_i (p : int -> h_env_t -> list h_env_t -> bool) (h : list h_env_t) : bool 
-  ensures { result <-> exists i x. mem_i i x h /\ p i x h}
-  =
-  exists_i_aux p h h 0
-   
-let function inv h =
+predicate inv (h : list h_env_t) =
   forall_i
    (fun i h_env_i h -> h_env_i.h_output_light = 1 && exists_i 
     (fun j h_env_j h -> j < i && h_env_j.h_input_on = 1) h 
    ) h
 
-(* forall i. output_light(i) = 1 -> exists j. j < i /\ input_on = 1 *)
-
-(* i in list range *)
 
 (* storage *)
 
@@ -142,10 +90,12 @@ let main () : ()
   let _history = {h_envs = Nil} in
   let _var = { var_state = 0} in
     _var.var_state <- 0;
-    assert {true}; (* init ensures *)
+    assert {_var.var_state = 0}; (* init ensures *)
     while (true) do
       invariant {inv _history.h_envs}
+      let a = any int in
       let _env = any env_t ensures { (* Globally on inputs *) 
+        result.input_on = a /\
         result.output_light = None
       }
       in
@@ -153,5 +103,4 @@ let main () : ()
         _env.output_light <- Some (_var.var_state);
         store_history _history _env _var
     done
-
   
