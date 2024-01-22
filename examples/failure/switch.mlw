@@ -47,7 +47,7 @@ type history_t = {
 predicate inv (h : list h_env_t) =
   forall_i
    (fun i h_env_i h -> h_env_i.h_output_light = 1 -> exists_i 
-    (fun j h_env_j h -> j < i && h_env_j.h_input_on = 1) h 
+    (fun j h_env_j h -> j <= i && h_env_j.h_input_on = 1) h 
    ) h
 
 
