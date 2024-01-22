@@ -38,8 +38,6 @@ let rec function for_all (p: 'a -> bool) (l:list 'a) : bool
   
 
 (* Environment *)
-(* we separate variables from i/o because they are persistent 
-  and can be used during initialisation *)
 
 type var_t = {
   mutable var_state : int
@@ -65,8 +63,8 @@ type history_t = {
 let rec function forall_i_aux 
   (p : int -> h_env_t -> list h_env_t -> bool) 
   (l h : list h_env_t) (i : int) : bool 
-  requires {length h - i = length l} 
-  ensures { result <-> forall i x. mem_i i x h -> p i x h}
+  requires {length h - i = length l } 
+  ensures { result <-> forall i x. 0 <= i < length h - length l -> mem_i i x h -> p i x h }
   =
   match l with 
     | Nil -> true
@@ -77,7 +75,7 @@ let rec function forall_i_aux
 let rec function exists_i_aux 
   (p : int -> h_env_t -> list h_env_t -> bool) 
   (l h : list h_env_t) (i : int) : bool 
-  requires {i < length h} 
+  requires {length h - i = length l } 
   ensures { result <-> exists i x. mem_i i x h /\ p i x h}
   =
   match l with 
@@ -94,12 +92,6 @@ let function exists_i (p : int -> h_env_t -> list h_env_t -> bool) (h : list h_e
   ensures { result <-> exists i x. mem_i i x h /\ p i x h}
   =
   exists_i_aux p h h 0
-
-(* let inv h =
-  forall_i
-   (fun i h_env_i h -> h_env_i.output_ligth = 1 && exists_i 
-    (fun j h_env_j h -> j < i && h_env_j.input_on = 1) h 
-   ) h*)
    
 let function inv h =
   forall_i

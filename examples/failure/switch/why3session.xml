@@ -15,11 +15,19 @@
  <goal name="forall_i_aux&#39;vc" expl="VC for forall_i_aux">
  <proof prover="0"><result status="timeout" time="5.00"/></proof>
  <transf name="split_vc" >
-  <goal name="forall_i_aux&#39;vc.0" expl="precondition">
-  <proof prover="0"><result status="timeout" time="5.00"/></proof>
+  <goal name="forall_i_aux&#39;vc.0" expl="precondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.00" steps="15"/></proof>
   </goal>
   <goal name="forall_i_aux&#39;vc.1" expl="postcondition">
-  <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+  <proof prover="0"><result status="timeout" time="5.00"/></proof>
+  <transf name="split_vc" >
+   <goal name="forall_i_aux&#39;vc.1.0" expl="postcondition">
+   <proof prover="0"><result status="timeout" time="5.00"/></proof>
+   </goal>
+   <goal name="forall_i_aux&#39;vc.1.1" expl="postcondition">
+   <proof prover="0"><result status="timeout" time="5.00"/></proof>
+   </goal>
+  </transf>
   </goal>
  </transf>
  </goal>
@@ -43,6 +51,29 @@
  </goal>
  <goal name="main&#39;vc" expl="VC for main">
  <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+ <transf name="split_vc" >
+  <goal name="main&#39;vc.0" expl="assertion">
+  <proof prover="0" obsolete="true"><result status="valid" time="0.00" steps="1"/></proof>
+  </goal>
+  <goal name="main&#39;vc.1" expl="loop invariant init">
+  <proof prover="0" obsolete="true"><result status="valid" time="0.01" steps="17"/></proof>
+  </goal>
+  <goal name="main&#39;vc.2" expl="witness existence">
+  <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+  </goal>
+  <goal name="main&#39;vc.3" expl="precondition">
+  <proof prover="0" obsolete="true"><result status="valid" time="0.01" steps="16"/></proof>
+  </goal>
+  <goal name="main&#39;vc.4" expl="loop invariant preservation">
+  <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+  </goal>
+  <goal name="main&#39;vc.5" expl="precondition">
+  <proof prover="0" obsolete="true"><result status="valid" time="0.01" steps="19"/></proof>
+  </goal>
+  <goal name="main&#39;vc.6" expl="loop invariant preservation">
+  <proof prover="0" obsolete="true"><result status="valid" time="1.04" steps="19790"/></proof>
+  </goal>
+ </transf>
  </goal>
 </theory>
 </file>
