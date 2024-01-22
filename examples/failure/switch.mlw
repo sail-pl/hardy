@@ -14,6 +14,12 @@ predicate mem (x: 'a) (l: list 'a) = match l with
   | Cons y r -> x = y \/ mem x r
   end
       
+predicate mem_i (i : int) (x : 'a) (l : list 'a) =
+  match l with
+    | Nil -> false 
+    | Cons y r -> i = 0 && x = y || mem_i (i - 1) x r
+  end
+        
 let rec function for_all (p: 'a -> bool) (l:list 'a) : bool
   ensures { result <-> forall x. mem x l -> p x }
 =
@@ -30,8 +36,6 @@ let rec function for_all (p: 'a -> bool) (l:list 'a) : bool
   | Cons x r -> p x || for_some p r
   end
   
-
-
 
 (* Environment *)
 (* we separate variables from i/o because they are persistent 
@@ -58,25 +62,38 @@ type history_t = {
   mutable h_envs : list h_env_t
 }
   
-let rec function forall_i_aux (p : int -> h_env_t -> list h_env_t -> bool) (l h : list h_env_t) (i : int) : bool =
+let rec function forall_i_aux 
+  (p : int -> h_env_t -> list h_env_t -> bool) 
+  (l h : list h_env_t) (i : int) : bool 
+  requires {length h - i = length l} 
+  ensures { result <-> forall i x. mem_i i x h -> p i x h}
+  =
   match l with 
     | Nil -> true
     | Cons h_env m ->
         (p i h_env h) && forall_i_aux p m h (i + 1)
   end
 
-let rec function exists_i_aux (p : int -> h_env_t -> list h_env_t -> bool) (l h : list h_env_t) (i : int) : bool =
+let rec function exists_i_aux 
+  (p : int -> h_env_t -> list h_env_t -> bool) 
+  (l h : list h_env_t) (i : int) : bool 
+  requires {i < length h} 
+  ensures { result <-> exists i x. mem_i i x h /\ p i x h}
+  =
   match l with 
     | Nil -> true
     | Cons h_env m ->
         (p i h_env h) || forall_i_aux p m h (i + 1)
   end
   
-let function forall_i (p : int -> h_env_t -> list h_env_t -> bool) (l : list h_env_t) : bool =
-  forall_i_aux p l l 0
+let function forall_i (p : int -> h_env_t -> list h_env_t -> bool) (h : list h_env_t) : bool 
+  ensures { result <-> forall i x. mem_i i x h -> p i x h}=
+  forall_i_aux p h h 0
   
-let function exists_i (p : int -> h_env_t -> list h_env_t -> bool) (l : list h_env_t) : bool =
-  exists_i_aux p l l 0
+let function exists_i (p : int -> h_env_t -> list h_env_t -> bool) (h : list h_env_t) : bool 
+  ensures { result <-> exists i x. mem_i i x h /\ p i x h}
+  =
+  exists_i_aux p h h 0
 
 (* let inv h =
   forall_i

@@ -2,20 +2,47 @@
 <!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
 "http://why3.lri.fr/why3session.dtd">
 <why3session shape_version="6">
+<prover id="0" name="Alt-Ergo" version="2.4.3" timelimit="5" steplimit="0" memlimit="1000"/>
 <file format="whyml">
 <path name=".."/><path name="switch.mlw"/>
 <theory name="Top">
- <goal name="for_all&#39;vc" expl="VC for for_all">
+ <goal name="for_all&#39;vc" expl="VC for for_all" proved="true">
+ <proof prover="0"><result status="valid" time="0.01" steps="65"/></proof>
  </goal>
- <goal name="for_some&#39;vc" expl="VC for for_some">
+ <goal name="for_some&#39;vc" expl="VC for for_some" proved="true">
+ <proof prover="0"><result status="valid" time="0.01" steps="65"/></proof>
+ </goal>
+ <goal name="forall_i_aux&#39;vc" expl="VC for forall_i_aux">
+ <proof prover="0"><result status="timeout" time="5.00"/></proof>
+ <transf name="split_vc" >
+  <goal name="forall_i_aux&#39;vc.0" expl="precondition">
+  <proof prover="0"><result status="timeout" time="5.00"/></proof>
+  </goal>
+  <goal name="forall_i_aux&#39;vc.1" expl="postcondition">
+  <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="exists_i_aux&#39;vc" expl="VC for exists_i_aux">
+ <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+ </goal>
+ <goal name="forall_i&#39;vc" expl="VC for forall_i">
+ <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
+ </goal>
+ <goal name="exists_i&#39;vc" expl="VC for exists_i">
+ <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
  </goal>
  <goal name="inv&#39;vc" expl="VC for inv">
+ <proof prover="0" obsolete="true"><result status="valid" time="0.00" steps="1"/></proof>
  </goal>
  <goal name="duplicate_env&#39;vc" expl="VC for duplicate_env">
+ <proof prover="0" obsolete="true"><result status="valid" time="0.00" steps="1"/></proof>
  </goal>
  <goal name="store_history&#39;vc" expl="VC for store_history">
+ <proof prover="0" obsolete="true"><result status="valid" time="0.01" steps="111"/></proof>
  </goal>
  <goal name="main&#39;vc" expl="VC for main">
+ <proof prover="0" obsolete="true"><result status="timeout" time="5.00"/></proof>
  </goal>
 </theory>
 </file>
