@@ -1,14 +1,11 @@
-use int.Int
-use option.Option
-use ref.Ref
-use list.List
-use list.Map
-use list.Nth
-use list.Length
-use List.HdTl
 
-(* Auxliary functions *)
-   
+
+module FOL
+
+use int.Int
+use list.List
+use list.Length
+
 predicate at_time (i : int) (x : 'a) (l : list 'a) =
   match l with
     | Nil -> false 
@@ -21,8 +18,24 @@ predicate forall_i (p : int -> 'a -> list 'a -> bool) (h : list 'a) =
 predicate exists_i (p : int -> 'a -> list 'a -> bool) (h : list 'a) =
   exists i x. at_time i x h /\ p i x h 
 
-(* Environment *)
+end
 
+(* Auxliary functions *)
+   
+
+(* Environment *)
+module Program 
+
+  use FOL
+
+use int.Int
+use option.Option
+use ref.Ref
+use list.List
+use list.Map
+use list.Nth
+use list.Length
+use List.HdTl
 type var_t = {
   mutable var_state : int
 } 
@@ -49,7 +62,6 @@ predicate inv (h : list h_env_t) =
    (fun i h_env_i h -> h_env_i.h_output_light = 1 -> exists_i 
     (fun j h_env_j h -> j <= i && h_env_j.h_input_on = 1) h 
    ) h
-
 
 (* storage *)
 
@@ -103,4 +115,5 @@ let main () : ()
         _env.output_light <- Some (_var.var_state);
         store_history _history _env _var
     done
+end
   

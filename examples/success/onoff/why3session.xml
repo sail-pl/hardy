@@ -25,7 +25,7 @@
   <proof prover="0"><result status="valid" time="0.00" steps="1"/></proof>
   </goal>
   <goal name="main&#39;vc.1" expl="witness existence">
-  <proof prover="0"><undone/></proof>
+  <proof prover="0"><result status="failure" time="0.00"/></proof>
   </goal>
   <goal name="main&#39;vc.2" expl="precondition" proved="true">
   <proof prover="0"><result status="valid" time="0.00" steps="12"/></proof>

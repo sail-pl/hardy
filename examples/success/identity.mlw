@@ -1,0 +1,98 @@
+
+
+module FOL
+
+use int.Int
+use list.List
+use list.Length
+
+predicate at_time (i : int) (x : 'a) (l : list 'a) =
+  match l with
+    | Nil -> false 
+    | Cons y r -> i = length r && x = y || at_time i x r
+  end
+  
+predicate forall_i (p : int -> 'a -> list 'a -> bool) (h : list 'a) = 
+  forall i x. at_time i x h -> p i x h
+  
+predicate exists_i (p : int -> 'a -> list 'a -> bool) (h : list 'a) =
+  exists i x. at_time i x h /\ p i x h 
+
+end   
+
+
+module Program 
+
+  use FOL
+
+  use int.Int
+  use option.Option
+  use list.List
+  use list.Length
+   
+  (* Environment *)
+  
+  type env_t = {
+    input_val : int;
+    mutable output_val : option int
+  } 
+
+  (* History *)
+
+  type h_env_t = {
+    h_input_val : int;
+    h_output_val : int
+  }
+
+  type history_t = {
+    mutable h_envs : list h_env_t
+  }
+
+  (* storage *)
+
+  let duplicate_env (env : env_t) : h_env_t 
+    requires {env.output_val <> None} =
+    match env.output_val with 
+    | Some v -> {
+        h_input_val = env.input_val;
+        h_output_val = v
+      } 
+    | _ -> absurd      
+    end
+
+  let store_history (h : history_t) (env : env_t)
+    requires { env.output_val <> None }
+    ensures { length h.h_envs = length (old h.h_envs) + 1 }
+    ensures {
+      match h.h_envs with 
+        | Nil -> false 
+        | Cons h_env _ -> 
+            h_env.h_input_val = env.input_val /\
+            Some h_env.h_output_val = env.output_val 
+      end
+    }
+    ensures { 
+      match h.h_envs with 
+        | Nil -> false 
+        | Cons _ l -> l = old h.h_envs 
+      end
+    }
+    = h.h_envs <- Cons (duplicate_env env) h.h_envs
+
+  (* program *)
+
+  predicate inv (h : list h_env_t) =
+    forall_i (fun i h_env_i h -> h_env_i.h_output_val = h_env_i.h_input_val) h
+
+  let main () : () 
+    diverges
+    =
+    let _history = {h_envs = Nil} in
+      while (true) do
+        invariant {inv _history.h_envs}
+        val _env:env_t ensures { result.output_val = None } in 
+          _env.output_val <- Some (_env.input_val);
+          store_history _history _env
+      done
+end
+  
