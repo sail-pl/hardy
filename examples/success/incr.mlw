@@ -1,0 +1,136 @@
+
+
+theory FOL
+
+use int.Int
+use list.List
+use list.Length
+
+predicate at_time (i : int) (x : 'a) (l : list 'a) =
+  match l with
+    | Nil -> false 
+    | Cons y r -> i = length r && x = y || at_time i x r
+  end
+  
+predicate forall_i (p : int -> 'a -> list 'a -> bool) (h : list 'a) = 
+  forall i x. at_time i x h -> p i x h
+  
+predicate exists_i (p : int -> 'a -> list 'a -> bool) (h : list 'a) =
+  exists i x. at_time i x h /\ p i x h 
+  
+predicate imm (p : int -> 'a -> list 'a -> bool) (h : list 'a) (i : int) = 
+  exists x. at_time i x h /\ p i x h
+
+lemma at_time_hd : 
+  forall a : 'a, l : list 'a. 
+    at_time (length l) a (Cons a l)
+
+lemma at_time_tl : 
+  forall i : int, a : 'a, l : list 'a.
+    i < length l -> at_time i a (Cons a l) -> at_time i a l
+
+lemma at_time_tl_inv : 
+  forall i : int, a : 'a, l : list 'a.
+    at_time i a l -> at_time i a (Cons a l)  
+
+let rec function at_time_range ( l : list 'a) : unit
+  ensures {forall i : int, a : 'a. at_time i a l -> 0 <= i < length l}
+  =
+    match l with 
+      | Nil -> () 
+      | Cons _ l -> at_time_range l 
+    end 
+
+let rec function at_time_range_inv (l : list 'a) : unit 
+  ensures {forall i : int. 0 <= i < length l -> exists a : 'a. at_time i a l}
+  =
+    match l with 
+      | Nil -> () 
+      | Cons _ l -> at_time_range_inv l
+    end
+      
+end  
+
+module Program
+  use FOL
+  
+  use int.Int
+  use option.Option
+  use list.List
+  use list.Length
+   
+  (* Environment *)
+  
+  type var_t = {
+    mutable var_state : int
+  } 
+
+  type env_t = {
+    input_val : int
+  } 
+
+  (* History *)
+
+  type h_env_t = {
+    h_var_state : int;
+    h_input_val : int  }
+
+  type history_t = {
+    mutable h_envs : list h_env_t
+  }
+
+  (* storage *)
+
+  let duplicate_env (env : env_t) (var : var_t) : h_env_t 
+     =
+     {
+        h_input_val = env.input_val;
+        h_var_state = var.var_state
+      } 
+
+  let store_history (h : history_t) (env : env_t) (var : var_t)
+    ensures { length h.h_envs = length (old h.h_envs) + 1 }
+    ensures {
+      match h.h_envs with 
+        | Nil -> false 
+        | Cons h_env _ -> 
+            h_env.h_input_val = env.input_val /\
+            h_env.h_var_state = var.var_state
+      end
+    }
+    ensures { 
+      match h.h_envs with 
+        | Nil -> false 
+        | Cons _ l -> l = old h.h_envs 
+      end
+    }
+    = h.h_envs <- Cons (duplicate_env env var) h.h_envs
+
+  (* program *)
+
+
+  predicate inv (h : list h_env_t) = 
+    forall_i
+      (fun i h_env_i _ -> h_env_i.h_var_state = i + 1) h
+
+  let main () : () 
+    diverges
+    =
+    let _history = { h_envs = Nil } in
+    let _var = { var_state = 0 } in
+      _var.var_state <- 0;
+      while (true) do
+        invariant { 
+          match _history.h_envs with 
+            | Nil -> _var.var_state = 0 (* setup post condition !! *)
+            | Cons h_env _h -> _var.var_state = h_env.h_var_state
+          end
+        }
+        invariant { inv _history.h_envs }
+        val _env : env_t
+        in
+          _var.var_state <- _var.var_state + 1;
+          store_history _history _env _var
+      done
+end
+  

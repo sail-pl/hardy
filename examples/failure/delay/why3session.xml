@@ -70,7 +70,7 @@
       <goal name="main&#39;vc.6.0.0.0.0" expl="loop invariant preservation" proved="true">
       <transf name="subst" proved="true" arg1="x">
        <goal name="main&#39;vc.6.0.0.0.0.0" expl="loop invariant preservation" proved="true">
-       <proof prover="0"><result status="valid" time="0.65" steps="7313"/></proof>
+       <proof prover="0"><result status="valid" time="0.65" steps="7315"/></proof>
        </goal>
       </transf>
       </goal>
