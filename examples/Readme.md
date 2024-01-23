@@ -14,7 +14,7 @@
   	+ shows that we need to relate the value of variables at the beginning of an
   	  instant to their values at the previous instant if exists, to the initial value otherwise
 
-- natural :
+- natural.mlw :
   	+ produce the sequence of natural numbers
   	+ similar to incr, but shows how to rely on an internal (over variables) invariant to prove
   	  the i/o invariant
