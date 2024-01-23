@@ -19,3 +19,7 @@
 ## More examples to test 
 
 - register : 
+  	+ input input_val, set; output output_val; var state
+  	+ use a variable to store a state
+  	+ outputs its state at each instant on output_val
+  	+ records the value of input_val when input set is activated
