@@ -7,6 +7,10 @@
 	+ to check that the initial value of the state is visible
 - identity.mlw :
 	+ outputs the input value
+- incr.mlw :
+  	+ record the number of the current instant
+  	+ shows that we need to relate the value of variables at the beginning of an
+  	  instant to their values at the previous instant if exists, to the initial value otherwise
 
 - onoff.mlw : use invariant instead of formula over words, to update
 
