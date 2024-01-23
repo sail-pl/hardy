@@ -2,12 +2,14 @@
 
 ## Success 
 
-- constant.mlw : 
-	+ continuously emits the value of its constant internal state
-	+ to check that the initial value of the state is visible
 
 - identity.mlw :
 	+ outputs the input value
+	+ simple invariant which could be write without history
+
+- constant.mlw : 
+	+ continuously emits the value of its constant internal state
+	+ to check that the initial value of the state is visible
 
 - incr.mlw :
   	+ record the number of the current instant
@@ -18,7 +20,12 @@
   	+ produce the sequence of natural numbers
   	+ similar to incr, but shows how to rely on an internal (over variables) invariant to prove
   	  the i/o invariant
-  	  
+
+Remark : 
+	some example do not contain the full instrumentation because they were designed at an early state
+	They should be updated.
+	Question : is it possible to detect at compile time that some properties do not require full instrumentation.
+      
 ## Failure
 
 - delay.mlw :
