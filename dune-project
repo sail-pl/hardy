@@ -4,6 +4,8 @@
 
 (using menhir 2.1)
 
+(using coq 0.8)
+
 (generate_opam_files true)
 
 (source
