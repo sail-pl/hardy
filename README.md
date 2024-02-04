@@ -30,34 +30,9 @@ instructions
     | if e then c else c end   
     | while e do c done  
 
-### Temporal formulas F (first order logic over words)
-
-  - predicates over positions index and values (e.g i < j -> s(i) < s(j))
-  - F /\ F, F \/ F, not F, F -> F
-  - forall i. F (* where i is a position *)
-  - exists i. F (* where i is a position *)
-
 ### PLTL formulas 
 
-Formulas are interpreter over finite non-empty traces.
-
-
-$$
-\begin{array}{lcll}
-\phi,\psi &::=& \mid True \mid \neg \phi \mid \phi \vee \psi \\
-&& \mid p & {\text{(atomic proposition)}}\\
-&& \mid {\mathcal{Y}} ~ \phi & {\text{(yesterday)}}\\
-&& \mid \phi ~ {\mathcal{S}} ~ \psi & {\text{(since)}}
-\end{array}
-$$
-
-$$
-\begin{array}{lcll}
-  \mathcal{O} ~ \phi & = & True ~ {\mathcal{S}} ~ \phi & {\text{(once)}} \\
-  \mathcal{H} ~ \phi &=& \neg ({\mathcal{O}} ~ (\neg ~ \phi)) & {\text{(historically)}}
-\end{array}
-$$
-
+Formulas are interpreter over finite non-empty traces. 
 The function $current$ returns the last instant. Given a natural number i, $shift ~ i$ performs a backward time shift of i positions.
 
 $$
@@ -70,6 +45,23 @@ shift ~ (i + 1) ~ (a \cdot tr) &=& shift ~ i ~ tr
 \end{array}
 $$
 
+Formulas are defined as follows:
+
+$$
+\begin{array}{lcll}
+\phi,\psi &::=& \mid True \mid \neg \phi \mid \phi \vee \psi \\
+&& \mid p & {\text{(atomic proposition)}}\\
+&& \mid {\mathcal{Y}} ~ \phi & {\text{(yesterday)}}\\
+&& \mid \phi ~ {\mathcal{S}} ~ \psi & {\text{(since)}}
+\end{array}
+$$
+
+Intuitively an atomic proposition $p$ holds if it holds at the last instant of the trace.
+A formula ${\mathcal{Y}} ~ \phi$ holds, if $\phi$ holds before the last instant.
+A formula $\phi ~ {\mathcal{S}} ~ \psi$ holds if 
+$\psi$ is valid at one point in time and $\phi$ is valid thereafter.
+More formally 
+
 $$
 \begin{array}{lcl}
   tr \models True\\
@@ -80,6 +72,34 @@ $$
   tr \models \phi ~ {\mathcal{S}} ~\phi ~ &\Leftrightarrow& \exists i. shift ~ i ~ tr \models \phi \wedge \forall k. 0 <= k < i -> shift ~ k ~ tr \models \psi
 \end{array}
 $$
+
+We consider the usual operators ${\mathcal{O}}$ (Once) and ${\mathcal{H}}$ (Historically).
+Intuitively, a formula ${\mathcal{O}} ~ \phi$ holds if $\phi$ is valid at one point in time.
+A formula ${\mathcal{H}} ~ \phi$ holds if $\phi$ always holds. 
+
+$$
+\begin{array}{lcll}
+  \mathcal{O} ~ \phi & = & True ~ {\mathcal{S}} ~ \phi & {\text{(once)}} \\
+  \mathcal{H} ~ \phi &=& \neg ({\mathcal{O}} ~ (\neg ~ \phi)) & {\text{(historically)}}
+\end{array}
+$$
+
+
+- Pure-Past Linear Temporal and Dynamic Logic on Finite Traces, De Giacomo, 2020
+- Planning for Temporally Extended Goals in Pure-Past Linear Temporal Logic: A Polynomial Reduction to Standard Planning, De Giacomo, 2022
+  
+### Temporal formulas F (first order logic over words)
+
+Should we restrict expressivity to mention only past positions ? We should see how invariants are preserved to answer this question.
+Hint : replace while true s by s;while true s to distinguish the first instant (running in the initial state).
+
+  - predicates over positions index and values (e.g i < j -> s(i) < s(j))
+  - F /\ F, F \/ F, not F, F -> F
+  - forall i. F (* where i is a position *)
+  - exists i. F (* where i is a position *)
+
+
+
 ## TODO
 
 - clean code for the parser
