@@ -11,24 +11,31 @@ input a b c;
 output u v w;  
 var x y z;  
 
-requires {Temporal formula}  
-ensures {Temporal formula}  
+requires {PLTL formula}  
+ensures {PLTL formula}  
 
 setup:  
-  ensures {Formula}  
-  // BODY  
+  c 
 
 loop:  
-  // BODY  
+  c 
+
+where 
 
 
-instructions 
-  c ::=  
-    | x := ( e | ! s) // assign the value of a simple expression or of a signal  
-    | emit s e        // emit a signal  
-    | c;c  
-    | if e then c else c end   
-    | while e do c done  
+$$
+\begin{array}{lcl}
+c &::=& \mid x:= e \\
+&& \mid x := ~ !s\\
+&& \mid emit ~ s ~ e\\
+&& \mid c;c \\
+&& \mid if ~ e ~ then ~ c ~ else ~ c ~ end\\
+&& \mid while ~ e ~ do ~ [Invariant] ~ [Variant] ~ c ~ done 
+\end{array}
+$$
+
+- Need to add temporal formulas mentionning the state. Where ?
+- The separation between i/o formulas and state formulas is not that clear if we consider nested modules
 
 ### PLTL formulas 
 
