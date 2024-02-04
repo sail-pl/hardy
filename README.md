@@ -76,7 +76,7 @@ $$
   tr \models \phi \vee \psi ~ &\Leftrightarrow& ~ tr \models \phi \vee tr \models \psi\\ 
   tr \models p ~ &\Leftrightarrow& ~  p ~ (current ~ a)\\ 
   tr \models {\mathcal{Y}} ~ \phi ~ &\Leftrightarrow& ~ shift ~ 1 ~ tr \models \phi\\
-  tr \models \phi ~ {\mathcal{S}} ~\phi ~ &\Leftrightarrow& \exists i. shift ~ i ~ tr \models \phi \wedge \forall k. 0 <= k < i -> shift ~ k ~ tr \models \psi
+  tr \models \phi ~ {\mathcal{S}} ~\phi ~ &\Leftrightarrow& \exists i. shift ~ i ~ tr \models \phi \wedge \forall k. 0 <= k < i \rightarrow shift ~ k ~ tr \models \psi
 \end{array}
 $$
 
