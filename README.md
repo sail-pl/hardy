@@ -36,8 +36,50 @@ instructions
   - F /\ F, F \/ F, not F, F -> F
   - forall i. F (* where i is a position *)
   - exists i. F (* where i is a position *)
-    
 
+### PLTL formulas 
+
+Formulas are interpreter over finite non-empty traces.
+
+
+$$
+\begin{array}{lcll}
+\phi,\psi &::=& \mid True \mid \neg \phi \mid \phi \vee \psi \\
+&& \mid p & {\text{(atomic proposition)}}\\
+&& \mid {\mathcal{Y}} ~ \phi & {\text{(yesterday)}}\\
+&& \mid \phi ~ {\mathcal{S}} ~ \psi & {\text{(since)}}
+\end{array}
+$$
+
+$$
+\begin{array}{lcll}
+  \mathcal{O} ~ \phi & = & True ~ {\mathcal{S}} ~ \phi & {\text{(once)}} \\
+  \mathcal{H} ~ \phi &=& \neg ({\mathcal{O}} ~ (\neg ~ \phi)) & {\text{(historically)}}
+\end{array}
+$$
+
+The function $current$ returns the last instant. Given a natural number i, $shift ~ i$ performs a backward time shift of i positions.
+
+$$
+\begin{array}{lcl}
+current ~ (a \cdot tr) &=& a
+\\
+\\
+shift ~ 0 ~ tr &=& tr \\
+shift ~ (i + 1) ~ (a \cdot tr) &=& shift ~ i ~ tr
+\end{array}
+$$
+
+$$
+\begin{array}{lcl}
+  tr \models True\\
+  tr \models \neg ~ \phi ~ &\Leftrightarrow& ~ \neg (tr \models \phi)\\
+  tr \models \phi \vee \psi ~ &\Leftrightarrow& ~ tr \models \phi \vee tr \models \psi\\ 
+  tr \models p ~ &\Leftrightarrow& ~  p ~ (current ~ a)\\ 
+  tr \models {\mathcal{Y}} ~ \phi ~ &\Leftrightarrow& ~ shift ~ 1 ~ tr \models \phi\\
+  tr \models \phi ~ {\mathcal{S}} ~\phi ~ &\Leftrightarrow& \exists i. shift ~ i ~ tr \models \phi \wedge \forall k. 0 <= k < i -> shift ~ k ~ tr \models \psi
+\end{array}
+$$
 ## TODO
 
 - clean code for the parser
