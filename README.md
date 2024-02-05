@@ -95,7 +95,7 @@ $$
 - Pure-Past Linear Temporal and Dynamic Logic on Finite Traces, De Giacomo, 2020
 - Planning for Temporally Extended Goals in Pure-Past Linear Temporal Logic: A Polynomial Reduction to Standard Planning, De Giacomo, 2022
   
-### Temporal formulas F (first order logic over words)
+### First order logic over words
 
 Should we restrict expressivity to mention only past positions ? We should see how invariants are preserved to answer this question.
 Hint : replace while true s by s;while true s to distinguish the first instant (running in the initial state).
@@ -105,7 +105,7 @@ Hint : replace while true s by s;while true s to distinguish the first instant (
   - forall i. F (* where i is a position *)
   - exists i. F (* where i is a position *)
 
-
+- A SURVEY ON SMALL FRAGMENTS OF FIRST-ORDER LOGIC OVER FINITE WORDS, Diekert, Gastin and Kufleitner, 2008
 
 ## TODO
 
