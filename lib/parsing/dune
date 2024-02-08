@@ -4,5 +4,28 @@
 
 (ocamllex lexer)
 
-(menhir 
- (modules parser))
+
+; Compile tokens.mly into a definition of the type [token].
+(menhir
+  (modules tokens)
+  (flags --only-tokens)
+)
+
+
+(menhir
+  (modules tokens fol parser)
+  (merge_into fol_parser)
+  (flags
+     --external-tokens Tokens
+     --unused-token HISTORICALLY
+     --unused-token ONCE
+     --unused-token SINCE
+     --unused-token YESTERDAY
+  )
+)
+
+(menhir
+  (modules tokens pltl parser)
+  (merge_into pltl_parser)
+  (flags --external-tokens Tokens)
+)

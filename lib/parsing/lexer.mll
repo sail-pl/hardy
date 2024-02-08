@@ -1,5 +1,5 @@
 {
-  open Parser
+  open Tokens
   exception Lexical_error of string
     let line_num = ref 1
 
@@ -12,6 +12,8 @@ let id = letter (letter|digit|'_')*
 
 rule tokenize = parse
   | [' ' '\t' '\n' '\r']  { tokenize lexbuf }  (* Skip whitespaces *)
+  | "true" { LTRUE }
+  | "false" { LFALSE }
   | "if"                  { IF }
   | "then"                  {THEN}
   | "else"                { ELSE }
@@ -30,19 +32,13 @@ rule tokenize = parse
   | "variant"           {VARIANT}
   | "forall"                {FORALL}
   | "exists"                {EXISTS}
-  | "True"                  {TRUE}
-  | "False"                 {FALSE}
-  | "Not"                   {NOT}
-  | "->"                   {IMP}
-  | "/\\"                    {AND}
-  | "\\/"                    {OR}
   | "("                   { LPAREN }
   | ")"                   { RPAREN }
   | "{"                     {LBRACE}
   | "}"                     {RBRACE}
   | ";"                   { SEMI }
-  | "="                   { ASSIGN }
-  | ":="                  { EMIT }
+  | ":="                   { ASSIGN }
+  | "emit"                  { EMIT }
   | "!"                     {READ}
   | "+"                   { PLUS }
   | "-"                   { MINUS }
@@ -53,11 +49,20 @@ rule tokenize = parse
   | "<"                   { LT }
   | ">="                  { GTE }
   | "<="                  { LTE }
+  | "True"                { TRUE }
+  | "False"                { FALSE }
   | ";"                     {SEMI}
-  | ":"                     {COLUMN}
+  | ":"                     {COLON}
   | ","                     {COMMA}
+  | "S"                     {SINCE}
+  | "Y"                     {YESTERDAY}
+  | "O"                     {ONCE}
+  | "H"                     {HISTORICALLY}
+  | "Not"                   {NOT}
+  | "->"                   {IMP}
+  | "/\\"                    {AND}
+  | "\\/"                    {OR}
   | id as lxm            { ID (lxm) }
   | digit+ as lxm        { INT (int_of_string lxm) }
   | eof                   { EOF }
-   | _ as char            { raise (Lexical_error (Printf.sprintf "Unexpected character '%s' at line %d" (Char.escaped char) !line_num)) }
-(* let _ = tokenize *)
+  | _ as char            { raise (Lexical_error (Printf.sprintf "Unexpected character '%s' at line %d" (Char.escaped char) !line_num)) }

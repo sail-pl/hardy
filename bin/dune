@@ -1,4 +1,4 @@
 (executable
  (public_name arduino)
  (name main)
- (libraries arduinoParser))
+ (libraries arduinoParser arduinoTranslation))

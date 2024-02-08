@@ -1,29 +1,44 @@
+type binop = 
+  | Add | Sub 
+  | Mul | Div 
+  | Gt | Lt | Gte | Lte
+  | Eq 
+
 type expr =
   | Int of int
+  | True
+  | False
   | Var of string
   | Read of string
-  | Add of expr * expr
-  | Sub of expr * expr
-  | Mul of expr * expr
-  | Div of expr * expr
-  | Eq of expr * expr
-  | Gt of expr * expr
-  | Lt of expr * expr
-  | Gte of expr * expr
-  | Lte of expr * expr
+  | BinOp of expr * binop * expr
 
-type formula = 
-  | True 
-  | False 
+type fol = 
+  | FOL_True 
+  | FOL_Not of fol
+  | FOL_Or of fol * fol 
+  | FOL_False 
   | Pred of expr
-  | Not of formula
-  | And of formula * formula 
-  | Or of formula * formula 
-  | Imp of formula * formula 
-  | Forall of string * formula 
-  | Exists of string * formula
+  | And of fol * fol 
+  | Imp of fol * fol 
+  | Forall of string * fol 
+  | Exists of string * fol
 
-type invariant = formula 
+
+
+type pltl = 
+  | PLTL_True
+  | PLTL_Not of pltl
+  | PLTL_Or of pltl * pltl
+  | Once of pltl
+  | Yesterday of pltl
+  | Since of pltl * pltl
+  | Historically of pltl
+
+
+type formula = FOL of fol | PLTL of pltl
+
+
+type invariant = fol 
 type variant = expr 
 type requires = formula 
 type ensures = formula 
@@ -38,22 +53,22 @@ type env = {
   env_input : string list; 
   env_output : string list; 
   env_variables : string list
-  }
+}
 
 type setup = {
-  setup_ensures : ensures;
+  setup_ensures : ensures option;
   setup_body:stmt list
-  }
-type main = {
-  main_invariant : invariant;
-  main_body:stmt list
-  }
+}
 
-type program = 
-  { 
-    prog_env : env;
-    prog_requires : requires;
-    prog_ensures : ensures;
-    prog_setup : setup option;
-    prog_main : main;
-  }
+type main = {
+  main_invariant : invariant option;
+  main_body:stmt list
+}
+
+type program = { 
+  prog_env : env;
+  prog_requires : requires;
+  prog_ensures : ensures;
+  prog_setup : setup option;
+  prog_main : main;
+}

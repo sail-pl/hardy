@@ -1,118 +1,96 @@
-(* open ArduinoSyntax.Syntax
-open Why3.Syntax *)
+open ArduinoSyntax.Syntax
+open Why3
 
-(* type program = 
-  { 
-    prog_env : env;
-    prog_requires : requires;
-    prog_ensures : ensures;
-    prog_setup : setup option;
-    prog_main : main;
-  } *)
-
-let translate_env (e : ArduinoSyntax.Syntax.env) : (Why3.Syntax.ident * Why3.Syntax.expr) list =
-  (List.map (fun x -> (x,Why3.Syntax.Econst (Some 0))) e.env_input)@
-  (List.map (fun x -> (x,Why3.Syntax.Econst (Some 0))) e.env_output)@
-  (List.map (fun x -> (x,Why3.Syntax.Econst (Some 0))) e.env_variables)
-
-let rec translate_expr (e : ArduinoSyntax.Syntax.expr) : Why3.Syntax.expr = 
-  match e with 
-    | Int n -> Econst (Some n) 
-    | Var x -> Eident x 
-    | Read x -> Eident x 
-    | Add (e1, e2) -> Einfix (translate_expr e1, "+",translate_expr e2)
-    | Sub (e1, e2) -> Einfix (translate_expr e1, "-",translate_expr e2)
-    | Mul (e1, e2) -> Einfix (translate_expr e1, "*",translate_expr e2)
-    | Div (_e1, _e2) -> failwith "not supported"
-    | Eq (e1, e2) -> Einfix (translate_expr e1, "=",translate_expr e2)
-    | Lt (e1, e2) -> Einfix (translate_expr e1, "<",translate_expr e2)
-    | Gt (e1, e2) -> Einfix (translate_expr e1, ">",translate_expr e2)
-    | Lte (e1, e2) -> Einfix (translate_expr e1, "<=",translate_expr e2)
-    | Gte (e1, e2) -> Einfix (translate_expr e1, ">=",translate_expr e2)
-
-    (* type term = 
-    | Ttrue 
-    | Tfalse 
-    | Tconst of constant 
-    | Tident of qualid 
-    | Tidapp of qualid * term list 
-    | Tapply of term * term 
-    | Tinfix of term * ident * term 
-    | Tbinop of term * binop * term 
-    | TAnd of term * term 
-    | TOr of term * term
-    | TImp of term * term
-    | Tnot of term 
-    | TForall of binder list * term 
-    | TExists of binder list * term *)
-
-let rec translate_expr_to_term (e : ArduinoSyntax.Syntax.expr) : Why3.Syntax.term = 
-  match e with 
-  | Int n -> Tconst (Some n) 
-  | Var x -> Tident x 
-  | Read x -> Tident x 
-  | Add (e1, e2) -> Tinfix (translate_expr_to_term e1, "+",translate_expr_to_term e2)
-  | Sub (e1, e2) -> Tinfix (translate_expr_to_term e1, "-",translate_expr_to_term e2)
-  | Mul (e1, e2) -> Tinfix (translate_expr_to_term e1, "*",translate_expr_to_term e2)
-  | Div (_e1, _e2) -> failwith "not supported"
-  | Eq (e1, e2) -> Tinfix (translate_expr_to_term e1, "=",translate_expr_to_term e2)
-  | Lt (e1, e2) -> Tinfix (translate_expr_to_term e1, "<",translate_expr_to_term e2)
-  | Gt (e1, e2) -> Tinfix (translate_expr_to_term e1, ">",translate_expr_to_term e2)
-  | Lte (e1, e2) -> Tinfix (translate_expr_to_term e1, "<=",translate_expr_to_term e2)
-  | Gte (e1, e2) -> Tinfix (translate_expr_to_term e1, ">=",translate_expr_to_term e2)
-
-  let rec translate_formula (f : ArduinoSyntax.Syntax.formula) : Why3.Syntax.term =
-    match f with 
-      | True -> Ttrue
-      | False -> Tfalse 
-      | Pred e -> translate_expr_to_term e
-      | Not f -> Tnot (translate_formula f)
-      | And (f1, f2) -> TAnd (translate_formula f1, translate_formula f2)
-      | Or (f1, f2) -> TOr (translate_formula f1, translate_formula f2)
-      | Imp (f1, f2) -> TImp (translate_formula f1, translate_formula f2)
-      | Forall (x, f) -> TForall ([([x],PTtyapp("int",[]))], translate_formula f)
-      | Exists (x, f) -> TForall ([([x],PTtyapp("int",[]))], translate_formula f)
-
-  let rec translate_stmt (s : ArduinoSyntax.Syntax.stmt) : Why3.Syntax.expr =
-  match s with 
-    | Assign (x, e) -> Eassign (Eident x, None, translate_expr e)
-    | Emit (x, e) -> Eassign (Eident x, None, translate_expr e)
-    | If(e,s1,Some s2) -> 
-        Eif (translate_expr e, translate_stmt_list s1, translate_stmt_list s2)
-    | If(e,s1, None) -> 
-        Eif (translate_expr e, translate_stmt_list s1, Econst None)
-    | While (e,i,v,s) -> 
-        EWhile (translate_expr e, [translate_formula i], [translate_expr_to_term v], translate_stmt_list s)
-  and translate_stmt_list l = 
-    match l with 
-      | [] -> failwith "empty list"
-      | [s] -> translate_stmt s
-      | s::l -> Esequence (translate_stmt s, translate_stmt_list l)
-
-let rec statement_of_statement_list (l : Why3.Syntax.expr list) : Why3.Syntax.expr = 
-  match l with 
-    | [] -> Econst None 
-    | e::l -> Esequence (e, statement_of_statement_list l)
+let bindings : (string,Ptree.ident) Hashtbl.t = Hashtbl.create 100
 
 
-let translate_program (p : ArduinoSyntax.Syntax.program) : Why3.Syntax.why3module =
-  {
-    m_types = [];
-    m_logic = [];
-    m_let = translate_env p.prog_env;
-    m_rec = 
-      let s1 : Why3.Syntax.expr = 
-        match p.prog_setup with 
-          | None -> Econst None
-          | Some s -> translate_stmt_list s.setup_body
-      in 
-      let s2 = 
-          translate_stmt_list p.prog_main.main_body 
-      in
-      [{
-        fun_id = "main";
-        fun_params = [];
-        fun_spec = {sp_pre= Ttrue; sp_post= Tfalse};
-        fun_body = Esequence(s1,s2)
-      }]
-  }
+(* only over integers for now *)
+let translate_binop op = 
+  let symb = match op with 
+  | Add -> "+" | Sub -> "-" | Mul -> "*"  | Div -> "/"
+  | Gt -> ">"  | Lt -> "<"  | Gte -> ">=" | Lte -> "<="
+  | Eq -> "="
+  in Ptree_helpers.qualid ["Int"; Ident.op_infix symb]
+
+let rec translate_expression (e:expr) : Ptree.expr = 
+  let open Ptree_helpers in match e with
+  | True -> expr Etrue
+  | False -> expr Efalse
+  | Int n -> econst n
+  | Var s -> evar (Qident (ident s))
+  | Read s ->       
+    let qid = qualid ["Ref";Ident.op_prefix "!"] in
+    eapply (evar qid) (evar (Qident (ident s)))
+
+  | BinOp (e1,binop,e2) -> eapp (translate_binop binop) [translate_expression e1; translate_expression e2]
+
+
+let rec translate_fol (f:fol) : Ptree.term = 
+  let open Ptree_helpers in match f with
+  | FOL_True -> term Ttrue
+  | FOL_False -> term Tfalse
+  (* | Pred p -> term (T) *)
+  | FOL_Not t -> Tnot (translate_fol t) |> term
+  (* | And (t1,t2) ->  Tinfix (translate_formula t1) "" (translate_formula t2) |> term *)
+  (* | Or (t1,t2) -> t_or (translate_formula t1) (translate_formula t2) *)
+  (* | Imp (t1,t2) -> t_implies (translate_formula t1) (translate_formula t2) *)
+  (* | Forall (v,f) -> t_forall (t_close_quant v) (translate_formula f)
+  | Exists (v,f) -> t_exists v (translate_formula f) *)
+  | _ -> failwith "not supported yet"
+
+let translate_pltl f = ignore f; failwith "todo"
+
+let translate_formula = function FOL f -> translate_fol f | PLTL f -> translate_pltl f
+
+
+let rec translate_statements (s: stmt list) : Ptree.expr = 
+  let open Ptree in 
+  let open Ptree_helpers in 
+  let aux = function
+  | Assign (id, e) -> Eassign [( (evar (Qident (ident id)), None, translate_expression e))] |> expr
+  | Emit (id,e) -> Eassign [(translate_expression e, None, (evar (Qident (ident id))))] |> expr (* will need to be treated differently *)
+  | If (e,t,f) -> 
+    let f = Option.fold ~some:translate_statements f ~none:(Etuple [] |> expr) in 
+    Eif (translate_expression e, translate_statements t, f) |> expr 
+
+  | While (e,inv,_v,stmt) -> Ewhile (translate_expression e, [translate_fol inv], [], translate_statements stmt) |> expr
+  in
+  List.fold_left (fun x y -> Esequence (expr x,(aux y))) (Etuple []) s |> expr
+
+
+(* for now, single while(true) loop *)
+let make_loop (body:Ptree.expr) inv = 
+  let open Ptree in
+  let open Ptree_helpers in
+  Ewhile (expr Etrue,inv,[], body) |> expr
+
+
+let translate_program (p : program) : Ptree.mlw_file = 
+  let open Ptree in
+  let open Ptree_helpers in
+
+  let use_int_Int = use ~import:false (["int";"Int"]) in
+  let use_ref_Ref = use ~import:false (["ref";"Ref"]) in
+  let use_option_Option = use ~import:false (["option";"Option"]) in
+  let use_list_List = use ~import:false (["list";"List"]) in
+  let use_list_Length = use ~import:false (["list";"Length"]) in
+
+
+  let sp_pre = [translate_formula p.prog_requires] in
+  let inv = translate_formula p.prog_ensures in
+  let sp_post = [Loc.dummy_position, [pat Pwild, inv]] in
+  let spec = { empty_spec with sp_pre ; sp_post ; sp_diverge = true} in
+  let body : Ptree.expr = translate_statements p.prog_main.main_body in
+  let loop = make_loop body [inv] in
+
+  let main : decl = 
+    Efun ([], None, pat Pwild, Ity.MaskVisible, spec, loop) 
+    |> expr 
+    |> fun m ->  Dlet (ident "main", false, Expr.RKnone, m)
+  in
+
+  let m = (ident "Program", 
+    [use_int_Int; use_ref_Ref; use_option_Option; use_list_List; use_list_Length
+    ; main
+    ]) 
+  in Ptree.Modules [m]

@@ -1,111 +1,76 @@
 %{
-  open ArduinoSyntax.Syntax
+    open ArduinoSyntax.Syntax
 %}
 
-%token <int> INT
-%token <string> ID
-%token PLUS MINUS TIMES DIVIDE LPAREN RPAREN EQ GT LT GTE LTE IF THEN 
-%token ELSE WHILE DO DONE END ASSIGN SEMI COLUMN SETUP LOOP EOF
-%token EMIT READ VAR INPUT OUTPUT REQUIRES ENSURES INVARIANT VARIANT LBRACE RBRACE
-%token FORALL EXISTS IMP AND OR TRUE FALSE NOT COMMA
-
-%left PLUS MINUS
-%left TIMES DIVIDE
-%left AND OR IMP
-%nonassoc EQ GT LT GTE LTE
-%nonassoc UNARY
-%nonassoc COMMA
 
 %start <program> program
 
 %%
 
-program:
-    | declaration requires ensures LOOP COLUMN invariant stmt_list EOF 
+let program :=
+    prog_env = declaration ; prog_requires = requires ; prog_ensures = ensures  ; 
+        prog_setup = midrule(SETUP ; ":" ; setup_ensures=ensures? ; setup_body=stmt* ; {{setup_ensures;setup_body} })? ;
+        LOOP ; ":" ; main_invariant = invariant? ; main_body = stmt* ; EOF ;
         {
             {
-                prog_env = $1;
-                prog_requires = $2;
-                prog_ensures = $3;
-                prog_setup = None; 
-                prog_main = {main_invariant = $6; main_body = $7}
+                prog_env;
+                prog_requires;
+                prog_ensures;
+                prog_setup; 
+                prog_main = {main_invariant ; main_body}
             }
         }
-    | declaration requires ensures SETUP COLUMN ensures stmt_list LOOP COLUMN invariant stmt_list EOF 
-        {{  prog_env = $1;
-            prog_requires = $2;
-            prog_ensures = $3;
-            prog_setup = Some {setup_ensures = $6; setup_body = $7}; 
-            prog_main = {main_invariant = $10; main_body = $11}
-        }}
 
-requires: 
-    REQUIRES proposition {$2}
+let invariant := preceded(INVARIANT, braced(fol))
 
-ensures :
-    ENSURES proposition {$2}
+let variant := preceded(VARIANT, braced(expr))
 
-invariant : 
-    INVARIANT proposition {$2}
+%public
+let braced(x) == delimited("{", x, "}")
 
-variant : 
-    VARIANT LBRACE expr RBRACE {$3}
+let declaration := env_input=input ; env_output=output ; env_variables=var ; {{env_input;env_output;env_variables}}
 
-proposition :
-    LBRACE formula RBRACE {$2}
+let var := delimited(VAR, ID*, ";")
 
-declaration : 
-    | input output var  {{env_input=$1;env_output=$2;env_variables=$3}}
+let input := delimited(INPUT, ID*, ";")
 
-var : 
-    | {[]}
-    | VAR id_list SEMI {$2}
+let output := delimited(OUTPUT, ID*, ";")
 
-input : 
-    |  {[]}
-    | INPUT id_list SEMI {$2}
+let stmt :=
+    | ~ = ID ; ":=" ; ~ = expr ; ";" ; <Assign>
+    | EMIT ; ~ = ID ; ~ = expr ; ";" ; <Emit>
+    | IF ; ~ = expr ; THEN ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; END ; <If>
+    | WHILE ; ~ = expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
 
-output : 
-    |   {[]}
-    | OUTPUT id_list SEMI {$2}
+let expr :=
+    | LTRUE ; {True}
+    | LFALSE ; {False}
+    | ~ = INT ; <Int>
+    | ~ = ID  ; <Var>
+    | READ ; ~ = ID ; <Read>
+    | e1 = expr ; op = binExpOp ; e2 = expr ; {BinOp (e1,op,e2)}
+    | LPAREN ; ~ = expr ; RPAREN ; <>
 
-formula :
-    | TRUE {True}
-    | FALSE {False}
-    | expr {Pred $1}
-    | NOT formula %prec UNARY {Not $2}
-    | formula IMP formula {Imp ($1,$3)}
-    | formula OR formula {Or ($1,$3)}
-    | formula AND formula {And ($1,$3)}
-    | FORALL ID COMMA formula {Forall($2,$4)} 
-    | EXISTS ID COMMA formula {Exists($2,$4)} 
+%public
+let fol :=
+    | TRUE ; {FOL_True}
+    | FALSE ; {FOL_False}
+    | ~ = expr ; <Pred>
+    | NOT ; ~ = fol ; %prec UNARY <FOL_Not>
+    | f1 = fol ; IMP ; f2 = fol ; {Imp (f1,f2)}
+    | f1 = fol ; OR ; f2 = fol ; {FOL_Or (f1,f2)}
+    | f1 = fol ; AND ; f2 = fol ; {And (f1,f2)}
+    | FORALL ; ~ = ID ; COMMA ; ~ = fol ; <Forall>
+    | EXISTS ; ~ = ID ; COMMA ; ~ = fol ; <Exists>
 
-id_list:
-  | id_list ID      { $1 @ [$2] }
-  | ID                { [$1] }
 
-stmt_list:
-  | stmt_list stmt      { $1 @ [$2] }
-  | stmt                { [$1] }
-
-stmt:
-  | ID ASSIGN expr SEMI  { Assign ($1, $3) }
-  | ID EMIT expr SEMI  { Emit ($1, $3) }
-| IF expr THEN stmt_list END { If ($2, $4, None) }
-  | IF expr THEN stmt_list ELSE stmt_list END { If ($2, $4, Some $6) }
-  | WHILE expr DO invariant variant stmt_list DONE { While ($2, $4, $5, $6) }
- 
-expr:
-  | INT                 { Int $1 }
-  | ID                  { Var $1 }
-  | READ ID  {Read $2}
-  | expr PLUS expr      { Add ($1, $3) }
-  | expr MINUS expr     { Sub ($1, $3) }
-  | expr TIMES expr     { Mul ($1, $3) }
-  | expr DIVIDE expr    { Div ($1, $3) }
-  | LPAREN expr RPAREN  { $2 }
-  | expr EQ expr        { Eq ($1, $3) }
-  | expr GT expr        { Gt ($1, $3) }
-  | expr LT expr        { Lt ($1, $3) }
-  | expr GTE expr       { Gte ($1, $3) }
-  | expr LTE expr       { Lte ($1, $3) }
+let binExpOp ==
+    | "+" ; {Add} 
+    | "-" ; {Sub}
+    | "*" ; {Mul}
+    | "/" ; {Div}
+    | "<" ; {Lt}
+    | "<=" ; {Lte}
+    | ">" ; {Gt}
+    | ">=" ; {Gte}
+    | "==" ; {Eq}

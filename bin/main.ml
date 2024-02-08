@@ -1,27 +1,40 @@
 (* open ArduinoSyntax.Syntax *)
 open ArduinoParser.Lexer
-open ArduinoParser.Parser
+open ArduinoParser.Fol_parser
+open ArduinoTranslation.Translate
+open Why3
+
+let config : Whyconf.config = Whyconf.init_config None
+let main : Whyconf.main = Whyconf.get_main config
+let env : Env.env = Env.create_env (Whyconf.loadpath main)
 
 let parse_file file =
-  let channel = open_in file in
-  let lexbuf = Lexing.from_channel channel in
+  let text, lexbuf = MenhirLib.LexerUtil.read file in
   try
     let ast = program tokenize lexbuf in
-    close_in channel;
     ast
   with
   | Error ->
-      Printf.printf "Syntax error at offset %d\n" (Lexing.lexeme_start lexbuf); exit (-1)
+      Printf.printf "File \"%s\", \n\" \n%s\n\" \nsyntax error \n" 
+        file @@ 
+        String.(sub text lexbuf.lex_curr_p.pos_cnum (length text - lexbuf.lex_curr_p.pos_cnum)); 
+      exit (-1)
   | Lexical_error msg ->
-      Printf.printf "Lexical error: %s\n" msg; exit(-1)
+      Printf.printf "Lexical error: %s\n" msg; 
+      exit(-1)
 
 let () =
-if Array.length Sys.argv <> 2 then begin
-  Printf.printf "Usage: %s <filename>\n" Sys.argv.(0);
-  exit 1
-end else begin
-  let filename = Sys.argv.(1) in
-  let _program = parse_file filename in
-  Printf.printf "Successfully parsed the program:\n"
-  (* List.iter (fun stmt -> Printf.printf "%s\n" (Simple_imp_ast.string_of_stmt stmt)) program *)
-end
+  if Array.length Sys.argv <> 2 then 
+    begin
+    Printf.printf "Usage: %s <filename>\n" Sys.argv.(0);
+    exit 1
+    end 
+  else 
+    let filename = Sys.argv.(1) in
+    let program = parse_file filename in
+    let p = translate_program program in
+    Format.printf "%a@." (Mlw_printer.pp_mlw_file ~attr:true) p;
+    let _mods =  Typing.type_mlw_file env [] "myfile.mlw" p in
+    ()
+
+
