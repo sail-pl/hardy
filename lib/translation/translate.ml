@@ -1,7 +1,11 @@
 open ArduinoSyntax.Syntax
 open Why3
+open Utils
 
 let bindings : (string,Ptree.ident) Hashtbl.t = Hashtbl.create 100
+
+
+
 
 
 (* only over integers for now *)
@@ -12,21 +16,22 @@ let translate_binop op =
   | Eq -> "="
   in Ptree_helpers.qualid ["Int"; Ident.op_infix symb]
 
+
 let rec translate_expression (e:expr) : Ptree.expr = 
-  let open Ptree_helpers in match e with
+  match e with
   | True -> expr Etrue
   | False -> expr Efalse
   | Int n -> econst n
   | Var s -> evar (Qident (ident s))
   | Read s ->       
-    let qid = qualid ["Ref";Ident.op_prefix "!"] in
+    let qid = Ptree_helpers.qualid ["Ref";Ident.op_prefix "!"] in
     eapply (evar qid) (evar (Qident (ident s)))
 
   | BinOp (e1,binop,e2) -> eapp (translate_binop binop) [translate_expression e1; translate_expression e2]
 
 
 let rec translate_fol (f:fol) : Ptree.term = 
-  let open Ptree_helpers in match f with
+  match f with
   | FOL_True -> term Ttrue
   | FOL_False -> term Tfalse
   (* | Pred p -> term (T) *)
@@ -45,7 +50,6 @@ let translate_formula = function FOL f -> translate_fol f | PLTL f -> translate_
 
 let rec translate_statements (s: stmt list) : Ptree.expr = 
   let open Ptree in 
-  let open Ptree_helpers in 
   let aux = function
   | Assign (id, e) -> Eassign [( (evar (Qident (ident id)), None, translate_expression e))] |> expr
   | Emit (id,e) -> Eassign [(translate_expression e, None, (evar (Qident (ident id))))] |> expr (* will need to be treated differently *)
@@ -61,13 +65,17 @@ let rec translate_statements (s: stmt list) : Ptree.expr =
 (* for now, single while(true) loop *)
 let make_loop (body:Ptree.expr) inv = 
   let open Ptree in
-  let open Ptree_helpers in
   Ewhile (expr Etrue,inv,[], body) |> expr
+
+
+
+let generate_declarations = ()
 
 
 let translate_program (p : program) : Ptree.mlw_file = 
   let open Ptree in
-  let open Ptree_helpers in
+  (* let lib =  *)
+  (* print_string Env.base_language; *)
 
   let use_int_Int = use ~import:false (["int";"Int"]) in
   let use_ref_Ref = use ~import:false (["ref";"Ref"]) in
@@ -79,7 +87,7 @@ let translate_program (p : program) : Ptree.mlw_file =
   let sp_pre = [translate_formula p.prog_requires] in
   let inv = translate_formula p.prog_ensures in
   let sp_post = [Loc.dummy_position, [pat Pwild, inv]] in
-  let spec = { empty_spec with sp_pre ; sp_post ; sp_diverge = true} in
+  let spec = { Ptree_helpers.empty_spec with sp_pre ; sp_post ; sp_diverge = true} in
   let body : Ptree.expr = translate_statements p.prog_main.main_body in
   let loop = make_loop body [inv] in
 

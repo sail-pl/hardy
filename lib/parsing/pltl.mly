@@ -3,22 +3,18 @@
 %public
 let pltl :=
     | TRUE ; {PLTL_True}
-    | unary(pltl) 
-    | f1 = pltl ; op = binary ; f2 = pltl ; {op f1 f2}
+    | unary(pltl)
+    | f1 = pltl ; OR ; f2 = pltl ; <PLTL_Or>
+    | f1 = pltl ; SINCE ; f2 = pltl ; <Since>
 
 
-// todo stratify grammar 
 
 let unary(f) == 
-    | NOT ; ~ = f ; %prec UNARY <PLTL_Not>
-    | ONCE ; ~ = f ; %prec UNARY <Once>
-    | HISTORICALLY ; ~ = f ; %prec UNARY <Historically>
-    | YESTERDAY ; ~ = f ; %prec UNARY  <Yesterday>
+    | ~ = preceded(NOT,f) ; <PLTL_Not>
+    | ~ = preceded(ONCE,f) ; <Once>
+    | ~ = preceded(HISTORICALLY,f) ; <Historically>
+    | ~ = preceded(YESTERDAY,f) ; <Yesterday>
 
-
-let binary == 
-    | OR ; {fun x y -> PLTL_Or (x,y)}
-    | SINCE ; {fun x y -> Since (x,y) }
 
 %public
 let requires == ~ = preceded(REQUIRES, braced(pltl)) ; <PLTL>

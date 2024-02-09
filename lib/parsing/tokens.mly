@@ -1,27 +1,42 @@
 %token <int> INT
 %token <string> ID
 
-%token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" LPAREN "(" RPAREN ")"  
+// EXP & LOGIC
+%token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" 
 %token EQ "==" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
-%token FORALL EXISTS IMP AND OR TRUE FALSE NOT COMMA ","
+
+// LOGIC
+%token FORALL EXISTS ARROW AND OR TRUE FALSE NOT 
 %token EOF
 
-// IMP BASE
+// IMP 
 %token IF "if" THEN "then"
-%token ELSE "else" WHILE "while" DO "do" DONE "done" END "end" ASSIGN ":=" SEMI ";" COLON ":" 
+%token ELSE "else" WHILE "while" DO "do" DONE "done" END "end" ASSIGN ":="
 
-%token SETUP LOOP 
-%token EMIT READ VAR INPUT OUTPUT REQUIRES ENSURES INVARIANT VARIANT LBRACE "{" RBRACE "}"
+// REACTIVE
+%token SETUP LOOP EMIT READ VAR INPUT OUTPUT 
 
+// SPEC
+%token REQUIRES ENSURES INVARIANT VARIANT 
+
+// PLTL
 %token YESTERDAY SINCE ONCE HISTORICALLY
 
+// MISC
+%token SEMI ";" COLON ":" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" COMMA ","
 
-%left PLUS MINUS 
-%left TIMES DIVIDE 
-%left AND OR IMP
+
+// ASSOC
+%right SINCE
+%nonassoc NOT YESTERDAY ONCE HISTORICALLY
+
+%right ARROW
+%right OR
+%right AND
+%left PLUS MINUS
+%left TIMES DIVIDE
 
 %nonassoc EQ GT LT GTE LTE 
-%nonassoc UNARY
 %nonassoc COMMA
 
 %%

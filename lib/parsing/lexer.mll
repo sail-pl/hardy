@@ -1,8 +1,8 @@
 {
   open Tokens
+
   exception Lexical_error of string
     let line_num = ref 1
-
 }
 
 
@@ -59,7 +59,7 @@ rule tokenize = parse
   | "O"                     {ONCE}
   | "H"                     {HISTORICALLY}
   | "Not"                   {NOT}
-  | "->"                   {IMP}
+  | "->"                   {ARROW}
   | "/\\"                    {AND}
   | "\\/"                    {OR}
   | id as lxm            { ID (lxm) }

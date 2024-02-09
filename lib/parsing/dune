@@ -1,11 +1,11 @@
 (library 
- (name arduinoParser)
- (libraries arduinoSyntax zarith menhirLib))
+  (name arduinoParser)
+  (libraries arduinoSyntax zarith menhirLib))
 
 (ocamllex lexer)
 
 
-; Compile tokens.mly into a definition of the type [token].
+; tokens shared across the parsers
 (menhir
   (modules tokens)
   (flags --only-tokens)
@@ -16,11 +16,12 @@
   (modules tokens fol parser)
   (merge_into fol_parser)
   (flags
-     --external-tokens Tokens
-     --unused-token HISTORICALLY
-     --unused-token ONCE
-     --unused-token SINCE
-     --unused-token YESTERDAY
+    --external-tokens Tokens
+    --unused-token HISTORICALLY
+    --unused-token ONCE
+    --unused-token SINCE
+    --unused-token YESTERDAY
+    --unused-precedence-levels
   )
 )
 

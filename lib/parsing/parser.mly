@@ -56,8 +56,8 @@ let fol :=
     | TRUE ; {FOL_True}
     | FALSE ; {FOL_False}
     | ~ = expr ; <Pred>
-    | NOT ; ~ = fol ; %prec UNARY <FOL_Not>
-    | f1 = fol ; IMP ; f2 = fol ; {Imp (f1,f2)}
+    | NOT ; ~ = fol ;  <FOL_Not>
+    | f1 = fol ; ARROW ; f2 = fol ; {Imp (f1,f2)}
     | f1 = fol ; OR ; f2 = fol ; {FOL_Or (f1,f2)}
     | f1 = fol ; AND ; f2 = fol ; {And (f1,f2)}
     | FORALL ; ~ = ID ; COMMA ; ~ = fol ; <Forall>
