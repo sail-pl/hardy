@@ -1,0 +1,39 @@
+use int.Int
+use ref.Ref
+use option.Option
+
+let x = ref (any bool)
+
+let node0 () = 
+  ensures { not !x }
+  x := false
+
+let on = ref (any bool)
+let light = ref (any bool)
+  
+let node1 () = 
+  (*requires {not !x /\ not ! on} *)  (* -> not !x, universal quantif *)
+  requires {not !x}
+  ensures  {(not !x /\ not ! on) \/ (!x /\ ! light)}
+    on := any bool;
+    light := any bool;
+    (***************************)
+    if !on then x :=true;
+    light := !x
+    (***************************)
+    
+let node2 () = 
+  (*requires  { !x /\ !light }*)
+  requires { !x }
+  ensures  { !x /\ !light }
+    on := any bool;
+    light := any bool;
+    (***************************)
+    if !on then x :=true;
+    light := !x
+    (***************************)
+
+
+
+
+(* version automate *)

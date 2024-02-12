@@ -1,0 +1,160 @@
+use int.Int
+use ref.Ref
+use option.Option
+
+
+(***********************************************************************************************
+  Original program *****************************************************************************
+
+    input on : bool
+    output off : bool
+    var x : bool
+  
+    ensures { [] (on -> [] light) }
+    ensures { not light U (not light \/ on) } 
+    
+    internal { [] (on -> [] x) }
+    internal { not x U (not x \/ on) }
+    
+    setup () :
+      ensures { x = false }
+      x := false
+      
+    loop:
+      invariant { light = x }
+      if on then x := true;
+      light <- x
+      
+
+  LTL Formula **********************************************************************************
+ 
+    setting   
+      p = on 
+      q = light
+    we have 
+    ensures : [] (p -> [] q) /\ not q U (not q \/ p) 
+    
+    
+             +-----+        ! p && !q          +-----+
+             |     +-------------------------->+     +-------+
+     init -->|  0  |                           |  1  |       | ! p
+             |     +                           |     +<------+
+             +--+--+                           +-----+
+                |             +-----+             |
+                |   p && q    |     |      q      |
+                +------------>+  2  +<------------+
+                              |     |
+                          +-->+-----+---+
+                          |             |
+                          +-------------+
+                                 q
+
+    This is a safety property : all states are final
+         
+
+  Variable formula ****************************************************************************
+  
+   [] (p -> [] q) /\ q U (q \/ p)
+  
+      p = on 
+      q = x
+
+
+             +-----+               not on /\ not x                 +-----+
+             |     +---------------------------------------------->+     +-------+
+    start -->|  0  |                                               |  1  |       | not on
+             |     +                                               |     +<------+
+             +--+--+                                               +-----+
+                |                           +-----+                |
+                |          on /\ x          |     |        x       |
+                +-------------------------->+  2  +<---------------+
+                                            |     |
+                                        +-->+-----+---+
+                                        |             |
+                                        +-------------+
+                                               x
+                                          
+                                          
+                                  Propriété avec les variables -> Propriété sans les variables
+                                          Synchronisation des deux automates (plutot simulation 
+*************************************************************************************************)
+
+(* on -> [] x *) (* on doit pouvoir vérifier la propriété pas à pas, d'ou le x à droite *)
+(* not x U (not x \/ on) *)
+(* invariant light = x *)
+
+
+let on = ref (any bool)
+let light = ref (any bool)
+let x = ref (any bool)
+
+predicate p (on : bool) (light : bool) (x : bool) = on
+
+predicate q (on : bool) (light : bool) (x : bool) = x   
+
+(* We must check that the first automaton simulates the second one *)
+(* This is trivial here because both automata have the same shape  *)
+
+lemma sync_0_1 : forall on light x. not on /\ not x /\ light = x -> not light
+
+lemma sync_0_2 : forall on light x. on /\ x /\ x = light -> on /\ light
+
+lemma sync_1_1 : forall on. not on -> not on 
+
+lemma sync_1_2 : forall light x. x /\ light = x -> light
+
+lemma sync_2_2 : forall light x. x /\ light = x -> light
+
+
+let start () = 
+  ensures { !x = false }
+  x := false
+
+let node0 () = 
+  requires {!x = false}
+  ensures {(not (p !on !light !x) /\ not (q !on !light !x)) \/ ((p !on !light !x) /\ (q !on !light !x))}
+  ensures { light = x }
+    on := any bool;
+    light := any bool;
+    (***************************)
+    if !on then x :=true;
+    light := !x
+    (***************************)
+  
+let node1 () = 
+  requires {exists on light. (not (p on light !x) /\ not (q on light !x)) \/ not (p on light !x) }
+  ensures  {not (p !on !light !x) \/ (q !on !light !x)}
+    on := any bool;
+    light := any bool;
+    (***************************)
+    if !on then x :=true;
+    light := !x
+    (***************************)
+    
+let node2 () = 
+  requires {exists on light. (p on light !x /\ q on light !x) \/ q on light !x}
+  ensures {q !on !light !x}
+    on := any bool;
+    light := any bool;
+    (***************************)
+    if !on then x :=true;
+    light := !x
+    (***************************)
+
+(* associate a relation between x et on, x et light *)
+(* inputs must be satisfiable *)
+(* let body = () inline in def *)
+(* invariant sur body ??? *)
+(* Add information about variables when related to signals  *)
+(* Check only one instance of the code using old *)
+(* no requires, ensures' = req_old -> ensures  *)
+(* exists -> weakest precondition on variables which implies Exists. ... *)
+(* by using x = any bool as body, without the existential in the postcondition *)
+(* Strongest postcondition of {F} x = any bool {} *)
+
+(* to consider only safety properties 
+  reject all formulas for which there exists a cycle containing a non accepting state
+  *)
+
+ 
+

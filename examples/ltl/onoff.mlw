@@ -1,0 +1,23 @@
+(* program *)
+
+(*  input on,off : bool
+    output light : bool
+    var x : bool 
+    
+    setup:
+      ensures { x = false }
+      x := false
+      
+    loop:
+    
+    if on then x := true
+    else if off then x := false
+    light := x
+    
+    ([] (on -> off -> false)) -> (((NOT x) U on) && [] ((on -> x U (x || off)) && (off -> (NOT x) U ((NOT x) || on))))
+    [] (off -> x = false U on)
+    
+    on \/ off \/
+    
+    light = x
+    *)

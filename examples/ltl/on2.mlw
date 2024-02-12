@@ -1,0 +1,42 @@
+use int.Int
+use ref.Ref
+use option.Option
+
+(* ensures : [] (on -> [] light) *)
+(* internal : [] (on \/ x -> [] (x /\ light)) *)
+
+
+
+let on = ref (any bool)
+let light = ref (any bool)
+let x = ref (any bool)
+
+let node0 () = 
+  ensures { exists on, light. (not !x /\ on) \/ (!x /\ light)}
+  x := false
+
+  
+let node1 () = 
+  requires {exists on. not !x /\ not !on}
+  ensures  {(not !x /\ not ! on) \/ (!x /\ ! light)}
+    on := any bool;
+    light := any bool;
+    (***************************)
+    if !on then x :=true;
+    light := !x
+    (***************************)
+    
+let node2 () = 
+  requires { exists light. !x /\ ! light}
+  ensures  { !x /\ !light }
+    on := any bool;
+    light := any bool;
+    (***************************)
+    if !on then x :=true;
+    light := !x
+    (***************************)
+
+
+
+
+(* version automate *)
