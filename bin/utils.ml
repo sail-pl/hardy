@@ -26,10 +26,4 @@ let print_program p =
   |> Pp.print_in_file 
 
 
-let print_annotated_program (loc,e) p = 
-  let msg = Format.asprintf "%a" Exn_printer.exn_printer e in
-  p
-  |> Fun.flip (Mlw_printer.with_marker ~msg loc Mlw_printer.pp_mlw_file)
-  |> Pp.print_in_file 
-
 (* let get_fol_theory =  Pmodule.read_module "" *)

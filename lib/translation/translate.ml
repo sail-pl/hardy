@@ -1,11 +1,13 @@
 open ArduinoSyntax.Syntax
 open Why3
-open Utils
+
+module H = Ptree_helpers
+module P = Ptree
+
+let unit_val = Why3.Ptree.Etuple []
+
 
 let bindings : (string,Ptree.ident) Hashtbl.t = Hashtbl.create 100
-
-
-
 
 
 (* only over integers for now *)
@@ -14,34 +16,52 @@ let translate_binop op =
   | Add -> "+" | Sub -> "-" | Mul -> "*"  | Div -> "/"
   | Gt -> ">"  | Lt -> "<"  | Gte -> ">=" | Lte -> "<="
   | Eq -> "="
-  in Ptree_helpers.qualid ["Int"; Ident.op_infix symb]
+  in Ptree_helpers.qualid [Ident.op_infix symb]
 
 
-let rec translate_expression (e:expr) : Ptree.expr = 
+let rec translate_expression ({value=e;loc}:expr) : Ptree.expr = 
+  let loc = Loc.extract loc in 
   match e with
-  | True -> expr Etrue
-  | False -> expr Efalse
-  | Int n -> econst n
-  | Var s -> evar (Qident (ident s))
+  | True -> H.expr ~loc Etrue
+  | False -> H. expr ~loc  Efalse
+  | Int n -> H.econst n ~loc
+  | Var s -> 
+    let deref = H.qualid [Ident.op_prefix "!"] in 
+    H.eapp ~loc deref H.[[s] |> qualid |> evar]
+    
+  | Read s -> Ptree.Easref (H.qualid [s]) |> H.expr ~loc
+
+  | BinOp (e1,binop,e2) -> H.eapp ~loc (translate_binop binop) [translate_expression e1; translate_expression e2]
+
+
+let rec translate_term ({value=t;loc}:expr) : Ptree.term =
+  let loc = Loc.extract loc in 
+  match t with
+  | True -> H.term ~loc Ttrue
+  | False -> H.term ~loc Tfalse
+  | Int n -> H.tconst ~loc n
+  | Var s -> [s] |> H.qualid |> H.tvar ~loc
   | Read s ->       
-    let qid = Ptree_helpers.qualid ["Ref";Ident.op_prefix "!"] in
-    eapply (evar qid) (evar (Qident (ident s)))
+    Ptree.Tasref (H.qualid [s]) |> H.term ~loc
 
-  | BinOp (e1,binop,e2) -> eapp (translate_binop binop) [translate_expression e1; translate_expression e2]
+  | BinOp (e1,binop,e2) -> H.tapp ~loc (translate_binop binop) [translate_term e1; translate_term e2]
 
 
-let rec translate_fol (f:fol) : Ptree.term = 
+
+let rec translate_fol ({value=f;loc}:fol) : Ptree.term = 
+  let loc = Loc.extract loc in 
+  let open H in 
+  let open P in 
   match f with
-  | FOL_True -> term Ttrue
-  | FOL_False -> term Tfalse
-  (* | Pred p -> term (T) *)
-  | FOL_Not t -> Tnot (translate_fol t) |> term
-  (* | And (t1,t2) ->  Tinfix (translate_formula t1) "" (translate_formula t2) |> term *)
-  (* | Or (t1,t2) -> t_or (translate_formula t1) (translate_formula t2) *)
-  (* | Imp (t1,t2) -> t_implies (translate_formula t1) (translate_formula t2) *)
-  (* | Forall (v,f) -> t_forall (t_close_quant v) (translate_formula f)
-  | Exists (v,f) -> t_exists v (translate_formula f) *)
-  | _ -> failwith "not supported yet"
+  | FOL_True -> term ~loc Ttrue
+  | FOL_False -> term ~loc Tfalse
+  | Pred p -> translate_term p 
+  | FOL_Not t -> Tnot (translate_fol t) |> term ~loc
+  | And (t1,t2) -> Tbinop  ((translate_fol t1), Dterm.DTand, (translate_fol t2)) |> term ~loc
+  | FOL_Or (t1,t2) -> Tbinop  ((translate_fol t1), Dterm.DTor, (translate_fol t2)) |> term ~loc
+  | Arrow (t1,t2) -> Tbinop ((translate_fol t1), Dterm.DTimplies, (translate_fol t2)) |> term ~loc
+  | Forall (v,f) -> Tquant (DTforall,  one_binder v, [], (translate_fol f)) |> term ~loc
+  | Exists (v,f) ->  Tquant (DTexists,  one_binder v, [], (translate_fol f)) |> term ~loc
 
 let translate_pltl f = ignore f; failwith "todo"
 
@@ -49,55 +69,74 @@ let translate_formula = function FOL f -> translate_fol f | PLTL f -> translate_
 
 
 let rec translate_statements (s: stmt list) : Ptree.expr = 
-  let open Ptree in 
-  let aux = function
-  | Assign (id, e) -> Eassign [( (evar (Qident (ident id)), None, translate_expression e))] |> expr
-  | Emit (id,e) -> Eassign [(translate_expression e, None, (evar (Qident (ident id))))] |> expr (* will need to be treated differently *)
-  | If (e,t,f) -> 
-    let f = Option.fold ~some:translate_statements f ~none:(Etuple [] |> expr) in 
-    Eif (translate_expression e, translate_statements t, f) |> expr 
+  let open P in 
+  let open H in 
+  let aux {value=s;loc} = 
+    let loc = Loc.extract loc in match s with
+    | Assign (id, e) ->
+      let assgn = qualid [Ident.op_infix ":="] in 
+      eapp ~loc assgn [([id] |> qualid |> evar) ; translate_expression e]
 
-  | While (e,inv,_v,stmt) -> Ewhile (translate_expression e, [translate_fol inv], [], translate_statements stmt) |> expr
+    | Emit (id,e) -> Eassign [(translate_expression e, None, ([id] |> qualid |> evar))] |> expr ~loc (* will need to be treated differently *)
+    | If (e,t,f) -> 
+      let f = Option.fold ~some:translate_statements f ~none:(expr unit_val) in 
+      Eif (translate_expression e, translate_statements t, f) |> expr ~loc
+
+      | While (e,inv,_v,stmt) -> Ewhile (translate_expression e, [translate_fol inv], [], translate_statements stmt) |> expr ~loc
   in
-  List.fold_left (fun x y -> Esequence (expr x,(aux y))) (Etuple []) s |> expr
+  List.fold_left (fun x y -> Esequence (expr x,(aux y))) (unit_val) s |> expr
 
 
-(* for now, single while(true) loop *)
 let make_loop (body:Ptree.expr) inv = 
-  let open Ptree in
-  Ewhile (expr Etrue,inv,[], body) |> expr
+  P.Ewhile (H.expr Etrue,inv,[], body) |> H.expr
 
 
 
-let generate_declarations = ()
+(* assume global vars are always int ref for now *)
+let generate_declarations (env:env) = let open Ptree in fun (e:expr) ->
+  let open H in 
+  List.fold_right (fun v decls -> 
+    Elet (ident v,false, RKnone, Eapply (expr Eref, econst 0) |> expr, decls) |> expr 
+  ) env.env_variables e
+
+
+let make_setup (s:setup option) = Option.bind s @@ fun s ->
+  translate_statements s.setup_body |> Option.some
+
 
 
 let translate_program (p : program) : Ptree.mlw_file = 
-  let open Ptree in
+  let open P in
+  let open H in 
   (* let lib =  *)
   (* print_string Env.base_language; *)
 
-  let use_int_Int = use ~import:false (["int";"Int"]) in
-  let use_ref_Ref = use ~import:false (["ref";"Ref"]) in
-  let use_option_Option = use ~import:false (["option";"Option"]) in
-  let use_list_List = use ~import:false (["list";"List"]) in
-  let use_list_Length = use ~import:false (["list";"Length"]) in
+  let use_int_Int = H.use ~import:false (["int";"Int"]) in
+  let use_ref_Ref = H.use ~import:false (["ref";"Ref"]) in
+  let use_option_Option = H.use ~import:false (["option";"Option"]) in
+  let use_list_List = H.use ~import:false (["list";"List"]) in
+  let use_list_Length = H.use ~import:false (["list";"Length"]) in
 
 
   let sp_pre = [translate_formula p.prog_requires] in
   let inv = translate_formula p.prog_ensures in
   let sp_post = [Loc.dummy_position, [pat Pwild, inv]] in
-  let spec = { Ptree_helpers.empty_spec with sp_pre ; sp_post ; sp_diverge = true} in
-  let body : Ptree.expr = translate_statements p.prog_main.main_body in
+  let spec = Ptree_helpers.{ empty_spec with sp_pre ; sp_post ; sp_diverge = true } in
+
+  let decls = generate_declarations p.prog_env in
+  let setup = make_setup p.prog_setup |> fun x -> Option.value x ~default:(expr unit_val)in
+  let body = translate_statements p.prog_main.main_body in
   let loop = make_loop body [inv] in
 
-  let main : decl = 
-    Efun ([], None, pat Pwild, Ity.MaskVisible, spec, loop) 
+  let stmt = Esequence (Esequence (unit_val |> expr,setup) |> expr, loop) |> expr |> decls in
+
+  let main : decl =   
+    Efun ([], None, pat Pwild, Ity.MaskVisible, spec, stmt) 
     |> expr 
     |> fun m ->  Dlet (ident "main", false, Expr.RKnone, m)
   in
 
-  let m = (ident "Program", 
+  let m = (H.ident "Program", 
     [use_int_Int; use_ref_Ref; use_option_Option; use_list_List; use_list_Length
     ; main
     ]) 

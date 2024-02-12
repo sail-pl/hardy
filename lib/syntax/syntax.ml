@@ -1,10 +1,17 @@
+
+type loc = Lexing.position * Lexing.position
+type 'v locatable  = {loc : loc; value : 'v}
+let dummy_pos : loc = Lexing.dummy_pos,Lexing.dummy_pos
+let mk_locatable loc value = {loc;value}
+
+
 type binop = 
   | Add | Sub 
   | Mul | Div 
   | Gt | Lt | Gte | Lte
   | Eq 
 
-type expr =
+type expr = expression_ locatable and expression_ = 
   | Int of int
   | True
   | False
@@ -12,20 +19,20 @@ type expr =
   | Read of string
   | BinOp of expr * binop * expr
 
-type fol = 
+type fol = fol_ locatable and fol_ = 
   | FOL_True 
   | FOL_Not of fol
   | FOL_Or of fol * fol 
   | FOL_False 
   | Pred of expr
   | And of fol * fol 
-  | Imp of fol * fol 
+  | Arrow of fol * fol 
   | Forall of string * fol 
   | Exists of string * fol
 
 
 
-type pltl = 
+type pltl = pltl_ locatable and pltl_ = 
   | PLTL_True
   | PLTL_Not of pltl
   | PLTL_Or of pltl * pltl
@@ -43,7 +50,7 @@ type variant = expr
 type requires = formula 
 type ensures = formula 
 
-type stmt =
+type stmt = stmt_ locatable and stmt_ = 
   | Assign of string * expr
   | Emit of string * expr
   | If of expr * stmt list * stmt list option

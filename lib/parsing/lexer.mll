@@ -1,17 +1,30 @@
 {
   open Tokens
+  open Lexing
 
-  exception Lexical_error of string
-    let line_num = ref 1
+  exception Lexical_error of (position * position) * string
+
+  let next_line lexbuf =
+    let pos = lexbuf.lex_curr_p in
+    lexbuf.lex_curr_p <-
+      { pos with pos_bol = lexbuf.lex_curr_pos;
+                pos_lnum = pos.pos_lnum + 1
+      }
+
+  let pos_range lexbuf = 
+    let sp = lexeme_start_p lexbuf and ep = lexeme_end_p lexbuf in 
+    sp,ep
+
 }
 
 
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z']
 let id = letter (letter|digit|'_')*
+let newline = '\r' | '\n' | "\r\n"
 
 rule tokenize = parse
-  | [' ' '\t' '\n' '\r']  { tokenize lexbuf }  (* Skip whitespaces *)
+  | [' ' '\t']  { tokenize lexbuf }  (* Skip whitespaces *)
   | "true" { LTRUE }
   | "false" { LFALSE }
   | "if"                  { IF }
@@ -44,7 +57,7 @@ rule tokenize = parse
   | "-"                   { MINUS }
   | "*"                   { TIMES }
   | "/"                   { DIVIDE }
-  | "=="                  { EQ }
+  | "="                  { EQ }
   | ">"                   { GT }
   | "<"                   { LT }
   | ">="                  { GTE }
@@ -64,5 +77,6 @@ rule tokenize = parse
   | "\\/"                    {OR}
   | id as lxm            { ID (lxm) }
   | digit+ as lxm        { INT (int_of_string lxm) }
+  | newline { next_line lexbuf; tokenize lexbuf }
   | eof                   { EOF }
-  | _ as char            { raise (Lexical_error (Printf.sprintf "Unexpected character '%s' at line %d" (Char.escaped char) !line_num)) }
+  | _ as char            { raise (Lexical_error (pos_range lexbuf, Printf.sprintf "Unexpected character '%s'" (Char.escaped char))) }

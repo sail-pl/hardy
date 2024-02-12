@@ -13,8 +13,6 @@ let () =
 
   (* drops generated files in current directory for now*)
   let output_file = output_path @@ filename ^ ".mlw" in 
-  let error_file = output_path @@ filename ^ ".err.mlw" in
-
   let program = file
       |> P.parse_file 
       |> T.translate_program
@@ -26,7 +24,6 @@ let () =
     (* continue *)
     ()
   with Why3.Loc.Located (loc,e) ->
-    print_annotated_program (loc,e) program error_file;
-    Why3.Exn_printer.exn_printer (Format.get_std_formatter ()) e;
+    Why3.Loc.error ~loc e
 
 

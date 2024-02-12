@@ -1,11 +1,12 @@
 %%
 
 %public
-let pltl :=
+let pltl := located(
     | TRUE ; {PLTL_True}
     | unary(pltl)
     | f1 = pltl ; OR ; f2 = pltl ; <PLTL_Or>
     | f1 = pltl ; SINCE ; f2 = pltl ; <Since>
+)
 
 
 

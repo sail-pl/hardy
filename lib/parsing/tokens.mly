@@ -3,7 +3,7 @@
 
 // EXP & LOGIC
 %token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" 
-%token EQ "==" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
+%token EQ "=" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
 
 // LOGIC
 %token FORALL EXISTS ARROW AND OR TRUE FALSE NOT 
@@ -28,15 +28,13 @@
 
 // ASSOC
 %right SINCE
-%nonassoc NOT YESTERDAY ONCE HISTORICALLY
-
 %right ARROW
 %right OR
 %right AND
+%nonassoc NOT YESTERDAY ONCE HISTORICALLY
+%right EQ GT LT GTE LTE 
 %left PLUS MINUS
 %left TIMES DIVIDE
 
-%nonassoc EQ GT LT GTE LTE 
 %nonassoc COMMA
-
 %%
