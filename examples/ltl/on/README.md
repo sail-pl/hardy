@@ -1,7 +1,8 @@
 
-// Simple starter
-// Initially light is false until on is true
-// Once on is true, light is true forever
+# Simple starter
+ 
+- Initially light is false until on is true
+- Once on is true, light is true forever
 
 ```ocaml
 input on : bool
