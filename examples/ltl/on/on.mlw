@@ -1,0 +1,67 @@
+
+(******************************************************
+
+// Simple starter
+// Initially light is false until on is true
+// Once on is true, light is true forever
+
+input on : bool
+output light : bool
+variable x : bool
+
+rely {}
+guarantee {}
+where { light = x }
+
+setup:
+  ensures { x = false }
+  x := false 
+  
+loop:
+  if on then x := true;
+  light := x
+  
+// automata input : a single state with a true arrow
+// automata output : (from rely and guarantee) :  
+    output.gif
+// automata io : io.gif
+
+******************************************************)
+
+use int.Int
+use ref.Ref
+
+let on = any bool
+
+let light = ref (any bool)
+
+let x = ref (any bool)
+
+let start () = 
+  ensures { !x = false }
+  x := false
+
+let node0 () = 
+  (* input from extended automata *)
+  requires { true }
+  (* previous state from extended automata *)
+  requires {exists on. not !x \/ (not on /\ not !x)}
+  (* next state from extended automata *)
+  ensures {(not on /\ not !x) \/ (on /\ !x)}
+  (* relation between output and external state *)
+  ensures { !light = !x }
+  if on then x :=true;
+  light := !x
+  
+let node1 () = 
+  (* input from extended automata *)
+  requires { true }
+  (* previous state from extended automata *)
+  requires {exists on. (on /\ !x) \/ !x }
+  (* next state from extended automata *)
+  ensures  {!x}
+  (* relation between output and external state *)
+  ensures { !light = !x }
+  if on then x :=true;
+  light := !x
+    
