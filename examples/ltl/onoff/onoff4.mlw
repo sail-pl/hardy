@@ -1,0 +1,76 @@
+(***************************************************************
+
+// Simple interruptor with input on and off and input light.
+// This example is the first attempt to use a LTL for the
+// input specification.
+// initially, light remains false until on is true 
+// if on is true, light remains true until off is true
+// if off is true, light remains false until 
+// on and off cannot be true at the same instant
+ 
+input on,off : bool
+output light : bool
+var x : bool 
+
+rely { [] ( not on \/ not off) }
+guarantee { 
+  (on R ( NOT x \/ on)) /\ 
+    [] (on -> off R (x \/ off)) /\ 
+      [] (off -> on R ( NOT x \/ on))
+} 
+where { light = x}
+
+setup:
+  ensures { x = false }
+  x := false
+  
+loop:
+  if on then x := true
+  else if off then x := false;
+  light := x
+      
+// automata input : input.gif
+// automata output (from rely /\ guarantee) : output.gif
+// automata I/O (synchronized product) : io.gif
+
+// Adding rely to the output formula is not necessary but 
+// reduces the size of the automaton, otherwise we have 
+// unrealizable transitions (e.g for on=off=true 
+    
+****************************************************************)
+    
+let on = any bool (* on constant *)
+let off = any bool
+let light = ref (any bool)
+let x = ref (any bool)
+  
+let start () = 
+  ensures { !x = false }
+  x := false 
+    
+let node_init () =
+  (* input from extented automata *)
+  requires { not on \/ not off } 
+  (* previous state from extended automata *)
+  requires { not !x \/
+      exists on off. (not on && not !x) || (off && not on && not !x)}
+  (* next state from extended automata *)
+  ensures { (not on && not !x) ||(not off && on && !x)}
+  (* relation between output and internal state *)
+  ensures { !light = !x }
+  if on then x := true
+  else if off then x := false;
+  light := !x
+          
+let node_1 () =
+  (* input from extented automata *)
+  requires { not on \/ not off } 
+  (* previous state from extended automata *)
+  requires { exists on off. (not off && on && !x) || (not off && !x)}
+  (* next state from extended automata *)
+  ensures { (off && not on && not !x) || (not off && !x)}
+  (* relation between output and internal state *)
+  ensures { !light = !x }
+  if on then x := true
+  else if off then x := false;
+  light := !x 
