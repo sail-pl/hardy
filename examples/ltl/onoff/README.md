@@ -30,8 +30,14 @@ loop:
   light := x
 
 ```
-## rely formula
+## Automaton for the 'rely' formula
 
 ![](input.gif)
+
+## Automata for the 'guarantee' formula 
+
 ![](output.gif)
+
+## Synchronized product for code annotation
+
 ![](io.gif)
