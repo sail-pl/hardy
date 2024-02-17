@@ -1,24 +1,42 @@
 %%
 
+
+let pltl := 
+    | located(
+        | TRUE ; {PLTL_True}
+        | FALSE ; {PLTL_False}
+        | FIRST ; {First}
+        | START ; {Start}
+        | ~ = delimited(LSQBRACE,fol,RSQBRACE) ; <PLTL_Pred> // can't use () because fol includes expr 
+        | ~ = unary ; ~ = pltl ; <PLTL_Unary>
+        | f1 = pltl ; op = binary ; f2 = pltl ; {PLTL_Binary (f1,op,f2)}
+    )
+    | "(" ; ~ = pltl ; ")" ; <>
+
+
+
+let unary == 
+    | ONCE ; {Once}
+    | YESTERDAY; {Before}
+    | HISTORICALLY ; { Historically }
+    | ~ = common_logic_unary ; <PLTL_UArithm>
+
+
+let binary == 
+    | SINCE ; {Since}
+    | ~ = common_logic_binary ; <PLTL_BArithm>
+
+
 %public
-let pltl := located(
-    | TRUE ; {PLTL_True}
-    | unary(pltl)
-    | f1 = pltl ; OR ; f2 = pltl ; <PLTL_Or>
-    | f1 = pltl ; SINCE ; f2 = pltl ; <Since>
-)
-
-
-
-let unary(f) == 
-    | ~ = preceded(NOT,f) ; <PLTL_Not>
-    | ~ = preceded(ONCE,f) ; <Once>
-    | ~ = preceded(HISTORICALLY,f) ; <Historically>
-    | ~ = preceded(YESTERDAY,f) ; <Yesterday>
-
+let requires == 
+    ~ = preceded(RELY, braced_pltl) ; <PLTL>
 
 %public
-let requires == ~ = preceded(REQUIRES, braced(pltl)) ; <PLTL>
+let prog_ensures == ~ = preceded(GUARANTEE, braced_pltl) ; WHERE ; braced(list(ID ; EQ ; ID)) ; <PLTL>
 
 %public
-let ensures == ~ = preceded(ENSURES, braced(pltl)) ; <PLTL>
+let setup_ensures == ~ = preceded(ENSURES, braced(fol)) ;  <FOL>
+
+
+
+let braced_pltl == f = braced(pltl?) ; {Option.value f ~default:{value=PLTL_True;loc=$loc}}

@@ -8,8 +8,8 @@
 %%
 
 let program :=
-    prog_env = declaration ; prog_requires = requires ; prog_ensures = ensures  ; 
-        prog_setup = midrule(SETUP ; ":" ; setup_ensures=ensures? ; setup_body=stmt* ; {{setup_ensures;setup_body} })? ;
+    prog_env = declaration ; prog_requires = requires ; prog_ensures = prog_ensures  ; 
+        prog_setup = midrule(SETUP ; ":" ; setup_ensures= setup_ensures? ; setup_body=stmt* ; {{setup_ensures;setup_body} })? ;
         LOOP ; ":" ; main_invariant = invariant? ; main_body = stmt* ; EOF ;
         {
             {
@@ -30,11 +30,17 @@ let braced(x) == delimited("{", x, "}")
 
 let declaration := env_input=input ; env_output=output ; env_variables=var ; {{env_input;env_output;env_variables}}
 
-let var := delimited(VAR, ID*, ";")
+let var := delimited(VAR, typed_id*, ";")
 
-let input := delimited(INPUT, ID*, ";")
+let input := delimited(INPUT, typed_id*, ";")
 
-let output := delimited(OUTPUT, ID*, ";")
+let output := delimited(OUTPUT, typed_id*, ";")
+
+let typed_id == ~ = ID; COLON ; ~ = ty ; <>
+
+let ty :=
+    | TY_BOOL ; { Ty_Bool }
+    | TY_INT ; { Ty_Int }
 
 let stmt := located (
     | ~ = ID ; ":=" ; ~ = expr ; ";" ; <Assign>
@@ -61,16 +67,26 @@ let fol :=
         | TRUE ; {FOL_True}
         | FALSE ; {FOL_False}
         | ~ = expr ; <Pred>
-        | NOT ; ~ = fol ;  <FOL_Not>
-        | f1 = fol ; ARROW ; f2 = fol ; {Arrow (f1,f2)}
-        | f1 = fol ; OR ; f2 = fol ; {FOL_Or (f1,f2)}
-        | f1 = fol ; AND ; f2 = fol ; {And (f1,f2)}
+        | ~ = common_logic_unary ; ~ = fol ; <FOL_Unary>
+        | f1 = fol ; op = common_logic_binary ; f2 = fol ; {FOL_Binary (f1,op,f2)}
         | FORALL ; ~ = ID ; COMMA ; ~ = fol ; <Forall>
         | EXISTS ; ~ = ID ; COMMA ; ~ = fol ; <Exists>
     )
-    | ~ = delimited(LBRACE,fol,RBRACE) ; <> // can't use () because fol includes expr 
+    | ~ = delimited(LSQBRACE,fol,RSQBRACE) ; <> // can't use () because fol includes expr 
 
 
+%public 
+let common_logic_unary == 
+    | NOT ; {Not}
+
+%public
+let common_logic_binary == 
+    | XOR ; {Xor}
+    | DARROW ; {Equiv}
+    | ARROW ; {Arrow}
+    | OR ; {Or}
+    | AND ; {And}
+    // | ~ = binExpOp ; <Arithm>
 
 let binExpOp ==
     | "+" ; {Add} 

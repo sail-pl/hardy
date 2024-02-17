@@ -5,7 +5,9 @@ let dummy_pos : loc = Lexing.dummy_pos,Lexing.dummy_pos
 let mk_locatable loc value = {loc;value}
 
 
-type binop = 
+type ty = Ty_Int | Ty_Bool
+
+type arithm_binop = 
   | Add | Sub 
   | Mul | Div 
   | Gt | Lt | Gte | Lte
@@ -17,33 +19,68 @@ type expr = expression_ locatable and expression_ =
   | False
   | Var of string
   | Read of string
-  | BinOp of expr * binop * expr
+  | BinOp of expr * arithm_binop * expr
+
+
+type common_logic_unary = Not 
+
+type common_logic_binary =
+  | Xor | Equiv | Or | And | Arrow 
+  | Arithm of arithm_binop
+
+(* FOL *)
 
 type fol = fol_ locatable and fol_ = 
   | FOL_True 
-  | FOL_Not of fol
-  | FOL_Or of fol * fol 
   | FOL_False 
   | Pred of expr
-  | And of fol * fol 
-  | Arrow of fol * fol 
+  | FOL_Unary of common_logic_unary * fol
+  | FOL_Binary of fol * common_logic_binary * fol
   | Forall of string * fol 
   | Exists of string * fol
 
+(* LTL *)
 
+type ltl_unary = 
+  | LTL_UArithm of common_logic_unary 
+  | Next | WeakNext | Always | Eventually
+
+type ltl_binary = 
+  | LTL_BArithm of common_logic_binary
+  | Until | WeakUntil | Release | StrongRelease
+
+type ltl = ltl_ locatable and ltl_ =
+  | LTL_True
+  | LTL_False
+  | LTL_Pred of fol
+  | Last
+  | End
+  | LTL_Unary of ltl_unary * ltl
+  | LTL_Binary of ltl * ltl_binary * ltl
+
+(* PLTL *)
+
+type pltl_unary =
+  | PLTL_UArithm of common_logic_unary
+  | Once | Before | Historically 
+  
+type pltl_binary =
+  | PLTL_BArithm of common_logic_binary
+  | Since 
 
 type pltl = pltl_ locatable and pltl_ = 
   | PLTL_True
-  | PLTL_Not of pltl
-  | PLTL_Or of pltl * pltl
-  | Once of pltl
-  | Yesterday of pltl
-  | Since of pltl * pltl
-  | Historically of pltl
+  | PLTL_False
+  | PLTL_Pred of fol
+  | First
+  | Start
+  | PLTL_Unary of pltl_unary * pltl
+  | PLTL_Binary of pltl * pltl_binary * pltl
 
 
-type formula = FOL of fol | PLTL of pltl
+(* PROGRAM *)
 
+type formula = FOL of fol | PLTL of pltl | LTL of ltl
 
 type invariant = fol 
 type variant = expr 
@@ -57,9 +94,9 @@ type stmt = stmt_ locatable and stmt_ =
   | While of expr * invariant * variant * stmt list
 
 type env = {
-  env_input : string list; 
-  env_output : string list; 
-  env_variables : string list
+  env_input : (string*ty) list; 
+  env_output : (string*ty) list; 
+  env_variables : (string*ty) list
 }
 
 type setup = {

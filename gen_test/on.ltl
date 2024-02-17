@@ -1,0 +1,15 @@
+input on:bool;
+output light:bool;
+var x:bool;
+
+rely {}
+guarantee {}
+where { light = x }
+
+setup :
+    ensures { [x = false] }
+    x := false;
+loop :
+    if on then x := true; end
+    light := x ;                                                                        
+

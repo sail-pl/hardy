@@ -1,0 +1,26 @@
+input on : bool off : bool;
+output light : bool;
+var x : bool ;
+
+rely { G ( ~ [on] | ~ [off] ) }
+
+guarantee { 
+  (
+    [on] R ( ~ [x] | [on] ) ) &
+    G ([on] -> [off] R ([x] | [off])) &
+    G ([off] -> [on] R ( ~[x] | [on])
+  )
+} 
+where { light = x}
+
+setup:
+  ensures { x = false }
+  x := false ;
+  
+loop:
+  if on then 
+    x := true;
+  else 
+    if off then x := false; end
+  end
+  light := x ;

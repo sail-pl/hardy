@@ -7,29 +7,29 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+(github username/reponame))
 
 (authors "Author Name")
 
 (maintainers "Maintainer Name")
 
-(license LICENSE)
+; (license LICENSE)
 
-(documentation https://url/to/documentation)
+; (documentation https://url/to/documentation)
 
 (package
- (name arduino)
- (synopsis "A short synopsis")
- (description "A longer description")
- (depends 
+  (name arduino)
+   (synopsis "A short synopsis")
+   (description "A longer description")
+  (depends 
   (ocaml (>= 5.1.0))
   dune
   menhir
   (ocamlformat (and (= 0.26.1) :with-dev-setup))
   (ocaml-lsp-server :with-dev-setup)
-   zarith	
+  zarith
+  ltl2ba
   )
- (tags
-  (topics "to describe" your project)))
-
-; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+  ; (tags
+  ; (topics "to describe" your project))
+  )

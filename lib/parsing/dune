@@ -11,22 +11,35 @@
   (flags --only-tokens)
 )
 
-
+; BASE + FOL
 (menhir
   (modules tokens fol parser)
   (merge_into fol_parser)
   (flags
     --external-tokens Tokens
-    --unused-token HISTORICALLY
-    --unused-token ONCE
-    --unused-token SINCE
-    --unused-token YESTERDAY
+    --unused-tokens
     --unused-precedence-levels
   )
 )
 
+; LTL
+(menhir
+  (modules tokens ltl parser)
+  (merge_into ltl_parser)
+  (flags 
+    --external-tokens Tokens
+    --unused-tokens
+    --unused-precedence-levels
+  )
+)
+
+; PLTL
 (menhir
   (modules tokens pltl parser)
   (merge_into pltl_parser)
-  (flags --external-tokens Tokens)
+  (flags 
+    --external-tokens Tokens
+    --unused-tokens
+    --unused-precedence-levels
+  )
 )

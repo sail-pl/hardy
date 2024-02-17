@@ -1,4 +1,4 @@
 (library 
  (name arduinoTranslation)
- (libraries zarith arduinoSyntax why3))
+ (libraries zarith arduinoSyntax why3 ltl2ba.core))
 

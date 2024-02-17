@@ -1,21 +1,26 @@
-(* open ArduinoSyntax.Syntax *)
 module P = ArduinoParser.Parsing
-module T = ArduinoTranslation.Translate
+open ArduinoTranslation
 open Utils
-
-let output_path = Filename.concat (Sys.getcwd ())
 
 let () =
   let w3 = init_why3 () in
 
   let file = get_input_file () in 
   let filename = Filename.(file |> remove_extension |> basename) in 
+  let dir = filename ^ "_gen" in
+  
+  (* drop generated files in $cwd/<filename>_gen/ *)
+  let output_path = Filename.(concat (Sys.getcwd ()) dir) in
 
-  (* drops generated files in current directory for now*)
-  let output_file = output_path @@ filename ^ ".mlw" in 
-  let program = file
+  let () = try Sys.mkdir output_path 0o755
+          with Sys_error _ -> ()  (* if directory exists, continue *)
+  in
+  let output_file = Filename.concat output_path @@ filename ^ ".mlw" in 
+
+  let program = 
+      (file,P.Ltl)
       |> P.parse_file 
-      |> T.translate_program
+      |> Translate.LTL.translate_program output_path
   in
   print_program program output_file ;
 

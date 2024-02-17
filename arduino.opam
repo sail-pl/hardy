@@ -4,10 +4,7 @@ synopsis: "A short synopsis"
 description: "A longer description"
 maintainer: ["Maintainer Name"]
 authors: ["Author Name"]
-license: "LICENSE"
-tags: ["topics" "to describe" "your" "project"]
 homepage: "https://github.com/username/reponame"
-doc: "https://url/to/documentation"
 bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml" {>= "5.1.0"}
@@ -16,6 +13,7 @@ depends: [
   "ocamlformat" {= "0.26.1" & with-dev-setup}
   "ocaml-lsp-server" {with-dev-setup}
   "zarith"
+  "ltl2ba"
   "odoc" {with-doc}
 ]
 build: [
@@ -33,3 +31,6 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/username/reponame.git"
+pin-depends: [
+    ["ltl2ba.dev" "git+https://github.com/EmileRolley/ltl2ba.git"]
+]

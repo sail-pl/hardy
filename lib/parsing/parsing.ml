@@ -1,19 +1,34 @@
-open Lexer
-open Fol_parser
+module L = Lexer
 
+module type PARSER = sig
+  type token = Tokens.token
 
+  exception Error
+  
+  val program : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> ArduinoSyntax.Syntax.program
+end
 
-let parse_file file =
+type parser_type = Fol | Pltl | Ltl
+
+let parse_file (file,ptype) =
+  let module P = (val (match ptype with 
+    | Fol -> (module Fol_parser) 
+    | Pltl -> (module Pltl_parser) 
+    | Ltl -> (module Ltl_parser)) : PARSER
+  ) in 
+
   let text, lexbuf = MenhirLib.LexerUtil.read file in
   try
-    let ast = program tokenize lexbuf in
+    let ast = P.program L.tokenize lexbuf in
     ast
   with
-  | Error ->
+  | P.Error ->
       Printf.printf "File \"%s\", \n\" \n%s\n\" \nsyntax error \n" 
         file @@ 
         String.(sub text lexbuf.lex_curr_p.pos_cnum (length text - lexbuf.lex_curr_p.pos_cnum)); 
       exit (-1)
-  | Lexical_error (_pos,msg) ->
+  | L.Lexical_error (_pos,msg) ->
       Printf.printf "Lexical error: %s\n" msg; 
       exit(-1)
+
+

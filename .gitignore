@@ -1,3 +1,5 @@
+.DS_Store
+
 # dune	
 _opam
 _build
@@ -8,3 +10,4 @@ _build
 *.bak
 # ignore why3 sessions
 samples/*/ 
+
