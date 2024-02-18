@@ -13,7 +13,6 @@ depends: [
   "ocamlformat" {= "0.26.1" & with-dev-setup}
   "ocaml-lsp-server" {with-dev-setup}
   "zarith"
-  "ltl2ba"
   "odoc" {with-doc}
 ]
 build: [
@@ -31,6 +30,3 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/username/reponame.git"
-pin-depends: [
-    ["ltl2ba.dev" "git+https://github.com/EmileRolley/ltl2ba.git"]
-]

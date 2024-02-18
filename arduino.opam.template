@@ -1,3 +1,0 @@
-pin-depends: [
-    ["ltl2ba.dev" "git+https://github.com/EmileRolley/ltl2ba.git"]
-]

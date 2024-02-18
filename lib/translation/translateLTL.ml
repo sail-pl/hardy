@@ -12,7 +12,7 @@ let add_atom (f:fol) =
   curr_cnt
 
 
-let rec translate_ltl (f:ltl) : Core.Ltl.formula = 
+(* let rec translate_ltl (f:ltl) : Core.Ltl.formula = 
   let open Core.Ltl in
 
   let translate_binop : ltl_binary -> bop = function
@@ -42,7 +42,7 @@ let rec translate_ltl (f:ltl) : Core.Ltl.formula =
   | LTL_Unary (op,f) ->
     let f = translate_ltl f in
     Uop (translate_unop op,f)
-  | Last | End -> failwith "unsupported last,end"
+  | Last | End -> failwith "unsupported last,end" *)
 
 
   let uses = [
@@ -50,13 +50,13 @@ let rec translate_ltl (f:ltl) : Core.Ltl.formula =
     ["ref";"Ref"];
   ]
 
-  let translate_spec ?dbg:s = function
+  (* let translate_spec ?dbg:s = function
   | LTL f -> let f = translate_ltl f in
             Option.iter (fun name -> Format.fprintf Format.std_formatter "%s formula : %s\n" name @@ Core.Ltl.to_string f) s;
             f
             |> Core.Ltl.nnf
             |> Ltl2ba.translate  
-  | _ -> failwith "not an LTL formula"
+  | _ -> failwith "not an LTL formula" *)
 
 
 let mk_fun name spec body = 
@@ -81,19 +81,19 @@ let make_setup (setup : setup option) =
           mk_fun "start" spec bdy   
     end
 
-let translate_program (dir:string) (p : program) : P.mlw_file = 
-  let open H in 
+let translate_program (_dir:string) (p : program) : P.mlw_file = 
+  (* let open H in  *)
 
   let uses = [["int";"Int"];["ref";"Ref"]] in
 
-  let pre_automata = translate_spec ?dbg:(Some "rely") p.prog_requires in
+  (* let pre_automata = translate_spec ?dbg:(Some "rely") p.prog_requires in
   let post_automata = translate_spec ?dbg:(Some "guarantee") p.prog_ensures in
 
   Ltl2ba.print_automata Filename.(concat dir "rely.dot") pre_automata;
   Ltl2ba.print_automata Filename.(concat dir "guarantee.dot") post_automata;
 
   let _sp_pre = [pre_automata] in
-  let _sp_post = [Loc.dummy_position, [pat Pwild, post_automata]] in
+  let _sp_post = [Loc.dummy_position, [pat Pwild, post_automata]] in *)
 
   (* add one lemma per edges *)
   (* Core.Automata.TransBuchi.iter_vertex (fun v -> Core.Automata.TransBuchi.)
