@@ -3,32 +3,6 @@ open Why3
 open TranslateUtils
 
 
-let rec translate_fol ({value=f;loc}:fol) : Ptree.term = 
-  let loc = Loc.extract loc in 
-  let open H in 
-  let open P in 
-  match f with
-  | FOL_True -> term ~loc Ttrue
-  | FOL_False -> term ~loc Tfalse
-  | Pred p -> translate_term p 
-  | FOL_Unary (uop,t) -> begin match uop with Not -> Tnot (translate_fol t) |> term ~loc end
-  | FOL_Binary (t1,bop,t2) -> 
-    let t1 = translate_fol t1 in 
-    let t2 = translate_fol t2 in
-    let bop = begin match bop with
-    | And -> Dterm.DTand
-    | Or -> Dterm.DTor
-    | Arrow -> Dterm.DTimplies
-    | Equiv -> Dterm.DTiff
-    | Xor -> failwith "todo xor"
-    | Arithm _ -> failwith "todo Arithm"
-    end in
-    Tbinop (t1, bop, t2) |> term ~loc
-  | Forall (v,f) -> Tquant (DTforall,  one_binder v, [], (translate_fol f)) |> term ~loc
-  | Exists (v,f) ->  Tquant (DTexists,  one_binder v, [], (translate_fol f)) |> term ~loc
-
-
-
 let make_loop (body:Ptree.expr) inv = 
   P.Ewhile (H.expr Etrue,inv,[], body) |> H.expr
 
@@ -41,31 +15,34 @@ let make_loop (body:Ptree.expr) inv =
   ]
 
   let translate_formula f = match f with 
-  | FOL f ->  translate_fol f
+  | FOL f -> pterm_of_fol f
   | _ -> failwith "unhandled"
+
+
+  let combine_fol f1 f2 = match f1,f2 with | FOL f1,FOL f2 -> FOL {loc=f1.loc ; value=(FOL_Binary (f1,And,f2))} | _ -> failwith "not fol"
 
   
   let make_setup (s:setup option) = Option.bind s @@ fun s ->
-    translate_statements translate_fol s.setup_body |> Option.some
+    translate_statements pterm_of_fol s.setup_body |> Option.some
 
   (* fixme : go back to bottom-up style *)
-  let translate_program (p : program) : P.mlw_file = 
+  let translate_program _ (p : program) : P.mlw_file = 
     let open H in 
     let uses = [["int";"Int"];["ref";"Ref"];["option";"Option"];["list";"List"];["list";"Length"]] in
   
-    let sp_pre = [translate_formula p.prog_requires] in
-    let inv = translate_formula p.prog_ensures in
+    let sp_pre = [translate_formula p.prog_spec.requires] in
+    let inv = translate_formula p.prog_spec.ensures in
     let sp_post = [Loc.dummy_position, [pat Pwild, inv]] in
     let spec = Ptree_helpers.{ empty_spec with sp_pre ; sp_post ; sp_diverge = true } in
   
     let decls = generate_declarations p.prog_env in
     let setup = make_setup p.prog_setup |> fun x -> Option.value x ~default:(expr unit_val)in
-    let body = translate_statements translate_fol p.prog_main.main_body in
+    let body = translate_statements pterm_of_fol p.prog_main.main_body in
     let loop = make_loop body [inv] in
   
     let stmt = Esequence (setup, loop) |> expr in
   
-    let main : P.decl =   
+    let main : P.decl =
       Efun ([], None, pat Pwild, Ity.MaskVisible, spec, stmt) 
       |> expr 
       |> fun m -> P.Dlet (ident "main", false, Expr.RKnone, m)

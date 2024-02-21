@@ -51,7 +51,6 @@ rule tokenize = parse
   | "guarantee"             { GUARANTEE }
   | "requires"             { REQUIRES }
   | "ensures"               { ENSURES }
-  | "where"                 { WHERE }
   | "invariant"             { INVARIANT }
   | "variant"               { VARIANT }
   | "forall"                { FORALL }

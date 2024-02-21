@@ -8,14 +8,13 @@
 %%
 
 let program :=
-    prog_env = declaration ; prog_requires = requires ; prog_ensures = prog_ensures  ; 
+    prog_env = declaration ; requires = requires ; ensures = prog_ensures  ; 
         prog_setup = midrule(SETUP ; ":" ; setup_ensures= setup_ensures? ; setup_body=stmt* ; {{setup_ensures;setup_body} })? ;
         LOOP ; ":" ; main_invariant = invariant? ; main_body = stmt* ; EOF ;
         {
             {
                 prog_env;
-                prog_requires;
-                prog_ensures;
+                prog_spec={requires;ensures};
                 prog_setup; 
                 prog_main = {main_invariant ; main_body}
             }
@@ -69,8 +68,8 @@ let fol :=
         | ~ = expr ; <Pred>
         | ~ = common_logic_unary ; ~ = fol ; <FOL_Unary>
         | f1 = fol ; op = common_logic_binary ; f2 = fol ; {FOL_Binary (f1,op,f2)}
-        | FORALL ; ~ = ID ; COMMA ; ~ = fol ; <Forall>
-        | EXISTS ; ~ = ID ; COMMA ; ~ = fol ; <Exists>
+        | FORALL ; ~ = typed_id+ ; COMMA ; ~ = fol ; <Forall>
+        | EXISTS ; ~ = typed_id+ ; COMMA ; ~ = fol ; <Exists>
     )
     | ~ = delimited(LSQBRACE,fol,RSQBRACE) ; <> // can't use () because fol includes expr 
 
@@ -100,4 +99,4 @@ let binExpOp ==
     | "=" ; {Eq}
 
 %public
-let located(x) == ~ = x ; { mk_locatable $loc x }
+let located(x) == ~ = x ; { mk_locatable (Some $loc) x }

@@ -5,10 +5,8 @@
 
 let ltl := 
     | located(
-        | TRUE ; {LTL_True}
+        | TRUE ; {LTL_True} 
         | FALSE ; {LTL_False}
-        | LAST ; {Last}
-        | END ; {End}
         | ~ = unary ; ~ = ltl ; <LTL_Unary>
         | f1 = ltl ; op = binary ; f2 = ltl ; {LTL_Binary (f1,op,f2)}
         | ~ = delimited(LSQBRACE,fol,RSQBRACE) ; <LTL_Pred> // can't use () because fol includes expr 
@@ -37,10 +35,10 @@ let binary ==
 let requires == ~ = preceded(RELY, braced_ltl) ; <LTL>
 
 %public
-let prog_ensures == ~ = preceded(GUARANTEE, braced_ltl) ; WHERE ; braced(list(ID ; EQ ; ID)); <LTL>
+let prog_ensures == ~ = preceded(GUARANTEE, braced_ltl) ; <LTL>
 
 %public
 let setup_ensures == ~ = preceded(ENSURES, braced_fol) ;  <FOL>
 
-let braced_ltl == f = braced(ltl?) ; {Option.value f ~default:{value=LTL_True;loc=$loc}}
-let braced_fol == f = braced(fol?) ; {Option.value f ~default:{value=FOL_True;loc=$loc}}
+let braced_ltl == f = braced(ltl?) ; {Option.value f ~default:{value=LTL_True;loc=Some $loc}}
+let braced_fol == f = braced(fol?) ; {Option.value f ~default:{value=FOL_True;loc=Some $loc}}

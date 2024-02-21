@@ -3,10 +3,8 @@
 
 let pltl := 
     | located(
-        | TRUE ; {PLTL_True}
+        | TRUE ; {PLTL_True} 
         | FALSE ; {PLTL_False}
-        | FIRST ; {First}
-        | START ; {Start}
         | ~ = delimited(LSQBRACE,fol,RSQBRACE) ; <PLTL_Pred> // can't use () because fol includes expr 
         | ~ = unary ; ~ = pltl ; <PLTL_Unary>
         | f1 = pltl ; op = binary ; f2 = pltl ; {PLTL_Binary (f1,op,f2)}
@@ -32,11 +30,11 @@ let requires ==
     ~ = preceded(RELY, braced_pltl) ; <PLTL>
 
 %public
-let prog_ensures == ~ = preceded(GUARANTEE, braced_pltl) ; WHERE ; braced(list(ID ; EQ ; ID)) ; <PLTL>
+let prog_ensures == ~ = preceded(GUARANTEE, braced_pltl) ; <PLTL>
 
 %public
 let setup_ensures == ~ = preceded(ENSURES, braced(fol)) ;  <FOL>
 
 
 
-let braced_pltl == f = braced(pltl?) ; {Option.value f ~default:{value=PLTL_True;loc=$loc}}
+let braced_pltl == f = braced(pltl?) ; {Option.value f ~default:{value=PLTL_True;loc=Some $loc}}

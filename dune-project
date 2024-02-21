@@ -28,6 +28,7 @@
   (ocamlformat (and (= 0.26.1) :with-dev-setup))
   (ocaml-lsp-server :with-dev-setup)
   zarith
+  ocamlgraph
   )
   ; (tags
   ; (topics "to describe" your project))

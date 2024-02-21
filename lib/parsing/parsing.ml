@@ -1,4 +1,5 @@
 module L = Lexer
+module NCL = Neverclaimlex
 
 module type PARSER = sig
   type token = Tokens.token
@@ -31,4 +32,15 @@ let parse_file (file,ptype) =
       Printf.printf "Lexical error: %s\n" msg; 
       exit(-1)
 
+let parse_automaton file =
+  let module P = Neverclaim in
 
+  let text, lexbuf = MenhirLib.LexerUtil.read file in
+   try
+  let ast = P.automaton NCL.tokenize lexbuf in ast
+with
+| P.Error ->
+    Printf.printf "File \"%s\", \n\" \n%s\n\" \nsyntax error \n" 
+      file @@ 
+      String.(sub text lexbuf.lex_curr_p.pos_cnum (length text - lexbuf.lex_curr_p.pos_cnum)); 
+    exit (-1)

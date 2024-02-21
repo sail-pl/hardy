@@ -2,8 +2,11 @@
   (name arduinoParser)
   (libraries arduinoSyntax zarith menhirLib))
 
-(ocamllex lexer)
+(ocamllex lexer neverclaimlex)
 
+(menhir
+  (modules neverclaim)
+)
 
 ; tokens shared across the parsers
 (menhir

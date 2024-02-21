@@ -1,12 +1,12 @@
-input on:bool;
-output light:bool;
-var x:bool;
+input on;
+output light;
+var x;
 
-rely {}
-guarantee {}
+requires {}
+ensures {}
 
 setup :
-    ensures { [x = false] }
+    ensures {x = false}
     x := false;
 loop :
     if on then x := true; end

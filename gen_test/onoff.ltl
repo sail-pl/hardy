@@ -11,7 +11,6 @@ guarantee {
     G ([off] -> [on] R ( ~[x] | [on])
   )
 } 
-where { light = x}
 
 setup:
   ensures { x = false }
