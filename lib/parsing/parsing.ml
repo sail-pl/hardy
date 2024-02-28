@@ -18,15 +18,17 @@ let parse_file (file,ptype) =
     | Ltl -> (module Ltl_parser)) : PARSER
   ) in 
 
-  let text, lexbuf = MenhirLib.LexerUtil.read file in
+  let _text, lexbuf = MenhirLib.LexerUtil.read file in
   try
     let ast = P.program L.tokenize lexbuf in
     ast
   with
   | P.Error ->
-      Printf.printf "File \"%s\", \n\" \n%s\n\" \nsyntax error \n" 
-        file @@ 
-        String.(sub text lexbuf.lex_curr_p.pos_cnum (length text - lexbuf.lex_curr_p.pos_cnum)); 
+      Printf.printf "File \"%s\", line %i, character %i: syntax error\n" 
+        file
+        lexbuf.lex_curr_p.pos_lnum
+        lexbuf.lex_curr_p.pos_cnum
+      ;
       exit (-1)
   | L.Lexical_error (_pos,msg) ->
       Printf.printf "Lexical error: %s\n" msg; 

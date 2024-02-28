@@ -19,7 +19,6 @@ let unary ==
     | EVENTUALLY ; {Eventually}
     | ALWAYS ; {Always}
     | NEXT ; {Next}
-    | WNEXT ; {WeakNext}
     | ~ = common_logic_unary ; <LTL_UArithm>
 
 
@@ -32,13 +31,12 @@ let binary ==
 
 
 %public
-let requires == ~ = preceded(RELY, braced_ltl) ; <LTL>
+let requires == f = preceded(RELY, braced_ltl)? ; {Option.join f}
 
 %public
-let prog_ensures == ~ = preceded(GUARANTEE, braced_ltl) ; <LTL>
+let prog_ensures == f = preceded(GUARANTEE, braced_ltl)? ; {Option.join f}
 
 %public
-let setup_ensures == ~ = preceded(ENSURES, braced_fol) ;  <FOL>
+let setup_ensures == f = preceded(ENSURES, braced_fol)? ; {Option.join f}
 
-let braced_ltl == f = braced(ltl?) ; {Option.value f ~default:{value=LTL_True;loc=Some $loc}}
-let braced_fol == f = braced(fol?) ; {Option.value f ~default:{value=FOL_True;loc=Some $loc}}
+let braced_ltl == f = braced(ltl?) ; { Option.map (fun f -> LTL f) f }

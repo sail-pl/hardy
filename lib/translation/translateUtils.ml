@@ -42,6 +42,7 @@ let rec translate_expression ({value=e;loc}:expr) : Ptree.expr =
   | True -> H.expr ~loc Etrue
   | False -> H. expr ~loc  Efalse
   | Int n -> H.econst n ~loc
+  (* | Old _ -> Loc.(error ~loc @@ Message "Old only allowed inside formulas") *)
   | Var s -> 
     begin
     match get_binding_type s with
@@ -55,12 +56,13 @@ let rec translate_expression ({value=e;loc}:expr) : Ptree.expr =
   | BinOp (e1,binop,e2) -> H.eapp ~loc (translate_binop binop) [translate_expression e1; translate_expression e2]
 
 
-let rec translate_term ({value=t;loc}:expr) : Ptree.term =
-  let loc = get_loc loc in 
-  match t with
+let rec translate_term (e:expr) : Ptree.term =
+  let loc = get_loc e.loc in 
+  match e.value with
   | True -> H.term ~loc Ttrue
   | False -> H.term ~loc Tfalse
   | Int n -> H.tconst ~loc n
+  (* | Old s -> 	H.term ~loc H.(Tat (translate_term {value=Var s;loc=e.loc},ident ~loc Dexpr.old_label)) *)
   | Var s ->     
     begin
     match get_binding_type s with
@@ -68,6 +70,7 @@ let rec translate_term ({value=t;loc}:expr) : Ptree.term =
     | Var,_ | Output,_ -> let deref = H.qualid [Ident.op_prefix "!"] in 
       H.tapp ~loc deref H.[[s] |> qualid |> tvar]
     end
+
   | Read s ->       
     Ptree.Tasref (H.qualid [s]) |> H.term ~loc
 
@@ -141,6 +144,7 @@ let rec string_of_exp (e:expr) : string = match e.value with
   | Int n -> string_of_int n 
   | True -> "true"
   | False -> "false"
+  (* | Old s -> Format.sprintf "old(%s)" s *)
   | Var s | Read s -> s
   | BinOp (e1,op,e2) -> Format.sprintf "(%s) %s (%s)" (string_of_exp e1) (string_of_binop op) (string_of_exp e2)
 
@@ -255,3 +259,73 @@ let fol_of_bform (convert_atom: string -> fol) =
 
   in 
   aux
+
+
+let rec determ_exp (e:expr) : expr =
+  let value = 
+    match e.value with
+    | BinOp (e1,op,e2) -> let e1 = determ_exp e1 and e2 = determ_exp e2 in BinOp (e1,op,e2)
+    | _ as x -> x
+  in
+  {value;loc=None}
+
+(* 2 formulas are equals if they are syntactically the same modulo their position *)
+let rec determ_fol (f:fol) : fol = 
+    let value = 
+      match f.value with 
+      | Pred p -> Pred (determ_exp p)
+      | FOL_Unary (op,f) -> let f = determ_fol f in FOL_Unary (op,f)
+      | FOL_Binary (f1, op, f2) -> 
+        let f1 = determ_fol f1 and f2 = determ_fol f2 in FOL_Binary (f1,op,f2)
+      | Forall (x,f) -> let f = determ_fol f in Forall (x,f)
+      | Exists (x,f) -> let f = determ_fol f in Exists (x,f)
+      | _ as x -> x
+    in
+    {value;loc=None}
+
+
+
+module type AtomSig = sig
+  val get : string -> string * fol
+
+  val subst: string -> string
+
+  val add : fol -> string * string
+end
+
+module Atom() : AtomSig = struct
+
+  (* key is a hash of fol, value is a short name for fol + fol itself*)
+  let atomic_bindings : (int, string*fol) Hashtbl.t = Hashtbl.create 100
+
+  let cnt = ref 0
+
+  let get (s:string) = let k = String.(sub s 2 (length s - 2) |> int_of_string) in Hashtbl.find atomic_bindings k 
+
+  let sub_atom_in_str f = 
+    let open Str in 
+    let r = regexp {|f_\([0-9]+\)|} in
+    global_substitute r (fun m -> matched_string m |> f) 
+
+
+  let subst = sub_atom_in_str (fun s -> 
+    let _,inv = get s in
+    string_of_fol inv
+  )
+
+  let add (f:fol) = 
+    let label =  Format.sprintf "f_%i" in 
+  
+    (* we must get the same atom if the formulas are syntactically equal*)
+    let key = Hashtbl.hash (determ_fol f) in 
+    
+    match Hashtbl.find_opt atomic_bindings key with
+    | None -> 
+      let short_name = "F" ^ string_of_int !cnt in
+      Hashtbl.add atomic_bindings key (short_name,f);
+      incr cnt;
+      short_name,label key
+    | Some (sn,_) ->
+        sn,label key
+    
+end

@@ -19,6 +19,7 @@ type expr = expression_ locatable and expression_ =
   | True
   | False
   | Var of string
+  (* | Old of string *)
   | Read of string
   | BinOp of expr * arithm_binop * expr
 
@@ -112,7 +113,7 @@ type main = {
 
 type program = { 
   prog_env : env;
-  prog_spec : formula hoare_pair;
+  prog_spec : (formula option) hoare_pair;
   prog_setup : setup option;
   prog_main : main;
 }

@@ -26,15 +26,13 @@ let binary ==
 
 
 %public
-let requires == 
-    ~ = preceded(RELY, braced_pltl) ; <PLTL>
+let requires == preceded(RELY, braced_pltl)
 
 %public
-let prog_ensures == ~ = preceded(GUARANTEE, braced_pltl) ; <PLTL>
+let prog_ensures == preceded(GUARANTEE, braced_pltl) 
 
 %public
-let setup_ensures == ~ = preceded(ENSURES, braced(fol)) ;  <FOL>
+let setup_ensures == preceded(ENSURES, braced_fol)
 
 
-
-let braced_pltl == f = braced(pltl?) ; {Option.value f ~default:{value=PLTL_True;loc=Some $loc}}
+let braced_pltl == f = braced(pltl?) ; {Option.map (fun f -> PLTL f) f}

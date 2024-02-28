@@ -49,7 +49,8 @@ rule tokenize = parse
   | "output"                { OUTPUT }
   | "rely"                  { RELY }
   | "guarantee"             { GUARANTEE }
-  | "requires"             { REQUIRES }
+  | "requires"              { REQUIRES }
+  | "old"                   { OLD }
   | "ensures"               { ENSURES }
   | "invariant"             { INVARIANT }
   | "variant"               { VARIANT }
@@ -83,8 +84,7 @@ rule tokenize = parse
   | "Y"                     { YESTERDAY }
   | "O"                     { ONCE }
   | "H"                     { HISTORICALLY }
-  | "X"                     { WNEXT }
-  | "X[!]"                  { NEXT }
+  | "X"                     { NEXT }
   | "U"                     { UNTIL}
   | "R" | "V"               { RELEASE }
   | "M"                     { SRELEASE }
