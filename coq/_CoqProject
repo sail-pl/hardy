@@ -1,0 +1,6 @@
+-I theories
+-R theories automata 
+theories/util.v
+theories/automaton.v
+theories/product.v
+theories/verification.v
