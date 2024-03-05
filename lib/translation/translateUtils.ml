@@ -1,3 +1,7 @@
+(* open ArduinoSyntax.Locations *)
+(* open ArduinoSyntax.Types *)
+open ArduinoSyntax.Operators
+open ArduinoSyntax.Fol
 module S = ArduinoSyntax.Syntax
 module AS = ArduinoSyntax.PromelaSyntax
 
@@ -16,7 +20,7 @@ type info = {
   outdir : string;
 }
 
-let fol_of_bform (convert_atom : string -> fol) =
+let fol_of_bform (convert_atom : string -> expr fol) =
   let open AS in
   let rec aux = function
     | True -> mk_dummy_loc FOL_True
@@ -48,7 +52,7 @@ let rec determ_exp (e : expr) : expr =
   { value; loc = None }
 
 (* 2 formulas are equals if they are syntactically the same modulo their position *)
-let rec determ_fol (f : fol) : fol =
+let rec determ_fol (f : expr fol) : expr fol =
   let value =
     match f.value with
     | Pred p -> Pred (determ_exp p)
@@ -69,14 +73,14 @@ let rec determ_fol (f : fol) : fol =
   { value; loc = None }
 
 module type AtomSig = sig
-  val get : string -> string * fol
+  val get : string -> string * expr fol
   val subst : string -> string
-  val add : fol -> string * string
+  val add : expr fol -> string * string
 end
 
 module Atom () : AtomSig = struct
   (* key is a hash of fol, value is a short name for fol + fol itself*)
-  let atomic_bindings : (int, string * fol) Hashtbl.t = Hashtbl.create 100
+  let atomic_bindings : (int, string * expr fol) Hashtbl.t = Hashtbl.create 100
   let cnt = ref 0
 
   let get (s : string) =
@@ -93,7 +97,7 @@ module Atom () : AtomSig = struct
         let _, inv = get s in
         string_of_fol inv)
 
-  let add (f : fol) =
+  let add (f : expr fol) =
     let label = Format.sprintf "f_%i" in
 
     (* we must get the same atom if the formulas are syntactically equal*)

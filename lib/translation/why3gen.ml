@@ -1,4 +1,6 @@
 open ArduinoSyntax.Locations
+open ArduinoSyntax.Types
+open ArduinoSyntax.Fol
 open ArduinoSyntax.Syntax
 open ArduinoSyntax.Printer
 open Why3
@@ -123,7 +125,7 @@ let generate_declarations (env : env) =
       Dlet (ident v, false, RKnone, eapply (expr Eref) (get_exp ty)) :: decls)
     env.env_variables
 
-let rec pterm_of_fol ({ value = f; loc } : fol) : Ptree.term =
+let rec pterm_of_fol ({ value = f; loc } : expr fol) : Ptree.term =
   let open Ptree_helpers in
   let open Ptree in
   let loc = get_loc loc in
@@ -194,7 +196,7 @@ let make_setup (setup : setup option) =
       in
       mk_fun "setup" spec bdy
 
-let to_spec (l : fol list hoare_pair list) : Ptree.spec list =
+let to_spec (l : expr fol list hoare_pair list) : Ptree.spec list =
   List.map
     (fun h ->
       let sp_pre = List.map pterm_of_fol h.requires in

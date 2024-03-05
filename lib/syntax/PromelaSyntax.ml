@@ -1,6 +1,4 @@
-(** Parse tree for Promela neverclaims *)
-
-type state = string
+(** {1 Parse tree for Promela neverclaims } *)
 
 type bform = 
   | True
@@ -10,10 +8,13 @@ type bform =
   | Or of bform * bform
   | Not of bform
 
+
+type state = string
+
 type transition = state * bform * state
 
 type neverclaim = state list * transition list
-  
+
 let string_of_bform (convert_atom: string -> string)  = 
   let rec aux = function
   | True -> "true"

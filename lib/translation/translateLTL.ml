@@ -2,6 +2,8 @@ module L = Lexing
 module A = Automaton
 open TranslateUtils
 open ArduinoSyntax.Locations
+open ArduinoSyntax.Types
+open ArduinoSyntax.Fol
 open ArduinoSyntax.Syntax
 open ArduinoSyntax.Printer
 open ArduinoSyntax.PromelaSyntax
@@ -82,17 +84,7 @@ module M = Map.Make (struct
     String.compare (e1 |> string_of_bform Fun.id) (e2 |> string_of_bform Fun.id)
 end)
 
-(* problem with invariant instead of formula *)
-(* let combine (f : fol -> fol -> bol) *)
-
-let bform_to_fol : bform -> fol = fol_of_bform (fun a -> Atoms.get a |> snd)
-let combine_fol f1 op f2 = mk_dummy_loc (FOL_Binary (f1, op, f2))
-let false_fol : fol = mk_dummy_loc FOL_False
-let and_fol (f1 : fol) (f2 : fol) : fol = mk_dummy_loc (FOL_Binary (f1, Or, f2))
-let or_fol (f1 : fol) (f2 : fol) : fol = mk_dummy_loc (FOL_Binary (f1, Or, f2))
-
-let exists_fol (vars : (string * ty) list) (f : fol) : fol =
-  mk_dummy_loc (Exists (vars, f))
+let bform_to_fol : bform -> expr fol = fol_of_bform (fun a -> Atoms.get a |> snd)
 
 (**   [make_prod_spec input in_e out_e init_post] 
       builds the list of [Ptree.spec] for a node of the product graph 
@@ -107,7 +99,7 @@ let exists_fol (vars : (string * ty) list) (f : fol) : fol =
         and init is there if defined. 
       *)
 let make_prod_spec (input : (string * ty) list) (in_e : PG.E.t list)
-    (out_e : PG.E.t list) (init_post : fol option) : fol list hoare_pair list =
+    (out_e : PG.E.t list) (init_post : expr fol option) : expr fol list hoare_pair list =
   assert (not (List.is_empty out_e));
   assert ((not (List.is_empty in_e)) || Option.is_some init_post);
   let m =

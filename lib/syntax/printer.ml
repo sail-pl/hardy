@@ -1,4 +1,7 @@
 open Locations
+open Types
+open Operators
+open Fol
 open Syntax
 
 let string_of_ty = function Ty_Bool -> "bool" | Ty_Int -> "int"
@@ -34,7 +37,7 @@ let rec string_of_exp (e : expr) : string =
       Format.sprintf "(%s) %s (%s)" (string_of_exp e1) (string_of_binop op)
         (string_of_exp e2)
 
-let rec string_of_fol (f : fol) : string =
+let rec string_of_fol (f : expr fol) : string =
   let open Format in
   let print_idty idty =
     String.concat " "
@@ -73,7 +76,7 @@ let string_of_ltl_unop : ltl_unary -> string = function
   | LTL_UArithm Not -> "!"
   | WeakNext -> failwith "unsupported unop"
 
-let string_of_ltl (string_of_pred : fol -> string) : ltl -> string =
+let string_of_ltl (string_of_pred : expr fol -> string) : ltl -> string =
   let rec aux f =
     match f.value with
     | LTL_True -> "true"

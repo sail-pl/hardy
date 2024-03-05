@@ -1,5 +1,8 @@
 %{
     open ArduinoSyntax.Locations
+    open ArduinoSyntax.Types
+    open ArduinoSyntax.Operators
+    open ArduinoSyntax.Fol
     open ArduinoSyntax.Syntax
 %}
 
