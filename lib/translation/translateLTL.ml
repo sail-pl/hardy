@@ -4,12 +4,13 @@ open TranslateUtils
 open ArduinoSyntax.Locations
 open ArduinoSyntax.Syntax
 open ArduinoSyntax.Printer
-open ArduinoSyntax.Automaton
-module Atoms = Atom ()
-module Buchi = A.Buchi (Atoms)
-module DotG = A.BuchiDot (Buchi)
-module PG = A.BuchiProd (Buchi) (Atoms)
-module DotPG = A.BuchiDot (PG)
+open ArduinoSyntax.PromelaSyntax
+module Atoms = Atom()
+module Buchi = A.Buchi(Atoms)
+module DotG = A.BuchiDot(Buchi)
+module PG = A.BuchiProd(Buchi)(Atoms)
+module DotPG = A.BuchiDot(PG)
+
 
 let compute_automaton (f : string) (i : info) (output_file : string -> string) =
   (* ltl3ba presentation : https://pdfs.semanticscholar.org/6d7d/04f5255cccf22108468747037be889e3f535.pdf *)

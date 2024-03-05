@@ -1,5 +1,6 @@
 module A = Automaton
 open ArduinoSyntax.Syntax
+(* open ArduinoSyntax.PromelaSyntax *)
 open TranslateLTL
 open TranslateUtils
 open Why3

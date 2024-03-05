@@ -1,5 +1,6 @@
 module S = ArduinoSyntax.Syntax
-module AS = ArduinoSyntax.Automaton
+module AS = ArduinoSyntax.PromelaSyntax
+
 open ArduinoSyntax.Locations
 open ArduinoSyntax.Printer
 open Why3

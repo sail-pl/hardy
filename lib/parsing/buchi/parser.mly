@@ -1,5 +1,5 @@
 %{
-    open ArduinoSyntax.Automaton
+    open ArduinoSyntax.PromelaSyntax
 %}
 
 %token<string> ATOM 
@@ -13,7 +13,7 @@
 %left AND
 %right NOT
 
-%start <buchi_automaton> automaton
+%start <neverclaim> automaton
 
 %%
 

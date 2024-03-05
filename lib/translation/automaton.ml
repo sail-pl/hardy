@@ -1,4 +1,4 @@
-module AS = ArduinoSyntax.Automaton
+module AS = ArduinoSyntax.PromelaSyntax
 module S = ArduinoSyntax.Syntax
 open Graph
 
@@ -42,16 +42,16 @@ module type BuchiSig = sig
 end
 
 module Buchi (Atoms : TranslateUtils.AtomSig) :
-  BuchiSig with type E.label = AS.bform and type init_val = AS.buchi_automaton =
+  BuchiSig with type E.label = AS.bform and type init_val = AS.neverclaim =
 struct
   include Imperative.Digraph.ConcreteLabeled (Vertex) (Arc)
 
-  type init_val = AS.buchi_automaton
+  type init_val = AS.neverclaim
 
   let acceptant v = List.hd String.(split_on_char '_' v) = "accept"
   let is_start_node (v : V.t) = String.ends_with (V.label v) ~suffix:"init"
 
-  let create ((states, arcs) : AS.buchi_automaton) : t =
+  let create ((states, arcs) : AS.neverclaim) : t =
     let g = create ~size:(List.length states) () in
     List.iter
       (fun (s1, f, s2) ->
