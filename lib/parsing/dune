@@ -1,14 +1,17 @@
-(library 
-  (name arduinoParser)
-  (libraries arduinoSyntax menhirLib (re_export baParser)))
+(library
+ (name arduinoParser)
+ (libraries
+  arduinoSyntax
+  menhirLib
+  (re_export baParser)))
 
 (ocamllex lexer)
 
 ; tokens shared across the parsers
+
 (menhir
-  (modules tokens)
-  (flags --only-tokens)
-)
+ (modules tokens)
+ (flags --only-tokens))
 
 ; BASE + FOL
 ;(menhir
@@ -22,23 +25,15 @@
 ;)
 
 ; LTL
+
 (menhir
-  (modules tokens ltl parser)
-  (merge_into ltl_parser)
-  (flags 
-    --external-tokens Tokens
-    --unused-tokens
-    --unused-precedence-levels
-  )
-)
+ (modules tokens ltl parser)
+ (merge_into ltl_parser)
+ (flags --external-tokens Tokens --unused-tokens --unused-precedence-levels))
 
 ; PLTL
+
 (menhir
-  (modules tokens pltl parser)
-  (merge_into pltl_parser)
-  (flags 
-    --external-tokens Tokens
-    --unused-tokens
-    --unused-precedence-levels
-  )
-)
+ (modules tokens pltl parser)
+ (merge_into pltl_parser)
+ (flags --external-tokens Tokens --unused-tokens --unused-precedence-levels))

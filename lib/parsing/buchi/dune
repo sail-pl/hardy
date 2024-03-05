@@ -1,9 +1,8 @@
 (ocamllex lexer)
 
 (menhir
-  (modules parser)
-)
+ (modules parser))
 
-(library 
-  (name baParser)
-  (libraries arduinoSyntax menhirLib))
+(library
+ (name baParser)
+ (libraries arduinoSyntax menhirLib))
