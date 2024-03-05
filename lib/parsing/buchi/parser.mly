@@ -1,5 +1,5 @@
 %{
-    open ArduinoSyntax.AutomatonSyntax
+    open ArduinoSyntax.Automaton
 %}
 
 %token<string> ATOM 

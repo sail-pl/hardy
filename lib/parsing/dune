@@ -1,12 +1,8 @@
 (library 
   (name arduinoParser)
-  (libraries arduinoSyntax zarith menhirLib))
+  (libraries arduinoSyntax menhirLib (re_export baParser)))
 
-(ocamllex lexer neverclaimlex)
-
-(menhir
-  (modules neverclaim)
-)
+(ocamllex lexer)
 
 ; tokens shared across the parsers
 (menhir

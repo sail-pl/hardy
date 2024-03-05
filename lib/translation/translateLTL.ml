@@ -5,7 +5,7 @@ open  TranslateUtils
 open ArduinoSyntax.Locations
 open ArduinoSyntax.Syntax
 open ArduinoSyntax.Printer
-open ArduinoSyntax.AutomatonSyntax
+open ArduinoSyntax.Automaton
 
 module Atoms = Atom()
 module Buchi = A.Buchi(Atoms)
@@ -16,7 +16,7 @@ module DotPG = A.BuchiDot(PG)
 
 let compute_automaton (f:string) (i:info) (output_file:string->string) =
   (* ltl3ba presentation : https://pdfs.semanticscholar.org/6d7d/04f5255cccf22108468747037be889e3f535.pdf *)
-  let open ArduinoParser.Parsing in
+  let open BaParser.Parsing in
   let never_file = output_file ".never" in 
 
   let cmd = Filename.quote_command i.ltl2baPath ["-f"; f] ~stdout:never_file ~stderr:(never_file ^ ".err") in
@@ -38,9 +38,6 @@ let string_of_ltl_full = string_of_ltl (fun p -> Atoms.add p |> snd)
 let string_of_ltl_short = string_of_ltl (fun p -> Atoms.add p |> fst)
     
 
-
-
-
 let ltl_conjunction f1 f2 = match f1,f2 with 
   | Some (LTL f1),Some (LTL f2) -> Some (LTL {loc=f1.loc ; value=(LTL_Binary (f1,LTL_BArithm And,f2))})
   | Some (LTL f),None | None,Some (LTL f) -> Some (LTL f)
@@ -48,14 +45,8 @@ let ltl_conjunction f1 f2 = match f1,f2 with
   | _ -> failwith "not a LTL formula"
 
 
-type buchi_type = Requires | Ensures 
 
-let make_automaton info (req,ens) : 
-  (
-    Buchi.t * buchi_type * (module A.BuchiSig with type t =Buchi.t and type E.t = Buchi.edge), 
-    PG.t * (module A.BuchiSig with type t = PG.t and type E.t = PG.edge)
-  ) 
-  Either.t = 
+let make_automaton info ((req,ens) : 'a option * 'a option) = 
   
   let output_file name ext = Filename.(concat info.outdir (name ^ ext)) in
 
@@ -72,18 +63,13 @@ let make_automaton info (req,ens) :
   | _ -> failwith "not a LTL formula"
   in
 
-  let rely_a = Option.map (translate_spec "rely") req in
-  let guarantee_a = Option.map (translate_spec "guarantee") (ltl_conjunction req ens) in
+  let true_if_none = Option.value ~default:(LTL (mk_dummy_loc LTL_True)) in
+  let rely_a = true_if_none req  |> translate_spec "rely" in
+  let guarantee_a = true_if_none (ltl_conjunction req ens) |> translate_spec "guarantee" in
 
-  match rely_a,guarantee_a with
-  | None,None ->  
-    Left (compute_automaton "true" info (output_file "dummy"), Ensures,(module Buchi))
-  | Some a,None -> Left (a,Requires,(module Buchi))
-  | None,Some a -> Left (a,Ensures, (module Buchi))
-  | Some ra, Some ga -> 
-    let prod_a = PG.create (ra,ga) in 
-    Out_channel.with_open_text (output_file "product" ".dot")  (fun o -> DotPG.output_graph o prod_a);
-    Right (prod_a,(module PG))
+  let prod_a = PG.create (rely_a,guarantee_a) in 
+  Out_channel.with_open_text (output_file "product" ".dot")  (fun o -> DotPG.output_graph o prod_a);
+  prod_a
 
 
 (* create a map binding the exit-arc rely formula to all its guarantee ones *)
@@ -145,7 +131,7 @@ let make_prod_spec (input : (string*ty) list) (in_e : PG.E.t list)
           and ensures = 
             (* disjunction of exit-arc post-condition sharing the same pre-condition *)
             [List.fold_left (fun acc f -> or_fol acc (bform_to_fol f)) false_fol d]
-          in {requires;ensures}::s) (* why requires and ensures are list types *)
+          in {requires;ensures}::s)
         m [] 
 
 

@@ -14,11 +14,6 @@ let () =
   end;
 
   let program = 
-(*      let module Trans = (val 
-        if not info.pltl_mode then (module Translate.LTL) 
-        else (module Translate.FOL)
-        : Translate.TranslateSIG)
-        in *)
       P.parse_file info.file 
       |> Translation.translate_program info
   in

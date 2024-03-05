@@ -39,7 +39,6 @@ module Cli : CliSig = functor () -> struct
     else ltl2baPath := p
 
   let speclist = [
-    ("-pltl", Set pltl_mode, "pltl mode"); 
     ("-v", Set verbose, "debug output"); 
     ("-ltl2ba", String parseLtl2baPath, "set ltl2ba program path")
   ]

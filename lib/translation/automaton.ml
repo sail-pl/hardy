@@ -1,4 +1,4 @@
-module AS = ArduinoSyntax.AutomatonSyntax
+module AS = ArduinoSyntax.Automaton
 module S = ArduinoSyntax.Syntax
 open Graph
 
