@@ -14,16 +14,13 @@ let () =
   end;
 
   let program = 
-      let ptype = if info.pltl_mode then P.Pltl else P.Ltl in
-      let module Trans = (val 
+(*      let module Trans = (val 
         if not info.pltl_mode then (module Translate.LTL) 
         else (module Translate.FOL)
         : Translate.TranslateSIG)
-        in 
-
-      (info.file,ptype)
-      |> P.parse_file 
-      |> Trans.translate_program info
+        in *)
+      P.parse_file info.file 
+      |> Translation.translate_program info
   in
 
   let output_file = Filename.concat info.outdir @@ (Filename.basename info.file) ^ ".mlw" in 

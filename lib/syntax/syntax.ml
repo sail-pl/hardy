@@ -1,13 +1,15 @@
-
-type loc = Lexing.position * Lexing.position
+(*type loc = Lexing.position * Lexing.position
 type 'v locatable  = {loc : loc option; value : 'v}
 let dummy_pos : loc = Lexing.dummy_pos,Lexing.dummy_pos
 let mk_locatable loc value = {loc;value}
-let mk_dummy_loc value = {value;loc=None} 
+let mk_dummy_loc value = {value;loc=None} *)
 
+open Locations
+(* Types *)
 
 type ty = Ty_Int | Ty_Bool
 
+(* Expressions *)
 type arithm_binop = 
   | Add | Sub 
   | Mul | Div 
@@ -40,7 +42,6 @@ type fol = fol_ locatable and fol_ =
   | Forall of (string*ty) list * fol 
   | Exists of (string*ty) list * fol
 
-
 (* LTL *)
 
 type ltl_unary = 
@@ -57,8 +58,6 @@ type ltl = ltl_ locatable and ltl_ =
   | LTL_Pred of fol
   | LTL_Unary of ltl_unary * ltl
   | LTL_Binary of ltl * ltl_binary * ltl
-
-  
 
 (* PLTL *)
 
@@ -102,7 +101,7 @@ type env = {
 }
 
 type setup = {
-  setup_ensures : ensures option;
+  setup_ensures : fol option;
   setup_body:stmt list
 }
 

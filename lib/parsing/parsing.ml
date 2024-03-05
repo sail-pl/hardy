@@ -9,15 +9,18 @@ module type PARSER = sig
   val program : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> ArduinoSyntax.Syntax.program
 end
 
-type parser_type = Fol | Pltl | Ltl
+(* type parser_type = Fol | Pltl | Ltl *)
 
-let parse_file (file,ptype) =
+(*let parse_file (file,ptype) =
+  let module P = Ltl_parser in
+  
   let module P = (val (match ptype with 
-    | Fol -> (module Fol_parser) 
+   (* | Fol -> (module Fol_parser) *)
     | Pltl -> (module Pltl_parser) 
     | Ltl -> (module Ltl_parser)) : PARSER
-  ) in 
-
+  ) in *)
+  let parse_file (file) =
+    let module P = Ltl_parser in
   let _text, lexbuf = MenhirLib.LexerUtil.read file in
   try
     let ast = P.program L.tokenize lexbuf in

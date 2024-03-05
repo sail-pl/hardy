@@ -8,6 +8,6 @@ module type TranslateSIG = sig
 end
 
 (* entry point to the different translations *)
-module LTL : TranslateSIG = TranslateLTL
-module FOL : TranslateSIG = TranslateFOL
+(* module LTL : TranslateSIG = TranslateLTL *)
+(* module FOL : TranslateSIG = TranslateFOL*)
 

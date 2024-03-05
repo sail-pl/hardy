@@ -15,15 +15,15 @@
 )
 
 ; BASE + FOL
-(menhir
-  (modules tokens fol parser)
-  (merge_into fol_parser)
-  (flags
-    --external-tokens Tokens
-    --unused-tokens
-    --unused-precedence-levels
-  )
-)
+;(menhir
+;  (modules tokens fol parser)
+;  (merge_into fol_parser)
+;  (flags
+;    --external-tokens Tokens
+;    --unused-tokens
+;    --unused-precedence-levels
+;  )
+;)
 
 ; LTL
 (menhir

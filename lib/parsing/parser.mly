@@ -1,4 +1,5 @@
 %{
+    open ArduinoSyntax.Locations
     open ArduinoSyntax.Syntax
 %}
 
@@ -75,7 +76,7 @@ let fol :=
     | ~ = delimited(LSQBRACE,fol,RSQBRACE) ; <> // can't use () because fol includes expr 
 
 %public
-let braced_fol == f = braced(fol?) ; { Option.map (fun f -> FOL f) f }
+let braced_fol == f = braced(fol?) ; { f }
 
 %public 
 let common_logic_unary == 
