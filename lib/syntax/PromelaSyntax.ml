@@ -8,12 +8,11 @@ type bform =
   | Or of bform * bform
   | Not of bform
 
+type state = {pml_state : string}
 
-type state = string
+type transition = {pml_src : state; pml_form : bform; pml_dst : state}
 
-type transition = state * bform * state
-
-type neverclaim = state list * transition list
+type neverclaim = {pml_states : state list; pml_transitions : transition list}
 
 let string_of_bform (convert_atom: string -> string)  = 
   let rec aux = function

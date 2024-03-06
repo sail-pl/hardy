@@ -13,30 +13,17 @@ module DotG = A.BuchiDot(Buchi)
 module PG = A.BuchiProd(Buchi)(Atoms)
 module DotPG = A.BuchiDot(PG)
 
+open Ltl2ba
 
-let compute_automaton (f : string) (i : info) (output_file : string -> string) =
+(* Move options info and output file to ltl2ba *)
+(** {1 Build Bucchi Automaton from string formula } *)
+(** [compute_automaton f] builds a bucchi from the string formula [f] *)
+
+let compute_automaton (i : info) (output_file : string -> string) (f : string) : Buchi.t =
   (* ltl3ba presentation : https://pdfs.semanticscholar.org/6d7d/04f5255cccf22108468747037be889e3f535.pdf *)
-  let open BaParser.Parsing in
   let never_file = output_file ".never" in
-
-  let cmd =
-    Filename.quote_command i.ltl2baPath [ "-f"; f ] ~stdout:never_file
-      ~stderr:(never_file ^ ".err")
-  in
-
-  if i.verbose then Format.printf "ltl2ba command line : %s" cmd;
-
-  let ret =
-    Sys.command
-    @@ Filename.quote_command i.ltl2baPath [ "-f"; f ] ~stdout:never_file
-         ~stderr:(never_file ^ ".err")
-  in
-
-  if ret <> 0 then
-    failwith Format.(sprintf "non-0 exit-code (%i) from ltl2ba" ret);
-
-  let auto = parse_automaton never_file |> Buchi.create in
-
+  let () = generate_claim i never_file f 
+  in let auto = read_claim never_file |> Buchi.create in
   Out_channel.with_open_text (output_file ".dot") (fun o ->
       DotG.output_graph o auto);
   auto
@@ -61,7 +48,7 @@ let make_automaton info ((req, ens) : 'a option * 'a option) =
         (if info.verbose then
            let f_str_short = string_of_ltl_short f in
            Format.printf "\n %s formula : \n%s\n" name f_str_short);
-        compute_automaton f_str info (output_file name)
+        compute_automaton  info (output_file name) f_str
     | _ -> failwith "not a LTL formula"
   in
 

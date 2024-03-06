@@ -5,4 +5,5 @@
 
 (library
  (name baParser)
+ (public_name arduino.baParser)
  (libraries arduinoSyntax menhirLib))

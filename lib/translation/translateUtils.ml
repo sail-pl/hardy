@@ -12,14 +12,11 @@ open S
 module H = Ptree_helpers
 module P = Ptree
 
-type info = {
-  file : string;
-  ltl2baPath : string;
-  verbose : bool;
-  pltl_mode : bool;
-  outdir : string;
-}
+(** Parameters for calling ltl2ba *)
 
+
+
+(* Should be moved with the definition of bform ? *)
 let fol_of_bform (convert_atom : string -> expr fol) =
   let open AS in
   let rec aux = function
@@ -41,6 +38,8 @@ let fol_of_bform (convert_atom : string -> expr fol) =
 
   aux
 
+  (* ok in file utils *)
+(* Erase location to build a key *)
 let rec determ_exp (e : expr) : expr =
   let value =
     match e.value with

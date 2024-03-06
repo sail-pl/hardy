@@ -1,5 +1,6 @@
 (library
  (name arduinoParser)
+ (public_name arduino.parser)
  (libraries
   arduinoSyntax
   menhirLib

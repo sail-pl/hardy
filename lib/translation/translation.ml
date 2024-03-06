@@ -3,6 +3,7 @@ open ArduinoSyntax.Syntax
 (* open ArduinoSyntax.PromelaSyntax *)
 open TranslateLTL
 open TranslateUtils
+open Ltl2ba
 open Why3
 open Why3gen
 

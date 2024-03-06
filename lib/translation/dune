@@ -1,3 +1,4 @@
 (library
  (name arduinoTranslation)
+ (public_name arduino.translation)
  (libraries arduinoSyntax why3 arduinoParser ocamlgraph))

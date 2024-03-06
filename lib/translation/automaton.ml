@@ -51,13 +51,17 @@ struct
   let acceptant v = List.hd String.(split_on_char '_' v) = "accept"
   let is_start_node (v : V.t) = String.ends_with (V.label v) ~suffix:"init"
 
-  let create ((states, arcs) : AS.neverclaim) : t =
-    let g = create ~size:(List.length states) () in
+  let create (claim : AS.neverclaim) : t =
+    let open ArduinoSyntax.PromelaSyntax in
+    let g = create ~size:(List.length claim.pml_states) () in
     List.iter
-      (fun (s1, f, s2) ->
+    (fun tr ->
+      let e = E.create (V.create (tr.pml_src.pml_state)) tr.pml_form (V.create tr.pml_dst.pml_state) in
+      add_edge_e g e)
+(*      (fun (s1, f, s2) ->
         let e = E.create (V.create s1) f (V.create s2) in
-        add_edge_e g e)
-      arcs;
+        add_edge_e g e)*)
+      claim.pml_transitions;
     g
 
   let string_of_vertex v =

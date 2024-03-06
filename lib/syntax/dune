@@ -1,4 +1,4 @@
 (library
  (name arduinoSyntax)
- (public_name arduino)
+ (public_name arduino.syntax)
  (libraries zarith menhirLib))

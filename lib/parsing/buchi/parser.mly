@@ -17,11 +17,14 @@
 
 %%
 
-let automaton := NEVER; LBRACE ; states = state* ; RBRACE ; EOF ; { List.fold_left (fun (states,trans) (s,t) -> (s::states, t@trans)) ([],[]) states }
+let automaton := NEVER; LBRACE ; states = state* ; RBRACE ; EOF ; { 
+    let slist, tlist = List.fold_left (fun (states,trans) (s,t) -> ({pml_state=s}::states, t@trans)) ([],[]) states 
+    in {pml_states = slist; pml_transitions=tlist}
+    }
 
 let state := l = LABEL ; COLON ; IF ; tr = transition* ; FI ; SEMI ;  { l,List.map (fun t -> t l) tr}
 
-let transition := COLON ; COLON ; f = bform ; ARROW ; GOTO ; s2 = LABEL ; { fun s1 ->  (s1,f,s2) }
+let transition := COLON ; COLON ; f = bform ; ARROW ; GOTO ; s2 = LABEL ; { fun s1 ->  {pml_src={pml_state=s1};pml_form=f;pml_dst={pml_state=s2}} }
 
 let bform := 
     | ~ = ATOM ; <Atom>
