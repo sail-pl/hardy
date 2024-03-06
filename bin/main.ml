@@ -3,6 +3,7 @@ open ArduinoTranslation
 open Utils
 
 let () =
+
   let w3 = init_why3 () in
 
   let module Cli = Cli () in
@@ -10,7 +11,10 @@ let () =
 
   if not Sys.(file_exists info.outdir) then Sys.mkdir info.outdir 0o755;
 
-  let program = P.parse_file info.file |> Translation.translate_program info in
+
+  let program = 
+    P.parse_file info.file
+    |> Translation.translate_program info in
 
   let output_file =
     Filename.concat info.outdir @@ Filename.basename info.file ^ ".mlw"

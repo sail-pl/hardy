@@ -37,4 +37,4 @@ let prog_ensures == f = preceded(GUARANTEE, braced_ltl)? ; {Option.join f}
 %public
 let setup_ensures == f = preceded(ENSURES, braced_fol)? ; {Option.join f}
 
-let braced_ltl == f = braced(ltl?) ; { Option.map (fun f -> LTL f) f }
+let braced_ltl == f = braced(ltl?) ; { f }

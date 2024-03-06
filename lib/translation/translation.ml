@@ -1,16 +1,16 @@
-module A = Automaton
+(* module A = Automaton *)
 open ArduinoSyntax.Syntax
-(* open ArduinoSyntax.PromelaSyntax *)
-open TranslateLTL
+open Ltl2buchi
 open TranslateUtils
-open Ltl2ba
+open ArduinoExternals.Ltl2ba
+open Generation
 open Why3
 open Why3gen
 
 let translate_program (i : info) (p : program) : P.mlw_file =
   let uses = [ [ "int"; "Int" ]; [ "ref"; "Ref" ] ] in
 
-  let a = make_automaton i (p.prog_spec.requires, p.prog_spec.ensures) in
+  let a = product_automaton i p.prog_spec.requires p.prog_spec.ensures in
 
   let decls = generate_declarations p.prog_env in
 
@@ -23,7 +23,6 @@ let translate_program (i : info) (p : program) : P.mlw_file =
       (fun v l ->
         (let in_e = PG.pred_e a v in
          let out_e = PG.succ_e a v in
-
          (* provide init post-condition for first node *)
          let extra_req =
            Option.(
@@ -34,7 +33,6 @@ let translate_program (i : info) (p : program) : P.mlw_file =
          let specs =
            make_prod_spec p.prog_env.env_input in_e out_e extra_req |> to_spec
          in
-
          (* if two or more transition share the same input, but with different outputs,
              we naively generate one spec per involved transition *)
          List.mapi

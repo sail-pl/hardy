@@ -8,6 +8,7 @@ open Locations
 open Types
 open Operators
 open Fol
+open Ltl
 
 (* Expressions *)
 
@@ -24,33 +25,10 @@ and expression_ =
 
 
 
-(* LTL *)
 
-type ltl_unary =
-  | LTL_UArithm of common_logic_unary
-  | Next
-  | WeakNext
-  | Always
-  | Eventually
-
-type ltl_binary =
-  | LTL_BArithm of common_logic_binary
-  | Until
-  | WeakUntil
-  | Release
-  | StrongRelease
-
-type ltl = ltl_ locatable
-
-and ltl_ =
-  | LTL_True
-  | LTL_False
-  | LTL_Pred of expr fol
-  | LTL_Unary of ltl_unary * ltl
-  | LTL_Binary of ltl * ltl_binary * ltl
 
 (* PLTL *)
-
+(*
 type pltl_unary =
   | PLTL_UArithm of common_logic_unary
   | Once
@@ -67,14 +45,16 @@ and pltl_ =
   | PLTL_Pred of expr fol
   | PLTL_Unary of pltl_unary * pltl
   | PLTL_Binary of pltl * pltl_binary * pltl
-
+*)
 (* PROGRAM *)
 
-type formula = FOL of expr fol | PLTL of pltl | LTL of ltl
+(* type formula = FOL of expr fol | PLTL of pltl | LTL of ltl *)
 type invariant = expr fol
-type variant = expr
-type requires = formula
-type ensures = formula
+type variant = {var_expr : expr}
+
+type requires = expr fol ltl
+type ensures = expr fol ltl
+
 type 'a hoare_pair = { requires : 'a; ensures : 'a }
 
 type stmt = stmt_ locatable
@@ -96,7 +76,7 @@ type main = { main_invariant : invariant option; main_body : stmt list }
 
 type program = {
   prog_env : env;
-  prog_spec : formula option hoare_pair;
+  prog_spec : expr fol ltl option hoare_pair;
   prog_setup : setup option;
   prog_main : main;
 }

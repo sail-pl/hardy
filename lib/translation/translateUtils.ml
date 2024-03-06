@@ -6,15 +6,10 @@ module S = ArduinoSyntax.Syntax
 module AS = ArduinoSyntax.PromelaSyntax
 
 open ArduinoSyntax.Locations
-open ArduinoSyntax.Printer
 open Why3
 open S
 module H = Ptree_helpers
 module P = Ptree
-
-(** Parameters for calling ltl2ba *)
-
-
 
 (* Should be moved with the definition of bform ? *)
 let fol_of_bform (convert_atom : string -> expr fol) =
@@ -71,42 +66,3 @@ let rec determ_fol (f : expr fol) : expr fol =
   in
   { value; loc = None }
 
-module type AtomSig = sig
-  val get : string -> string * expr fol
-  val subst : string -> string
-  val add : expr fol -> string * string
-end
-
-module Atom () : AtomSig = struct
-  (* key is a hash of fol, value is a short name for fol + fol itself*)
-  let atomic_bindings : (int, string * expr fol) Hashtbl.t = Hashtbl.create 100
-  let cnt = ref 0
-
-  let get (s : string) =
-    let k = String.(sub s 2 (length s - 2) |> int_of_string) in
-    Hashtbl.find atomic_bindings k
-
-  let sub_atom_in_str f =
-    let open Str in
-    let r = regexp {|f_\([0-9]+\)|} in
-    global_substitute r (fun m -> matched_string m |> f)
-
-  let subst =
-    sub_atom_in_str (fun s ->
-        let _, inv = get s in
-        string_of_fol inv)
-
-  let add (f : expr fol) =
-    let label = Format.sprintf "f_%i" in
-
-    (* we must get the same atom if the formulas are syntactically equal*)
-    let key = Hashtbl.hash (determ_fol f) in
-
-    match Hashtbl.find_opt atomic_bindings key with
-    | None ->
-        let short_name = "F" ^ string_of_int !cnt in
-        Hashtbl.add atomic_bindings key (short_name, f);
-        incr cnt;
-        (short_name, label key)
-    | Some (sn, _) -> (sn, label key)
-end

@@ -3,6 +3,7 @@
     open ArduinoSyntax.Types
     open ArduinoSyntax.Operators
     open ArduinoSyntax.Fol
+    open ArduinoSyntax.Ltl
     open ArduinoSyntax.Syntax
 %}
 
@@ -26,7 +27,7 @@ let program :=
 
 let invariant := preceded(INVARIANT, braced(fol))
 
-let variant := preceded(VARIANT, braced(expr))
+let variant := v = preceded(VARIANT, braced(expr)); {{var_expr=v}}
 
 %public
 let braced(x) == delimited("{", x, "}")

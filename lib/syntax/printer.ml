@@ -2,6 +2,7 @@ open Locations
 open Types
 open Operators
 open Fol
+open Ltl
 open Syntax
 
 let string_of_ty = function Ty_Bool -> "bool" | Ty_Int -> "int"
@@ -76,7 +77,7 @@ let string_of_ltl_unop : ltl_unary -> string = function
   | LTL_UArithm Not -> "!"
   | WeakNext -> failwith "unsupported unop"
 
-let string_of_ltl (string_of_pred : expr fol -> string) : ltl -> string =
+let string_of_ltl (string_of_pred : expr fol -> string) : expr fol ltl -> string =
   let rec aux f =
     match f.value with
     | LTL_True -> "true"

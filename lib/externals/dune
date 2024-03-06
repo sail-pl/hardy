@@ -1,0 +1,4 @@
+(library
+ (name arduinoExternals)
+ (public_name arduino.externals)
+ (libraries arduinoSyntax why3 arduinoParser ocamlgraph))

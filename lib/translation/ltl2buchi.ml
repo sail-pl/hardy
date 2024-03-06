@@ -1,6 +1,65 @@
-module AS = ArduinoSyntax.PromelaSyntax
-module S = ArduinoSyntax.Syntax
+module L = Lexing
+(* module A = Automaton *)
+open Bucchi
+open TranslateUtils
+open ArduinoSyntax.Locations
+(* open ArduinoSyntax.Types *)
+open ArduinoSyntax.Fol
+open ArduinoSyntax.Ltl
+open ArduinoSyntax.Syntax
+open ArduinoSyntax.Printer
+open ArduinoSyntax.PromelaSyntax
+(* module Atoms = Atom()
+module Buchi = A.Buchi(Atoms)
+module DotG = A.BuchiDot(Buchi)
+module PG = A.BuchiProd(Buchi)(Atoms)
+module DotPG = A.BuchiDot(PG) *)
+open ArduinoExternals.Ltl2ba
 open Graph
+
+module type AtomSig = sig
+  val get : string -> string * expr fol
+  val subst : string -> string
+  val add : expr fol -> string * string
+end
+
+exception Atom_not_found of string
+
+module Atom () : AtomSig = struct
+  (* key is a hash of fol, value is a short name for fol + fol itself*)
+  let atomic_bindings : (int, string * expr fol) Hashtbl.t = Hashtbl.create 100
+  let cnt = ref 0
+
+  let get (s : string) =
+    let k = String.(sub s 2 (length s - 2) |> int_of_string) in
+    try 
+      Hashtbl.find atomic_bindings k
+  with Not_found -> raise (Atom_not_found s)
+
+  let sub_atom_in_str f =
+    let open Str in
+    let r = regexp {|f_\([0-9]+\)|} in
+    global_substitute r (fun m -> matched_string m |> f)
+
+  let subst =
+    sub_atom_in_str (fun s ->
+        let _, inv = get s in
+        string_of_fol inv)
+
+  let add (f : expr fol) =
+    let label = Format.sprintf "f_%i" in
+
+    (* we must get the same atom if the formulas are syntactically equal*)
+    let key = Hashtbl.hash (determ_fol f) in
+
+    match Hashtbl.find_opt atomic_bindings key with
+    | None ->
+        let short_name = "F" ^ string_of_int !cnt in
+        Hashtbl.add atomic_bindings key (short_name, f);
+        incr cnt;
+        (short_name, label key)
+    | Some (sn, _) -> (sn, label key)
+end
 
 module Vertex : Sig.COMPARABLE with type t = string = struct
   (* states are just labels *)
@@ -19,29 +78,7 @@ module Arc : Sig.ORDERED_TYPE_DFT with type t = AS.bform = struct
   let default = AS.True
 end
 
-(* to make the synchronised product of the rely and guarantee formula automaton,
-   we need to remember when merging arcs which formula is the precondition and which is the postcondition *)
-module PArc : Sig.ORDERED_TYPE_DFT with type t = AS.bform S.hoare_pair = struct
-  type t = AS.bform S.hoare_pair
-
-  let compare = Stdlib.compare
-  let default = S.{ requires = AS.True; ensures = AS.True }
-end
-
-module type BuchiSig = sig
-  include Graph.Sig.G
-
-  type init_val
-
-  val create : init_val -> t
-  val is_start_node : V.t -> bool
-  val acceptant : V.t -> bool
-  val string_of_vertex : V.label -> string
-  val id_of_vertex : V.label -> string
-  val string_of_edge : E.label -> string
-end
-
-module Buchi (Atoms : TranslateUtils.AtomSig) :
+module BuchiClaim (Atoms : AtomSig) :
   BuchiSig with type E.label = AS.bform and type init_val = AS.neverclaim =
 struct
   include Imperative.Digraph.ConcreteLabeled (Vertex) (Arc)
@@ -58,9 +95,6 @@ struct
     (fun tr ->
       let e = E.create (V.create (tr.pml_src.pml_state)) tr.pml_form (V.create tr.pml_dst.pml_state) in
       add_edge_e g e)
-(*      (fun (s1, f, s2) ->
-        let e = E.create (V.create s1) f (V.create s2) in
-        add_edge_e g e)*)
       claim.pml_transitions;
     g
 
@@ -75,11 +109,17 @@ struct
   let string_of_edge (f : AS.bform) = AS.string_of_bform Atoms.subst f
 end
 
-(* synchronized product is of type G -> G -> PG *)
+module PArc : Sig.ORDERED_TYPE_DFT with type t = AS.bform S.hoare_pair = struct
+  type t = AS.bform S.hoare_pair
+
+  let compare = Stdlib.compare
+  let default = S.{ requires = AS.True; ensures = AS.True }
+end
+
 
 module BuchiProd
     (G : BuchiSig with type E.label = AS.bform)
-    (Atoms : TranslateUtils.AtomSig) :
+    (Atoms : AtomSig) :
   BuchiSig with type init_val = G.t * G.t and type E.label = PArc.t = struct
   module MV =
     (* Util.DataV
@@ -165,20 +205,47 @@ module BuchiProd
       (e.ensures |> AS.string_of_bform Atoms.subst)
 end
 
-module BuchiDot (G : BuchiSig) = struct
-  include Graphviz.Dot (struct
-    include G
 
-    let default_vertex_attributes _ =
-      [ `Shape `Circle; `Fixedsize true; `Height 0.8; `Fontsize 10 ]
+module Atoms = Atom()
+module Buchi = BuchiClaim(Atoms)
+module DotG = BuchiDot(Buchi)
+module PG = BuchiProd(Buchi)(Atoms)
+module DotPG = BuchiDot(PG)
 
-    let default_edge_attributes _ = [ `Fontsize 10 ]
-    let get_subgraph _ = None
-    let graph_attributes _g = []
-    let vertex_name (v : vertex) = "\"" ^ string_of_vertex (V.label v) ^ "\""
-    let edge_attributes e = [ `Label (E.label e |> string_of_edge) ]
+(* Move options info and output file to ltl2ba *)
+(** {1 Build Bucchi Automaton from string formula } *)
 
-    let vertex_attributes v =
-      if acceptant v then [ `Shape `Doublecircle ] else []
-  end)
-end
+let string_of_ltl_full = string_of_ltl (fun p -> Atoms.add p |> snd)
+let string_of_ltl_short = string_of_ltl (fun p -> Atoms.add p |> fst)
+
+let bform_to_fol : bform -> expr fol = 
+  fol_of_bform (fun a -> Atoms.get a |> snd)
+
+
+(** [compute_automaton f] builds a bucchi from the string formula [f] 
+    where atomes are names *)
+let buchi_of_ltl (i : info) (name : string) (f : expr fol ltl) : Buchi.t = 
+  let output_file name ext = Filename.(concat i.outdir (name ^ ext)) in
+  let f_str = string_of_ltl_full f in
+    (if i.verbose then
+      let f_str_short = string_of_ltl_short f in
+        Format.printf "\n %s formula : \n%s\n" name f_str_short);
+        let never_file = output_file name ".never" in
+        let () = generate_claim i never_file f_str 
+        in let auto = read_claim never_file |> Buchi.create in
+        Out_channel.with_open_text (output_file name ".dot") (fun o ->
+            DotG.output_graph o auto);
+        auto
+      
+(** Builds the product automaton from two formulas *)
+  let product_automaton (i : info) (req : expr fol ltl option) (ens : expr fol ltl option) =
+    let output_file name ext = Filename.(concat i.outdir (name ^ ext)) in
+      let true_if_none = Option.value ~default:(mk_dummy_loc LTL_True) in
+      let rely_a = true_if_none req |> buchi_of_ltl i "rely" in
+      let guarantee_a =
+        true_if_none (ltl_conjunction req ens) |> buchi_of_ltl i "guarantee"
+      in let prod_a = PG.create (rely_a, guarantee_a) in
+        Out_channel.with_open_text (output_file "product" ".dot") 
+          (fun o -> DotPG.output_graph o prod_a);
+        prod_a
+

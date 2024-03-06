@@ -34,7 +34,7 @@
 
 ; PLTL
 
-(menhir
- (modules tokens pltl parser)
- (merge_into pltl_parser)
- (flags --external-tokens Tokens --unused-tokens --unused-precedence-levels))
+; (menhir
+;  (modules tokens pltl parser)
+;  (merge_into pltl_parser)
+;  (flags --external-tokens Tokens --unused-tokens --unused-precedence-levels))
