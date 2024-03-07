@@ -1,4 +1,5 @@
 (** Synopsis *)
+
 (** {0 Buchi automata } *)
 
 open Graph
@@ -37,4 +38,3 @@ module BuchiDot (G : BuchiSig) = struct
       if acceptant v then [ `Shape `Doublecircle ] else []
   end)
 end
-

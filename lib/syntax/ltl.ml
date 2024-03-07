@@ -17,8 +17,8 @@ type ltl_binary =
   | Release
   | StrongRelease
 
-
 type 'a ltl = 'a ltl_ locatable
+
 and 'a ltl_ =
   | LTL_True
   | LTL_False
@@ -26,11 +26,11 @@ and 'a ltl_ =
   | LTL_Unary of ltl_unary * 'a ltl
   | LTL_Binary of 'a ltl * ltl_binary * 'a ltl
 
-  (* Why to use the f1 location instead of a dummy location ? *)
+(* Why to use the f1 location instead of a dummy location ? *)
 
-  let ltl_conjunction f1 f2 =
-    match (f1, f2) with
-    | Some f1, Some f2 ->
-        Some { loc = f1.loc; value = LTL_Binary (f1, LTL_BArithm And, f2) }
-    | Some f, None | None, Some f -> Some f
-    | None, None -> None
+let ltl_conjunction f1 f2 =
+  match (f1, f2) with
+  | Some f1, Some f2 ->
+      Some { loc = f1.loc; value = LTL_Binary (f1, LTL_BArithm And, f2) }
+  | Some f, None | None, Some f -> Some f
+  | None, None -> None

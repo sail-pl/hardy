@@ -1,19 +1,22 @@
 module L = Lexing
+
 (* module A = Automaton *)
 open Bucchi
 open TranslateUtils
 open ArduinoSyntax.Locations
+
 (* open ArduinoSyntax.Types *)
 open ArduinoSyntax.Fol
 open ArduinoSyntax.Ltl
 open ArduinoSyntax.Syntax
 open ArduinoSyntax.Printer
 open ArduinoSyntax.PromelaSyntax
+
 (* module Atoms = Atom()
-module Buchi = A.Buchi(Atoms)
-module DotG = A.BuchiDot(Buchi)
-module PG = A.BuchiProd(Buchi)(Atoms)
-module DotPG = A.BuchiDot(PG) *)
+   module Buchi = A.Buchi(Atoms)
+   module DotG = A.BuchiDot(Buchi)
+   module PG = A.BuchiProd(Buchi)(Atoms)
+   module DotPG = A.BuchiDot(PG) *)
 open ArduinoExternals.Ltl2ba
 open Graph
 
@@ -32,9 +35,8 @@ module Atom () : AtomSig = struct
 
   let get (s : string) =
     let k = String.(sub s 2 (length s - 2) |> int_of_string) in
-    try 
-      Hashtbl.find atomic_bindings k
-  with Not_found -> raise (Atom_not_found s)
+    try Hashtbl.find atomic_bindings k
+    with Not_found -> raise (Atom_not_found s)
 
   let sub_atom_in_str f =
     let open Str in
@@ -92,9 +94,14 @@ struct
     let open ArduinoSyntax.PromelaSyntax in
     let g = create ~size:(List.length claim.pml_states) () in
     List.iter
-    (fun tr ->
-      let e = E.create (V.create (tr.pml_src.pml_state)) tr.pml_form (V.create tr.pml_dst.pml_state) in
-      add_edge_e g e)
+      (fun tr ->
+        let e =
+          E.create
+            (V.create tr.pml_src.pml_state)
+            tr.pml_form
+            (V.create tr.pml_dst.pml_state)
+        in
+        add_edge_e g e)
       claim.pml_transitions;
     g
 
@@ -116,10 +123,7 @@ module PArc : Sig.ORDERED_TYPE_DFT with type t = AS.bform S.hoare_pair = struct
   let default = S.{ requires = AS.True; ensures = AS.True }
 end
 
-
-module BuchiProd
-    (G : BuchiSig with type E.label = AS.bform)
-    (Atoms : AtomSig) :
+module BuchiProd (G : BuchiSig with type E.label = AS.bform) (Atoms : AtomSig) :
   BuchiSig with type init_val = G.t * G.t and type E.label = PArc.t = struct
   module MV =
     (* Util.DataV
@@ -205,12 +209,11 @@ module BuchiProd
       (e.ensures |> AS.string_of_bform Atoms.subst)
 end
 
-
-module Atoms = Atom()
-module Buchi = BuchiClaim(Atoms)
-module DotG = BuchiDot(Buchi)
-module PG = BuchiProd(Buchi)(Atoms)
-module DotPG = BuchiDot(PG)
+module Atoms = Atom ()
+module Buchi = BuchiClaim (Atoms)
+module DotG = BuchiDot (Buchi)
+module PG = BuchiProd (Buchi) (Atoms)
+module DotPG = BuchiDot (PG)
 
 (* Move options info and output file to ltl2ba *)
 (** {1 Build Bucchi Automaton from string formula } *)
@@ -218,34 +221,34 @@ module DotPG = BuchiDot(PG)
 let string_of_ltl_full = string_of_ltl (fun p -> Atoms.add p |> snd)
 let string_of_ltl_short = string_of_ltl (fun p -> Atoms.add p |> fst)
 
-let bform_to_fol : bform -> expr fol = 
+let bform_to_fol : bform -> expr fol =
   fol_of_bform (fun a -> Atoms.get a |> snd)
-
 
 (** [compute_automaton f] builds a bucchi from the string formula [f] 
     where atomes are names *)
-let buchi_of_ltl (i : info) (name : string) (f : expr fol ltl) : Buchi.t = 
+let buchi_of_ltl (i : info) (name : string) (f : expr fol ltl) : Buchi.t =
   let output_file name ext = Filename.(concat i.outdir (name ^ ext)) in
   let f_str = string_of_ltl_full f in
-    (if i.verbose then
-      let f_str_short = string_of_ltl_short f in
-        Format.printf "\n %s formula : \n%s\n" name f_str_short);
-        let never_file = output_file name ".never" in
-        let () = generate_claim i never_file f_str 
-        in let auto = read_claim never_file |> Buchi.create in
-        Out_channel.with_open_text (output_file name ".dot") (fun o ->
-            DotG.output_graph o auto);
-        auto
-      
-(** Builds the product automaton from two formulas *)
-  let product_automaton (i : info) (req : expr fol ltl option) (ens : expr fol ltl option) =
-    let output_file name ext = Filename.(concat i.outdir (name ^ ext)) in
-      let true_if_none = Option.value ~default:(mk_dummy_loc LTL_True) in
-      let rely_a = true_if_none req |> buchi_of_ltl i "rely" in
-      let guarantee_a =
-        true_if_none (ltl_conjunction req ens) |> buchi_of_ltl i "guarantee"
-      in let prod_a = PG.create (rely_a, guarantee_a) in
-        Out_channel.with_open_text (output_file "product" ".dot") 
-          (fun o -> DotPG.output_graph o prod_a);
-        prod_a
+  (if i.verbose then
+     let f_str_short = string_of_ltl_short f in
+     Format.printf "\n %s formula : \n%s\n" name f_str_short);
+  let never_file = output_file name ".never" in
+  let () = generate_claim i never_file f_str in
+  let auto = read_claim never_file |> Buchi.create in
+  Out_channel.with_open_text (output_file name ".dot") (fun o ->
+      DotG.output_graph o auto);
+  auto
 
+(** Builds the product automaton from two formulas *)
+let product_automaton (i : info) (req : expr fol ltl option)
+    (ens : expr fol ltl option) =
+  let output_file name ext = Filename.(concat i.outdir (name ^ ext)) in
+  let true_if_none = Option.value ~default:(mk_dummy_loc LTL_True) in
+  let rely_a = true_if_none req |> buchi_of_ltl i "rely" in
+  let guarantee_a =
+    true_if_none (ltl_conjunction req ens) |> buchi_of_ltl i "guarantee"
+  in
+  let prod_a = PG.create (rely_a, guarantee_a) in
+  Out_channel.with_open_text (output_file "product" ".dot") (fun o ->
+      DotPG.output_graph o prod_a);
+  prod_a

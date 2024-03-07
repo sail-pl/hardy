@@ -4,7 +4,6 @@ open ArduinoSyntax.Operators
 open ArduinoSyntax.Fol
 module S = ArduinoSyntax.Syntax
 module AS = ArduinoSyntax.PromelaSyntax
-
 open ArduinoSyntax.Locations
 open Why3
 open S
@@ -33,7 +32,7 @@ let fol_of_bform (convert_atom : string -> expr fol) =
 
   aux
 
-  (* ok in file utils *)
+(* ok in file utils *)
 (* Erase location to build a key *)
 let rec determ_exp (e : expr) : expr =
   let value =
@@ -65,4 +64,3 @@ let rec determ_fol (f : expr fol) : expr fol =
     | _ as x -> x
   in
   { value; loc = None }
-

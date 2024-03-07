@@ -23,10 +23,6 @@ and expression_ =
   | Read of string
   | BinOp of expr * arithm_binop * expr
 
-
-
-
-
 (* PLTL *)
 (*
 type pltl_unary =
@@ -50,11 +46,9 @@ and pltl_ =
 
 (* type formula = FOL of expr fol | PLTL of pltl | LTL of ltl *)
 type invariant = expr fol
-type variant = {var_expr : expr}
-
+type variant = { var_expr : expr }
 type requires = expr fol ltl
 type ensures = expr fol ltl
-
 type 'a hoare_pair = { requires : 'a; ensures : 'a }
 
 type stmt = stmt_ locatable

@@ -77,7 +77,8 @@ let string_of_ltl_unop : ltl_unary -> string = function
   | LTL_UArithm Not -> "!"
   | WeakNext -> failwith "unsupported unop"
 
-let string_of_ltl (string_of_pred : expr fol -> string) : expr fol ltl -> string =
+let string_of_ltl (string_of_pred : expr fol -> string) : expr fol ltl -> string
+    =
   let rec aux f =
     match f.value with
     | LTL_True -> "true"

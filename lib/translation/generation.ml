@@ -13,8 +13,6 @@ module M = Map.Make (struct
     String.compare (e1 |> string_of_bform Fun.id) (e2 |> string_of_bform Fun.id)
 end)
 
-
-
 (**   [make_prod_spec input in_e out_e init_post] 
       builds the list of [Ptree.spec] for a node of the product graph 
       - [input : (string * ty) list] inputs of the program  
@@ -28,7 +26,8 @@ end)
         and init is there if defined. 
       *)
 let make_prod_spec (input : (string * ty) list) (in_e : PG.E.t list)
-    (out_e : PG.E.t list) (init_post : expr fol option) : expr fol list hoare_pair list =
+    (out_e : PG.E.t list) (init_post : expr fol option) :
+    expr fol list hoare_pair list =
   assert (not (List.is_empty out_e));
   assert ((not (List.is_empty in_e)) || Option.is_some init_post);
 
@@ -59,7 +58,6 @@ let make_prod_spec (input : (string * ty) list) (in_e : PG.E.t list)
         in
         [ and_fol with_init (bform_to_fol k) ]
       and ensures =
-
         (* disjunction of exit-arc post-condition sharing the same pre-condition *)
         [
           List.fold_left (fun acc f -> or_fol acc (bform_to_fol f)) false_fol d;
