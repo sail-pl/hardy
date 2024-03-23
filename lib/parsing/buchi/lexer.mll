@@ -20,6 +20,7 @@ let digit = ['0'-'9']
 let lowercase = ['a' - 'z']
 let uppercase = ['A' - 'Z']
 let letter = (lowercase | uppercase)
+(* fixme: for our current usage, all states should be acceptant *)
 let label = "accept_" (letter|digit)+ 
 let atom = lowercase (lowercase|digit|'_')* 
 let newline = '\r' | '\n' | "\r\n"
