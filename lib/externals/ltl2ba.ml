@@ -1,5 +1,9 @@
 open ArduinoSyntax.PromelaSyntax
 open BaParser.Parsing
+open ArduinoSyntax
+open Syntax
+open Fol
+open Ltl
 
 (* Move to external tools *)
 (* put info as global variable *)
@@ -12,9 +16,27 @@ type info = {
   outdir : string;
 }
 
-let generate_claim (i : info) (never_file : string) (f : string) : unit =
-  let cmd = (* fixme: this actually requires using ltl3ba, this will need to be decoupled *)
-    Filename.quote_command i.ltl2baPath ["-x" ; "-f"; f ] ~stdout:never_file
+
+let spin_binop : ltl_binary -> string = function
+  | Until -> "U"
+  | Release -> "V"
+  | LTL_BArithm Arrow -> "->"
+  | LTL_BArithm Or -> "||"
+  | LTL_BArithm And -> "&&"
+  | LTL_BArithm Equiv -> "<->"
+  | _ -> failwith "unsupported bop"
+
+let spin_unop : ltl_unary -> string = function
+  | Next -> "X"
+  | Always -> "[]"
+  | Eventually -> "<>"
+  | LTL_UArithm Not -> "!"
+  | WeakNext -> failwith "unsupported unop"
+
+let generate_claim (i : info) (never_file : string) (f : expr fol ltl) (module A: AtomSig): unit =
+  let to_spin = Printer.string_of_ltl (fun p -> A.add_or_get p |> snd) spin_binop spin_unop in
+  let cmd =
+    Filename.quote_command i.ltl2baPath ["-f"; to_spin f ] ~stdout:never_file
       ~stderr:(never_file ^ ".err")
   in
   if i.verbose then Format.printf "ltl2ba command line : %s" cmd;

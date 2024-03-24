@@ -1,34 +1,21 @@
 module L = Lexing
 
-(* module A = Automaton *)
 open Bucchi
 open TranslateUtils
 open ArduinoSyntax.Locations
 
-(* open ArduinoSyntax.Types *)
 open ArduinoSyntax.Fol
 open ArduinoSyntax.Ltl
 open ArduinoSyntax.Syntax
 open ArduinoSyntax.Printer
 open ArduinoSyntax.PromelaSyntax
 
-(* module Atoms = Atom()
-   module Buchi = A.Buchi(Atoms)
-   module DotG = A.BuchiDot(Buchi)
-   module PG = A.BuchiProd(Buchi)(Atoms)
-   module DotPG = A.BuchiDot(PG) *)
 open ArduinoExternals.Ltl2ba
 open Graph
 
-module type AtomSig = sig
-  val get : string -> string * expr fol
-  val subst : string -> string
-  val add : expr fol -> string * string
-end
-
-exception Atom_not_found of string
-
 module Atom () : AtomSig = struct
+  exception Atom_not_found of string
+
   (* key is a hash of fol, value is a short name for fol + fol itself*)
   let atomic_bindings : (int, string * expr fol) Hashtbl.t = Hashtbl.create 100
   let cnt = ref 0
@@ -48,7 +35,7 @@ module Atom () : AtomSig = struct
         let _, inv = get s in
         string_of_fol inv)
 
-  let add (f : expr fol) =
+  let add_or_get (f : expr fol) =
     let label = Format.sprintf "f_%i" in
 
     (* we must get the same atom if the formulas are syntactically equal*)
@@ -218,8 +205,15 @@ module DotPG = BuchiDot (PG)
 (* Move options info and output file to ltl2ba *)
 (** {1 Build Bucchi Automaton from string formula } *)
 
-let string_of_ltl_full = string_of_ltl (fun p -> Atoms.add p |> snd)
-let string_of_ltl_short = string_of_ltl (fun p -> Atoms.add p |> fst)
+let string_of_ltl_full =
+  string_of_ltl
+    (fun p -> Atoms.add_or_get p |> snd)
+    string_of_ltl_binop string_of_ltl_unop
+
+let string_of_ltl_short =
+  string_of_ltl
+    (fun p -> Atoms.add_or_get p |> fst)
+    string_of_ltl_binop string_of_ltl_unop
 
 let bform_to_fol : bform -> expr fol =
   fol_of_bform (fun a -> Atoms.get a |> snd)
@@ -227,13 +221,12 @@ let bform_to_fol : bform -> expr fol =
 (** [compute_automaton f] builds a bucchi from the string formula [f] 
     where atomes are names *)
 let buchi_of_ltl (i : info) (name : string) (f : expr fol ltl) : Buchi.t =
-  let output_file name ext = Filename.(concat i.outdir (name ^ ext)) in
-  let f_str = string_of_ltl_full f in
   (if i.verbose then
      let f_str_short = string_of_ltl_short f in
      Format.printf "\n %s formula : \n%s\n" name f_str_short);
+  let output_file name ext = Filename.(concat i.outdir (name ^ ext)) in
   let never_file = output_file name ".never" in
-  let () = generate_claim i never_file f_str in
+  let () = generate_claim i never_file f (module Atoms) in
   let auto = read_claim never_file |> Buchi.create in
   Out_channel.with_open_text (output_file name ".dot") (fun o ->
       DotG.output_graph o auto);

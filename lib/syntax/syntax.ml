@@ -74,3 +74,11 @@ type program = {
   prog_setup : setup option;
   prog_main : main;
 }
+
+module type AtomSig = sig
+  val get : string -> string * expr fol
+  val subst : string -> string
+  val add_or_get : expr fol -> string * string
+
+  exception Atom_not_found of string
+end
