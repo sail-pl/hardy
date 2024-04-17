@@ -44,21 +44,19 @@ Section Automata.
     Definition reachable (atm : automaton) (n : node) : Prop :=
         reachable_from atm (init atm) n.
 
-    (** Given a type [alph] and a predicate [belongs : label -> alph -> Prop], a finite word 
-        w (a list) of elements of type [alph] is valid for a path p if w and p have the same length
+    (** Given a type [Σ] and a predicate [belongs : label -> Σ -> Prop], a finite word 
+        w (a list) of elements of type [Σ] is valid for a path p if w and p have the same length
         and [belongs lbl a] for each lbl and a occuring at the same position in p and w
         respectively. *)
 
-    Variable alph : Type.
-    Variable belongs : label -> alph -> Prop.
+    Variable Σ : Type.
+    Variable belongs : label -> Σ -> Prop.
 
-    Inductive valid : list label -> list alph ->  Prop :=
+    Inductive valid : list label -> list Σ ->  Prop :=
         | valid_nil : valid nil nil
         | valid_cons : forall a w lbl lbls,
             valid lbls w -> belongs lbl a ->
             valid (cons lbl lbls) (cons a w).
-
-    Definition sat {A} := fun (p : A -> Prop) (x : A) => p x.
 
     Lemma valid_prefix_closed : forall lbl a l m,
         valid (cons lbl l) (cons a m) -> valid l m.
@@ -69,7 +67,7 @@ Section Automata.
     (** A word w is in the language of the automaton [atm] if there exists 
         a path p such that w is valid with respect to p. *)
 
-    Definition language (atm : automaton) : list alph -> Prop :=
+    Definition language (atm : automaton) : list Σ -> Prop :=
         fun w =>
             exists p, path atm (init atm) p /\ 
                 valid (List.map fst p) w.
@@ -78,26 +76,26 @@ Section Automata.
     (** For technical purpose, we consider an alternative definition of the
         language of automaton in which the path appears as a witness. *)
 
-    Definition language_w (atm : automaton) : list (label * node) -> list alph -> Prop :=
+    Definition language_wit (atm : automaton) : list (label * node) -> list Σ -> Prop :=
         fun p w =>
             path atm (init atm) p /\ 
                 valid (List.map fst p) w.
             
 
-    Lemma language_empty : forall (atm : automaton), language_w atm nil nil.
+    Lemma language_empty : forall (atm : automaton), language_wit atm nil nil.
     Proof.
         split; constructor.
     Qed.
 
     Lemma language_w_nil : forall (aut : automaton) p,
-    language_w aut p nil -> p = nil.
+    language_wit aut p nil -> p = nil.
     Proof.
         intros aut p H.
         destruct H as [_ H_valid].
         destruct p; [reflexivity| inversion H_valid].
     Qed.
 
-    Lemma language_prefix_closed : forall aut h p a l, language_w aut (h::p) (a::l) -> language_w aut p l.
+    Lemma language_prefix_closed : forall aut h p a l, language_wit aut (h::p) (a::l) -> language_wit aut p l.
     Proof.
         intros aut h p a w [H_path H_valid].
         split.
@@ -110,9 +108,9 @@ End Automata.
 Arguments init [node label].
 Arguments transition [node label].
 Arguments path [node label].
-Arguments valid [label alph].
-Arguments language_w [node label alph].
-Arguments language [node label alph].
+Arguments valid [label Σ].
+Arguments language_wit [node label Σ].
+Arguments language [node label Σ].
 Arguments reachable_from [node label].
 Arguments reachable [node label].
 

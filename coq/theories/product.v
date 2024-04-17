@@ -1,10 +1,9 @@
-From Hardy Require Import automaton.
+From Hardy Require Import automaton util.
 Require Import List.
-
 Section Product.
 
     (** Given two automata [atm1 : automaton node1 label1] and 
-        [atm2 : automaton node2 label2], we defined their synchronized
+        [atm2 : automaton node2 label2], we define their synchronized
         product as an automaton of type [automaton (node1*node2) (label1*label2)] *)
 
     Variable node1 node2 : Type.
@@ -16,14 +15,18 @@ Section Product.
     Definition product : automaton (node1 * node2) (label1 * label2) :=
     {|
         init := (init atm1, init atm2);
+
+        (** a valid transition of the product automaton ist just a merge 
+            of a valid transition in the first automaton and in the second
+        *)
         transition n l m :=
             transition atm1 (fst n) (fst l) (fst m) /\
             transition atm2 (snd n) (snd l) (snd m)
     |}.        
 
-    (** We also define two projections other paths of the product automaton
+    (** We also define two projections over paths of the product automaton
         and state a few results relating paths in the product automaton 
-        and their counterpart in the original automata *)
+        to their counterpart in the original automata *)
 
     Definition left_proj :
         list ((label1 * label2) * (node1 * node2)) -> list (label1 * node1) :=
@@ -32,6 +35,10 @@ Section Product.
     Definition right_proj :
         list ((label1 * label2) * (node1 * node2)) -> list (label2 * node2) :=
             map (fun x => (snd (fst x), snd (snd x))).
+
+
+    Definition merge : list (label1 * node1) -> list (label2 * node2) -> list ((label1 * label2) * (node1 * node2)) :=
+        map2 (fun x y => ((fst x, fst y),(snd x, snd y))).
 
     Lemma temp0 : forall io_p,
         map snd (map fst io_p) = map fst (right_proj io_p).
@@ -106,10 +113,10 @@ Section Product.
 
     Section valid_proj.
 
-        Variable alph2 alph3 : Type.
-        Variable sat_product : (label1 * label2) -> alph3 -> Prop.
-        Variable sat : label2 -> alph2 -> Prop.
-        Variable transf : alph3 -> alph2.
+        Variable Σ2 Σ3 : Type.
+        Variable sat_product : (label1 * label2) -> Σ3 -> Prop.
+        Variable sat : label2 -> Σ2 -> Prop.
+        Variable transf : Σ3 -> Σ2.
         Variable H : forall a b, sat_product a b -> sat (snd a) (transf b).
 
         Lemma valid_right_proj : 
@@ -145,3 +152,4 @@ End Product.
 Arguments product [node1 node2 label1 label2].
 Arguments left_proj [node1 node2 label1 label2].
 Arguments right_proj [node1 node2 label1 label2].
+Arguments merge [node1 node2 label1 label2].
