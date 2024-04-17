@@ -1,6 +1,6 @@
 (lang dune 3.11)
-
-(name arduino)
+(using coq 0.8)
+(name hardy)
 
 (using menhir 2.1)
 
@@ -18,7 +18,7 @@
 ; (documentation https://url/to/documentation)
 
 (package
-  (name arduino)
+  (name hardy)
    (synopsis "A short synopsis")
    (description "A longer description")
   (depends 

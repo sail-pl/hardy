@@ -1,5 +1,5 @@
-module P = ArduinoParser.Parsing
-open ArduinoTranslation
+module P = HardyParser.Parsing
+open HardyTranslation
 open Utils
 
 let () =

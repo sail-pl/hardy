@@ -2,7 +2,7 @@ open Why3
 
 type w3 = { config : Whyconf.config; main : Whyconf.main; env : Env.env }
 
-module T = ArduinoExternals.Ltl2ba
+module T = HardyExternals.Ltl2ba
 
 let init_why3 () : w3 =
   let open Whyconf in

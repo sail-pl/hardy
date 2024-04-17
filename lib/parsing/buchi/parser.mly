@@ -1,5 +1,5 @@
 %{
-    open ArduinoSyntax.PromelaSyntax
+    open HardySyntax.PromelaSyntax
 %}
 
 %token<string> ATOM 

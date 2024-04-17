@@ -1,8 +1,8 @@
-open ArduinoSyntax.Locations
-open ArduinoSyntax.Types
-open ArduinoSyntax.Fol
-open ArduinoSyntax.Syntax
-open ArduinoSyntax.Printer
+open HardySyntax.Locations
+open HardySyntax.Types
+open HardySyntax.Fol
+open HardySyntax.Syntax
+open HardySyntax.Printer
 open Why3
 
 let get_loc loc =

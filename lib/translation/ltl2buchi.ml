@@ -2,15 +2,15 @@ module L = Lexing
 
 open Bucchi
 open TranslateUtils
-open ArduinoSyntax.Locations
+open HardySyntax.Locations
 
-open ArduinoSyntax.Fol
-open ArduinoSyntax.Ltl
-open ArduinoSyntax.Syntax
-open ArduinoSyntax.Printer
-open ArduinoSyntax.PromelaSyntax
+open HardySyntax.Fol
+open HardySyntax.Ltl
+open HardySyntax.Syntax
+open HardySyntax.Printer
+open HardySyntax.PromelaSyntax
 
-open ArduinoExternals.Ltl2ba
+open HardyExternals.Ltl2ba
 open Graph
 
 module Atom () : AtomSig = struct
@@ -78,7 +78,7 @@ struct
   let is_start_node (v : V.t) = String.ends_with (V.label v) ~suffix:"init"
 
   let create (claim : AS.neverclaim) : t =
-    let open ArduinoSyntax.PromelaSyntax in
+    let open HardySyntax.PromelaSyntax in
     let g = create ~size:(List.length claim.pml_states) () in
     List.iter
       (fun tr ->

@@ -5,5 +5,5 @@
 
 (library
  (name baParser)
- (public_name arduino.baParser)
- (libraries arduinoSyntax menhirLib))
+ (public_name hardy.baParser)
+ (libraries hardySyntax menhirLib))

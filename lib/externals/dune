@@ -1,4 +1,4 @@
 (library
- (name arduinoExternals)
- (public_name arduino.externals)
- (libraries arduinoSyntax why3 arduinoParser ocamlgraph))
+ (name hardyExternals)
+ (public_name hardy.externals)
+ (libraries hardySyntax why3 hardyParser ocamlgraph))

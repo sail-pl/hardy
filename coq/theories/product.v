@@ -1,4 +1,4 @@
-Require Import automata.automaton.
+From Hardy Require Import automaton.
 Require Import List.
 
 Section Product.

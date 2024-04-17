@@ -1,10 +1,10 @@
 %{
-    open ArduinoSyntax.Locations
-    open ArduinoSyntax.Types
-    open ArduinoSyntax.Operators
-    open ArduinoSyntax.Fol
-    open ArduinoSyntax.Ltl
-    open ArduinoSyntax.Syntax
+    open HardySyntax.Locations
+    open HardySyntax.Types
+    open HardySyntax.Operators
+    open HardySyntax.Fol
+    open HardySyntax.Ltl
+    open HardySyntax.Syntax
 %}
 
 

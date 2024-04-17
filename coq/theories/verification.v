@@ -1,7 +1,5 @@
-Require Import automata.automaton.
-Require Import automata.product.
-Require Import automata.util.
 Require Import List.
+From Hardy Require Import automaton product util.
 
 Module Type Verif_Domain.
 

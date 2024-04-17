@@ -1,8 +1,8 @@
 (* module A = Automaton *)
-open ArduinoSyntax.Syntax
+open HardySyntax.Syntax
 open Ltl2buchi
 open TranslateUtils
-open ArduinoExternals.Ltl2ba
+open HardyExternals.Ltl2ba
 open Generation
 open Why3
 open Why3gen

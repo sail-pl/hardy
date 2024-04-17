@@ -1,6 +1,6 @@
-open ArduinoSyntax.PromelaSyntax
+open HardySyntax.PromelaSyntax
 open BaParser.Parsing
-open ArduinoSyntax
+open HardySyntax
 open Syntax
 open Fol
 open Ltl

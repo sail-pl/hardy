@@ -1,8 +1,8 @@
 (library
- (name arduinoParser)
- (public_name arduino.parser)
+ (name hardyParser)
+ (public_name hardy.parser)
  (libraries
-  arduinoSyntax
+  hardySyntax
   menhirLib
   (re_export baParser)))
 

@@ -1,10 +1,10 @@
-(* open ArduinoSyntax.Locations *)
-(* open ArduinoSyntax.Types *)
-open ArduinoSyntax.Operators
-open ArduinoSyntax.Fol
-module S = ArduinoSyntax.Syntax
-module AS = ArduinoSyntax.PromelaSyntax
-open ArduinoSyntax.Locations
+(* open HardySyntax.Locations *)
+(* open HardySyntax.Types *)
+open HardySyntax.Operators
+open HardySyntax.Fol
+module S = HardySyntax.Syntax
+module AS = HardySyntax.PromelaSyntax
+open HardySyntax.Locations
 open Why3
 open S
 module H = Ptree_helpers

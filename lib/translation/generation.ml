@@ -1,7 +1,7 @@
-open ArduinoSyntax.Types
-open ArduinoSyntax.Fol
-open ArduinoSyntax.Syntax
-open ArduinoSyntax.PromelaSyntax
+open HardySyntax.Types
+open HardySyntax.Fol
+open HardySyntax.Syntax
+open HardySyntax.PromelaSyntax
 open TranslateUtils
 open Ltl2buchi
 
