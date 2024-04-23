@@ -35,20 +35,6 @@ Section Product.
     Definition right_proj :
         list ((label1 * label2) * (node1 * node2)) -> list (label2 * node2) :=
             map (fun x => (snd (fst x), snd (snd x))).
-
-
-    Definition merge : list (label1 * node1) -> list (label2 * node2) -> list ((label1 * label2) * (node1 * node2)) :=
-        map2 (fun x y => ((fst x, fst y),(snd x, snd y))).
-
-    Lemma temp0 : forall io_p,
-        map snd (map fst io_p) = map fst (right_proj io_p).
-    Proof.
-        induction io_p.
-        reflexivity.
-        simpl.
-        f_equal.
-        apply IHio_p.
-    Qed.
     
 
     Lemma path_left_proj : 
@@ -123,33 +109,15 @@ Section Product.
             forall tr p, valid sat_product p tr -> 
                 valid sat (List.map snd p) (List.map transf tr).
         Proof.
-            induction tr.
-            -   intros p H_valid.
-                destruct p.
-                +   simpl.
-                    constructor.
-                +   inversion H_valid.
-            -   intros p H_valid.
-                destruct p.
-                +   inversion H_valid.
-                +   inversion H_valid.
-                    subst.
-                    apply IHtr in H3.
-                    constructor.
-                    apply H3.
-                    apply H.
-                    apply H5.
+            induction tr as [|a tr IHtr]; 
+                intros [|p] H_valid; inversion H_valid as [|? ? ? ? Hvsp Hsp]; subst; simpl.
+            -   constructor. 
+            -   apply IHtr in Hvsp. specialize (H _ _ Hsp). constructor ; assumption.
         Qed.
 
     End valid_proj.
-
-    Definition sat_product {A B} := 
-        fun (p : (A -> Prop) * ((A* B) -> Prop)) (x : A * B) => 
-            ((fst p) (fst x) /\ (snd p) x).
-
 End Product.
 
 Arguments product [node1 node2 label1 label2].
 Arguments left_proj [node1 node2 label1 label2].
 Arguments right_proj [node1 node2 label1 label2].
-Arguments merge [node1 node2 label1 label2].
