@@ -24,10 +24,11 @@ let translate_program (i : info) (p : program) : P.mlw_file =
         (let in_e = PG.pred_e a v in
          let out_e = PG.succ_e a v in
          (* provide init post-condition for first node *)
-         let extra_req =
-           Option.(
-             bind p.prog_setup @@ fun x ->
-             if PG.is_start_node v then x.setup_ensures else None)
+         let extra_req = 
+          if not @@ PG.is_start_node v then None 
+          else let open Option in 
+            let s  = bind p.prog_setup (fun x -> x.setup_ensures) in
+            fold s ~none:(Some HardySyntax.Fol.true_fol) ~some:some
          in
 
          let specs =

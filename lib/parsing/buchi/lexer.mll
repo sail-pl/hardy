@@ -31,7 +31,7 @@ rule tokenize = parse
     | "/*"                     {ignore_comment lexbuf}
     | "never"                 { NEVER }
     | '1'                      { TRUE } 
-    | '1'                      { FALSE } 
+    | '0'                      { FALSE } 
     | "&&"                     { AND }
     | "||"                     { OR }
     | "->"                     { ARROW }
@@ -46,6 +46,7 @@ rule tokenize = parse
     | ";"                     { SEMI }
     | ";"                     { SEMI }
     | ":"                     { COLON }
+    | "skip"                  { SKIP }
     | label as lbl             { LABEL (lbl) }
     | atom as atm             { ATOM (atm) }
     | newline                 { next_line lexbuf; tokenize lexbuf }

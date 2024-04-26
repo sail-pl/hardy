@@ -6,7 +6,7 @@
 %token<string> LABEL
 %token TRUE FALSE
 %token LBRACE RBRACE
-%token NEVER AND OR ARROW GOTO  NOT IF  FI LPAREN RPAREN SEMI COLON  
+%token NEVER AND OR ARROW GOTO  NOT IF  FI LPAREN RPAREN SEMI COLON SKIP
 %token EOF
 
 %left OR
@@ -22,7 +22,12 @@ let automaton := NEVER; LBRACE ; states = state* ; RBRACE ; EOF ; {
     in {pml_states = slist; pml_transitions=tlist}
     }
 
-let state := l = LABEL ; COLON ; IF ; tr = transition* ; FI ; SEMI ;  { l,List.map (fun t -> t l) tr}
+let state := l = LABEL ; COLON ; 
+    content = midrule(
+        (* SKIP is used when the last state accepts everything, so we have a transition labeled true to itself *)
+        | SKIP ; {fun l -> (l, [{pml_src={pml_state=l};pml_form=True;pml_dst={pml_state=l}}])}
+        | IF ; tr = transition* ; FI ; SEMI ; { fun l -> (l,List.map (fun t -> t l) tr)} 
+    ); {content l}
 
 let transition := COLON ; COLON ; f = bform ; ARROW ; GOTO ; s2 = LABEL ; { fun s1 ->  {pml_src={pml_state=s1};pml_form=f;pml_dst={pml_state=s2}} }
 
