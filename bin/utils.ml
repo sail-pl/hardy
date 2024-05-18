@@ -32,6 +32,7 @@ functor
     let input_file = ref ""
     let pltl_mode = ref false
     let verbose = ref false
+    let no_i_a_conj = ref false
     let ltl2baPath = ref ""
     let cwd = Sys.getcwd ()
 
@@ -42,6 +43,9 @@ functor
     let speclist =
       [
         ("-v", Set verbose, "debug output");
+        ( "-noiaconj",
+          Set no_i_a_conj,
+          "do not add the rely the formula to the guarantee one" );
         ("-ltl2ba", String parseLtl2baPath, "set ltl2ba program path");
       ]
 
@@ -66,6 +70,7 @@ functor
         pltl_mode = !pltl_mode;
         verbose = !verbose;
         outdir = output_path;
+        no_i_a_conj = !no_i_a_conj;
       }
   end
 

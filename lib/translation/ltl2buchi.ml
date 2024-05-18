@@ -1,15 +1,12 @@
 module L = Lexing
-
 open Bucchi
 open TranslateUtils
 open HardySyntax.Locations
-
 open HardySyntax.Fol
 open HardySyntax.Ltl
 open HardySyntax.Syntax
 open HardySyntax.Printer
 open HardySyntax.PromelaSyntax
-
 open HardyExternals.Ltl2ba
 open Graph
 
@@ -239,6 +236,12 @@ let product_automaton (i : info) (req : expr fol ltl option)
   let true_if_none = Option.value ~default:(mk_dummy_loc LTL_True) in
   let rely_a = true_if_none req |> buchi_of_ltl i "rely" in
   let guarantee_a =
+    (* because the input is read-only, any predicate on input is
+        obviously still true at the end of the instant.
+        It is added to the guarantee formula to potentialy simplify
+        the product automaton.
+    *)
+    let req = if i.no_i_a_conj then None else req in
     true_if_none (ltl_conjunction req ens) |> buchi_of_ltl i "guarantee"
   in
   let prod_a = PG.create (rely_a, guarantee_a) in

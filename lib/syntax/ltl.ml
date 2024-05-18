@@ -26,7 +26,6 @@ and 'a ltl_ =
   | LTL_Unary of ltl_unary * 'a ltl
   | LTL_Binary of 'a ltl * ltl_binary * 'a ltl
 
-
 let ltl_conjunction f1 f2 =
   match (f1, f2) with
   | Some f1, Some f2 ->

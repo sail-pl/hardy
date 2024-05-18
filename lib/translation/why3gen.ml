@@ -19,7 +19,7 @@ let add_binding (v, ty) (cat : id_cat) =
     failwith @@ Format.sprintf "variable %s already declared" v
   else Hashtbl.add bindings v (cat, ty)
 
-let get_binding_type v = Hashtbl.find bindings v
+let get_binding_type v = Hashtbl.find_opt bindings v
 let unit_val = Why3.Ptree.Etuple []
 
 let translate_binop op =
@@ -34,11 +34,12 @@ let rec translate_expression ({ value = e; loc } : expr) : Ptree.expr =
   (* | Old _ -> Loc.(error ~loc @@ Message "Old only allowed inside formulas") *)
   | Var s -> (
       match get_binding_type s with
-      | Input, _ -> Ptree_helpers.([ s ] |> qualid |> evar)
-      | Var, _ | Output, _ ->
+      | Some (Input, _) -> Ptree_helpers.([ s ] |> qualid |> evar)
+      | Some (Var, _) | Some (Output, _) ->
           let deref = Ptree_helpers.qualid [ Ident.op_prefix "!" ] in
           Ptree_helpers.eapp ~loc deref
-            Ptree_helpers.[ [ s ] |> qualid |> evar ])
+            Ptree_helpers.[ [ s ] |> qualid |> evar ]
+      | None -> failwith @@ "no why3 binding for variable '" ^ s ^ "'")
   | Read s ->
       Ptree.Easref (Ptree_helpers.qualid [ s ]) |> Ptree_helpers.expr ~loc
   | BinOp (e1, binop, e2) ->
@@ -54,11 +55,12 @@ let rec translate_term (e : expr) : Ptree.term =
   (* | Old s -> 	H.term ~loc H.(Tat (translate_term {value=Var s;loc=e.loc},ident ~loc Dexpr.old_label)) *)
   | Var s -> (
       match get_binding_type s with
-      | Input, _ -> Ptree_helpers.([ s ] |> qualid |> tvar)
-      | Var, _ | Output, _ ->
+      | Some (Input, _) -> Ptree_helpers.([ s ] |> qualid |> tvar)
+      | Some (Var, _) | Some (Output, _) ->
           let deref = Ptree_helpers.qualid [ Ident.op_prefix "!" ] in
           Ptree_helpers.tapp ~loc deref
-            Ptree_helpers.[ [ s ] |> qualid |> tvar ])
+            Ptree_helpers.[ [ s ] |> qualid |> tvar ]
+      | None -> failwith @@ "no why3 binding '" ^ s ^ "'")
   | Read s ->
       Ptree.Tasref (Ptree_helpers.qualid [ s ]) |> Ptree_helpers.term ~loc
   | BinOp (e1, binop, e2) ->

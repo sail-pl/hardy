@@ -34,13 +34,16 @@ let braced(x) == delimited("{", x, "}")
 
 let declaration := env_input=input ; env_output=output ; env_variables=var ; {{env_input;env_output;env_variables}}
 
-let var := delimited(VAR, typed_id*, ";")
 
-let input := delimited(INPUT, typed_id*, ";")
+let vdecl(KIND) == v = delimited(KIND, typed_id*, ";"); {List.flatten v}
 
-let output := delimited(OUTPUT, typed_id*, ";")
+let var == vdecl(VAR)
 
-let typed_id == ~ = ID; COLON ; ~ = ty ; <>
+let input == vdecl(INPUT)
+
+let output == vdecl(OUTPUT)
+
+let typed_id := ids = ID+ ; COLON ; t = ty ; {List.map (fun id -> id,t) ids}
 
 let ty :=
     | TY_BOOL ; { Ty_Bool }
@@ -74,8 +77,8 @@ let fol :=
         | ~ = expr ; <Pred>
         | ~ = common_logic_unary ; ~ = fol ; <FOL_Unary>
         | f1 = fol ; op = common_logic_binary ; f2 = fol ; {FOL_Binary (f1,op,f2)}
-        | FORALL ; ~ = typed_id+ ; COMMA ; ~ = fol ; <Forall>
-        | EXISTS ; ~ = typed_id+ ; COMMA ; ~ = fol ; <Exists>
+        | FORALL ; vars = typed_id+ ; COMMA ; f = fol ; {Forall (List.flatten vars, f)}
+        | EXISTS ; vars = typed_id+ ; COMMA ; f = fol ; {Exists (List.flatten vars , f)}
     )
     | ~ = delimited(LSQBRACE,fol,RSQBRACE) ; <> // can't use () because fol includes expr 
 

@@ -1,3 +1,2 @@
-(coq.theory 
-(name Hardy)
-)
+(coq.theory
+ (name Hardy))
