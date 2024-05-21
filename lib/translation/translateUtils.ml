@@ -64,3 +64,12 @@ let rec determ_fol (f : expr fol) : expr fol =
     | _ as x -> x
   in
   { value; loc = None }
+
+(**
+  [fold_mjoin f j init]  
+*)
+let fold_mjoin m j init = function
+  | [] -> init
+  | h :: [] -> m h
+  | h1 :: h2 :: t ->
+      List.fold_left (fun acc e -> j (m e) acc) (j (m h1) (m h2)) t

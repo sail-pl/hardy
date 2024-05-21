@@ -1,9 +1,11 @@
-open HardySyntax.Types
-open HardySyntax.Fol
-open HardySyntax.Syntax
-open HardySyntax.PromelaSyntax
+open HardySyntax
+open Types
+open Fol
+open Syntax
+open PromelaSyntax
 open TranslateUtils
 open Ltl2buchi
+open Locations
 
 (* create a map binding the exit-arc rely formula to all its guarantee ones *)
 module M = Map.Make (struct
@@ -44,24 +46,33 @@ let make_prod_spec (input : (string * ty) list) (in_e : PG.E.t list)
   M.fold
     (fun (k : bform) (d : bform list) s ->
       let requires =
-        let exists_dij =
-          (* disjonction of second components with input universally quantified *)
-          List.fold_left
-            (fun acc e -> or_fol (bform_to_fol (PG.E.label e).ensures) acc)
-            false_fol in_e
-          |> exists_fol input
+        let exists_disj =
+          (* input vars existentially quantified
+             with a disjunction of possible current states, i.e.
+             a previous input led to any of the aformentioned states *)
+          let in_e = List.map (fun e -> (PG.E.label e).ensures) in_e in
+          (* if an input led to no restriction on the state, then there is no need
+             to put the other possible states.
+             Indeed, if we prove the new state is independent of the current state,
+             there is no need to check for others.
+          *)
+          if List.mem True in_e then true_fol
+          else fold_mjoin bform_to_fol or_fol true_fol in_e |> exists_fol input
         in
         let with_init =
           (* if initial node, add ensures from setup  *)
-          Option.fold init_post ~none:exists_dij ~some:(fun i ->
-              or_fol i exists_dij)
+          Option.fold init_post ~none:exists_disj ~some:(function
+            | { value = FOL_True; _ } -> exists_disj
+            | i -> or_fol i exists_disj)
         in
-        [ and_fol with_init (bform_to_fol k) ]
+        List.filter (fun r -> r.value <> FOL_True) [ with_init; bform_to_fol k ]
       and ensures =
-        (* disjunction of exit-arc post-condition sharing the same pre-condition *)
-        [
-          List.fold_left (fun acc f -> or_fol acc (bform_to_fol f)) false_fol d;
-        ]
+        (* disjunction of output properties sharing the same input property *)
+        if List.mem True d then
+          (* if one of them is true, nothing to ensure *)
+          []
+        else [ fold_mjoin bform_to_fol or_fol true_fol d ]
       in
-      { requires; ensures } :: s)
+      if List.is_empty ensures then (* discard when postcondition is true *) s
+      else { requires; ensures } :: s)
     m []
