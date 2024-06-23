@@ -1,7 +1,6 @@
 module L = Lexing
 open Bucchi
 open TranslateUtils
-open HardySyntax.Locations
 open HardySyntax.Fol
 open HardySyntax.Ltl
 open HardySyntax.Syntax
@@ -230,19 +229,27 @@ let buchi_of_ltl (i : info) (name : string) (f : expr fol ltl) : Buchi.t =
   auto
 
 (** Builds the product automaton from two formulas *)
-let product_automaton (i : info) (req : expr fol ltl option)
-    (ens : expr fol ltl option) =
+let product_automaton (i : info) (req : expr fol ltl list)
+    (ens : expr fol ltl list) =
   let output_file name ext = Filename.(concat i.outdir (name ^ ext)) in
-  let true_if_none = Option.value ~default:(mk_dummy_loc LTL_True) in
-  let rely_a = true_if_none req |> buchi_of_ltl i "rely" in
+
+  let rely = fold_mjoin Fun.id and_ltl true_ltl req in
+  (* conjunction of all rely props *)
+  let guarantee = fold_mjoin Fun.id and_ltl true_ltl ens in
+
+  (* conjunction of all guarantee props *)
+  let rely_a = buchi_of_ltl i "rely" rely in
   let guarantee_a =
     (* because the input is read-only, any predicate on input is
         obviously still true at the end of the instant.
         It is added to the guarantee formula to potentialy simplify
         the product automaton.
     *)
-    let req = if i.no_i_a_conj then None else req in
-    true_if_none (ltl_conjunction req ens) |> buchi_of_ltl i "guarantee"
+    let guarantee =
+      if i.no_i_a_conj || rely = true_ltl then guarantee
+      else and_ltl rely guarantee
+    in
+    buchi_of_ltl i "guarantee" guarantee
   in
   let prod_a = PG.create (rely_a, guarantee_a) in
   Out_channel.with_open_text (output_file "product" ".dot") (fun o ->

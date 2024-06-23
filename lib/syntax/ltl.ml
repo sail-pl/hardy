@@ -26,9 +26,7 @@ and 'a ltl_ =
   | LTL_Unary of ltl_unary * 'a ltl
   | LTL_Binary of 'a ltl * ltl_binary * 'a ltl
 
-let ltl_conjunction f1 f2 =
-  match (f1, f2) with
-  | Some f1, Some f2 ->
-      Some (mk_dummy_loc (LTL_Binary (f1, LTL_BArithm And, f2)))
-  | Some f, None | None, Some f -> Some f
-  | None, None -> None
+let and_ltl (f1 : 'a ltl) (f2 : 'a ltl) : 'a ltl =
+  mk_dummy_loc (LTL_Binary (f1, LTL_BArithm And, f2))
+
+let true_ltl = mk_dummy_loc LTL_True

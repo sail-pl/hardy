@@ -23,7 +23,6 @@ and expression_ =
   | Read of string
   | BinOp of expr * arithm_binop * expr
 
-
 (* PROGRAM *)
 
 type invariant = expr fol
@@ -46,12 +45,12 @@ type env = {
   env_variables : (string * ty) list;
 }
 
-type setup = { setup_ensures : expr fol option; setup_body : stmt list }
+type setup = { setup_ensures : expr fol list; setup_body : stmt list }
 type main = { main_invariant : invariant option; main_body : stmt list }
 
 type program = {
   prog_env : env;
-  prog_spec : expr fol ltl option hoare_pair;
+  prog_spec : expr fol ltl list hoare_pair;
   prog_setup : setup option;
   prog_main : main;
 }

@@ -29,12 +29,10 @@ let binary ==
 
 
 %public
-let requires == f = preceded(RELY, braced_ltl)? ; {Option.join f}
+let requires == preceded(RELY, braced(ltl)) 
 
 %public
-let prog_ensures == f = preceded(GUARANTEE, braced_ltl)? ; {Option.join f}
+let prog_ensures == preceded(GUARANTEE, braced(ltl)) 
 
 %public
-let setup_ensures == f = preceded(ENSURES, braced_fol)? ; {Option.join f}
-
-let braced_ltl == f = braced(ltl?) ; { f }
+let setup_ensures == preceded(ENSURES, braced(fol))

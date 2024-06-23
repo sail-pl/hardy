@@ -3,12 +3,15 @@ open HardySyntax.Types
 open HardySyntax.Fol
 open HardySyntax.Syntax
 open HardySyntax.Printer
+open TranslateUtils
 open Why3
 
 let get_loc loc =
   match loc with
   | None -> Why3.Mlw_printer.next_pos ()
   | Some l -> Loc.extract l
+
+let why3_and l r = Ptree.Tbinop (l, Dterm.DTand, r) |> Ptree_helpers.term
 
 type id_cat = Var | Input | Output
 
@@ -94,7 +97,7 @@ let rec translate_statements (tr_form : invariant -> Ptree.term) (s : stmt list)
             translate_statements stmt )
         |> expr ~loc
   in
-  List.fold_left (fun x y -> Esequence (expr x, aux y)) unit_val s |> expr
+  fold_mjoin aux (fun x y -> Esequence (x, y) |> expr) (expr unit_val) s
 
 let get_pty ty =
   let ty = string_of_ty ty in
@@ -188,13 +191,13 @@ let make_setup (setup : setup option) =
   | Some s ->
       let bdy = translate_statements pterm_of_fol s.setup_body in
       let spec =
-        match Option.(map pterm_of_fol s.setup_ensures) with
-        | None -> empty_spec
-        | Some f ->
-            {
-              empty_spec with
-              sp_post = [ (Loc.dummy_position, [ (pat Pwild, f) ]) ];
-            }
+        let f = fold_mjoin pterm_of_fol why3_and (term Ttrue) s.setup_ensures in
+        if f.term_desc = Ttrue then empty_spec
+        else
+          {
+            empty_spec with
+            sp_post = [ (Loc.dummy_position, [ (pat Pwild, f) ]) ];
+          }
       in
       mk_fun "setup" spec bdy
 

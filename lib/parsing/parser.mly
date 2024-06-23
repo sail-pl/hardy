@@ -13,8 +13,8 @@
 %%
 
 let program :=
-    prog_env = declaration ; requires = requires ; ensures = prog_ensures  ; 
-        prog_setup = midrule(SETUP ; ":" ; setup_ensures= setup_ensures ; setup_body=stmt* ; {{setup_ensures;setup_body} })? ;
+    prog_env = declaration ; requires = requires* ; ensures = prog_ensures*  ; 
+        prog_setup = midrule(SETUP ; ":" ; setup_ensures= setup_ensures* ; setup_body=stmt* ; {{setup_ensures;setup_body} })? ;
         LOOP ; ":" ; main_invariant = invariant? ; main_body = stmt* ; EOF ;
         {
             {
@@ -82,8 +82,6 @@ let fol :=
     )
     | ~ = delimited(LSQBRACE,fol,RSQBRACE) ; <> // can't use () because fol includes expr 
 
-%public
-let braced_fol == f = braced(fol?) ; { f }
 
 %public 
 let common_logic_unary == 

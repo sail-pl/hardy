@@ -1,5 +1,6 @@
 (* module A = Automaton *)
 open HardySyntax.Syntax
+open HardySyntax.Fol
 open Ltl2buchi
 open TranslateUtils
 open HardyExternals.Ltl2ba
@@ -27,9 +28,8 @@ let translate_program (i : info) (p : program) : P.mlw_file =
          let extra_req =
            if not @@ PG.is_start_node v then None
            else
-             let open Option in
-             let s = bind p.prog_setup (fun x -> x.setup_ensures) in
-             fold s ~none:(Some HardySyntax.Fol.true_fol) ~some
+             Option.fold p.prog_setup ~none:(Some true_fol) ~some:(fun x ->
+                 Some (fold_mjoin Fun.id and_fol true_fol x.setup_ensures))
          in
 
          let specs =
