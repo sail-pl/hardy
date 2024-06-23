@@ -26,11 +26,10 @@ functor
     open Arg
 
     let usage_msg =
-      Printf.sprintf "Usage : %s --ltl2ba <ltl2ba exe> <file> [-v] [-pltl]"
+      Printf.sprintf "Usage : %s --ltl2ba <ltl2ba exe> <file> [-v]"
         (Sys.argv.(0) |> Filename.basename)
 
     let input_file = ref ""
-    let pltl_mode = ref false
     let verbose = ref false
     let no_i_a_conj = ref false
     let ltl2baPath = ref ""
@@ -67,7 +66,6 @@ functor
       {
         file = !input_file;
         ltl2baPath = !ltl2baPath;
-        pltl_mode = !pltl_mode;
         verbose = !verbose;
         outdir = output_path;
         no_i_a_conj = !no_i_a_conj;

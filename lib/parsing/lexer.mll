@@ -47,8 +47,8 @@ rule tokenize = parse
   | "var"                   { VAR }
   | "input"                 { INPUT }
   | "output"                { OUTPUT }
-  | "rely"                  { RELY }
-  | "guarantee"             { GUARANTEE }
+  | "relies on"             { RELY }
+  | "guarantees"            { GUARANTEE }
   | "requires"              { REQUIRES }
   | "old"                   { OLD }
   | "ensures"               { ENSURES }
@@ -81,9 +81,6 @@ rule tokenize = parse
   | ":"                     { COLON }
   | ","                     { COMMA }
   | "S"                     { SINCE }
-  | "Y"                     { YESTERDAY }
-  | "O"                     { ONCE }
-  | "H"                     { HISTORICALLY }
   | "X"                     { NEXT }
   | "U"                     { UNTIL}
   | "R" | "V"               { RELEASE }

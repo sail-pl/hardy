@@ -43,8 +43,6 @@
 %right SINCE
 %right EVENTUALLY ALWAYS
 %right NEXT
-%right ONCE HISTORICALLY
-%right YESTERDAY
 %right NOT
 
 %nonassoc COMMA

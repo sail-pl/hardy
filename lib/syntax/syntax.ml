@@ -23,28 +23,9 @@ and expression_ =
   | Read of string
   | BinOp of expr * arithm_binop * expr
 
-(* PLTL *)
-(*
-type pltl_unary =
-  | PLTL_UArithm of common_logic_unary
-  | Once
-  | Before
-  | Historically
 
-type pltl_binary = PLTL_BArithm of common_logic_binary | Since
-
-type pltl = pltl_ locatable
-
-and pltl_ =
-  | PLTL_True
-  | PLTL_False
-  | PLTL_Pred of expr fol
-  | PLTL_Unary of pltl_unary * pltl
-  | PLTL_Binary of pltl * pltl_binary * pltl
-*)
 (* PROGRAM *)
 
-(* type formula = FOL of expr fol | PLTL of pltl | LTL of ltl *)
 type invariant = expr fol
 type variant = { var_expr : expr }
 type requires = expr fol ltl

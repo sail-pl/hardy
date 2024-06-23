@@ -12,7 +12,6 @@ type info = {
   file : string;
   ltl2baPath : string;
   verbose : bool;
-  pltl_mode : bool;
   outdir : string;
   no_i_a_conj : bool;
 }
