@@ -8,6 +8,8 @@ homepage: "https://github.com/username/reponame"
 bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml" {>= "5.1.0"}
+  "why3"
+  "coq" {>= "8.18"}
   "dune" {>= "3.11"}
   "menhir"
   "ocamlformat" {= "0.26.1" & with-dev-setup}

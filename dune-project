@@ -23,6 +23,8 @@
    (description "A longer description")
   (depends 
   (ocaml (>= 5.1.0))
+  why3
+  (coq (>= 8.18))
   dune
   menhir
   (ocamlformat (and (= 0.26.1) :with-dev-setup))
