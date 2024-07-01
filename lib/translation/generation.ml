@@ -46,26 +46,27 @@ let make_prod_spec (input : (string * ty) list) (in_e : PG.E.t list)
   M.fold
     (fun (k : bform) (d : bform list) s ->
       let requires =
-        let exists_disj =
-          (* input vars existentially quantified
-             with a disjunction of possible current states, i.e.
-             a previous input led to any of the aformentioned states *)
-          let in_e = List.map (fun e -> (PG.E.label e).ensures) in_e in
-          (* if an input led to no restriction on the state, then there is no need
+        (* get the possible states for this node to be in *)
+        let in_e = List.map (fun e -> (PG.E.label e).ensures) in_e  in
+
+        (* if an input led to no restriction on the state, then there is no need
              to put the other possible states.
              Indeed, if we prove the new state is independent of the current state,
              there is no need to check for others.
           *)
-          if List.mem True in_e then true_fol
-          else fold_mjoin bform_to_fol or_fol true_fol in_e |> exists_fol input
-        in
-        let with_init =
-          (* if initial node, add ensures from setup  *)
-          Option.fold init_post ~none:exists_disj ~some:(function
-            | { value = FOL_True; _ } -> exists_disj
-            | i -> or_fol i exists_disj)
-        in
-        List.filter (fun r -> r.value <> FOL_True) [ with_init; bform_to_fol k ]
+        let in_e_opt = if List.mem True in_e then [] else in_e in
+
+
+        let precond = fold_mjoin bform_to_fol or_fol true_fol in_e_opt in
+
+        (* if this is an init_node, add it to the precondition *)
+        let precond_init = Option.fold init_post ~none:precond ~some:(fun x -> and_fol precond x ) in
+
+        (* existentially quantify inputs (if any) *)
+        let input_exists = if input = [] then Fun.id else exists_fol input in
+        (* remove any trivial precondition *)
+        List.filter (fun r -> r.value <> FOL_True) [ input_exists precond_init; bform_to_fol k ]
+        
       and ensures =
         (* disjunction of output properties sharing the same input property *)
         if List.mem True d then
