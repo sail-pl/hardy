@@ -32,7 +32,10 @@ let variant := v = preceded(VARIANT, braced(expr)); {{var_expr=v}}
 %public
 let braced(x) == delimited("{", x, "}")
 
-let declaration := env_input=input ; env_output=output ; env_variables=var ; {{env_input;env_output;env_variables}}
+let declaration := 
+    env_input=loption(input) ; 
+    env_output=loption(output) ; 
+    env_variables = loption(var) ; {{env_input;env_output;env_variables}}
 
 
 let vdecl(KIND) == v = delimited(KIND, typed_id*, ";"); {List.flatten v}
