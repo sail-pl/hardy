@@ -1,0 +1,11 @@
+(include_subdirs no)
+
+(ocamllex ncLexer)
+
+(menhir
+ (modules ncParser))
+
+(library
+ (name middleParser)
+ (public_name hardy.middleParser)
+ (libraries hardyFrontEnd menhirLib))

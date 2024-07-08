@@ -7,11 +7,11 @@
 (generate_opam_files true)
 
 (source
-(github username/reponame))
+(github sail-pl/hardy))
 
-(authors "Author Name")
+(authors "Térence Clastres, Frédéric Dabrowski")
 
-(maintainers "Maintainer Name")
+(maintainers "Térence Clastres")
 
 ; (license LICENSE)
 

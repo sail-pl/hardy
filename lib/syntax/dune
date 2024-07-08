@@ -1,4 +1,0 @@
-(library
- (name hardySyntax)
- (public_name hardy.syntax)
- (libraries zarith menhirLib))

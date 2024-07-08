@@ -1,9 +1,0 @@
-(ocamllex lexer)
-
-(menhir
- (modules parser))
-
-(library
- (name baParser)
- (public_name hardy.baParser)
- (libraries hardySyntax menhirLib))

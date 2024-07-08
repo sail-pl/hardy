@@ -1,0 +1,5 @@
+(library
+ (name hardyFrontEnd)
+ (public_name hardy.front_end)
+ (libraries hardyMisc frontParser)
+ (modules parsing cli printer syntax))

@@ -1,0 +1,6 @@
+(include_subdirs qualified)
+
+(library
+ (name hardyMiddleEnd)
+ (public_name hardy.middle_end)
+ (libraries middleParser hardyMisc hardyFrontEnd ocamlgraph))

@@ -1,5 +1,5 @@
 Require Import List.
-From Hardy Require Import automaton product util.
+From Hardy Require Import automaton product.
 
 Module Type Verif_Domain.
 
@@ -95,7 +95,7 @@ Module Verif (Import D : Verif_Domain).
         apply o_aut_successor in H1 as [g [m1 Hb]].
         exists (f,g), (n1,m1).
         split; assumption.
-    Qed. 
+    Qed.  
         
 
     (** Now we define the constraints that should be satisfied 

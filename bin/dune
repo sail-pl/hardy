@@ -1,4 +1,9 @@
+(env
+ (release
+  (odoc
+   (warnings fatal))))
+
 (executable
  (public_name hardy)
  (name main)
- (libraries hardyParser hardyTranslation))
+ (libraries hardyFrontEnd hardyBackEnd))

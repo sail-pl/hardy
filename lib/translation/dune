@@ -1,4 +1,0 @@
-(library
- (name hardyTranslation)
- (public_name hardy.translation)
- (libraries hardySyntax why3 hardyParser hardy.externals ocamlgraph))

@@ -2,18 +2,26 @@ input on off : bool;
 output light : bool;
 var x : bool;
 
-relies on { G (~ [on] | ~ [off]) }
 
-guarantees { [on]  R ([on] | ~ [light]) }
-guarantees { G ([on] -> [off] R ([off] | [light])) }
-guarantees { G ([off] -> [on] R ([on] | ~ [light])) }
+relies on  G (~ {on} || ~ {off}).
+
+
+//guarantees  G (~ {on} || ~ {off}).
+
+guarantees {on}  R ({on} || ~ {light}).
+guarantees G ({on} -> {off} R ({off} || {light})).
+guarantees G ({off} -> {on} R ({on} || ~ {light})).
 
 setup : 
-	ensures { [light = false] }
-	light := false;
+	ensures { light = false }
+	emit false to light;
 
 loop:
-	if on then light := true;
-	else
-	if off then light := false; end
+	if on then 
+		emit true to light;
+	else 
+		if off then 
+			emit false to light;
+		end
 	end
+	

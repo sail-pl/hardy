@@ -1,0 +1,24 @@
+(include_subdirs unqualified)
+
+(ocamllex lexer)
+
+; tokens shared across the parsers
+
+(menhir
+ (modules tokens)
+ (flags --only-tokens))
+
+(menhir
+ (modules tokens specification/parser program/parser)
+ (merge_into pgrmParser)
+ (flags
+  --external-tokens
+  Tokens
+  --unused-tokens
+  --unused-precedence-levels
+  --explain))
+
+(library
+ (name frontParser)
+ (public_name hardy.front_parser)
+ (libraries str hardyMisc menhirLib))

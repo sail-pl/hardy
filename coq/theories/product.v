@@ -1,4 +1,4 @@
-From Hardy Require Import automaton util.
+From Hardy Require Import automaton.
 Require Import List.
 Section Product.
 
