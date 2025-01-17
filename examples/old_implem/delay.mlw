@@ -1,0 +1,21 @@
+module Program
+    use ref.Ref
+    use int.Int
+
+    let prev = ref (any int)
+
+    let o = ref (any int)
+
+    val i : int
+
+
+    let pgm = begin
+
+    requires {True }
+    ensures {  }
+        o := (! prev);
+        prev := i
+    end
+
+
+end

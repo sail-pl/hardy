@@ -1,0 +1,26 @@
+output 
+    accent : bool 
+    beat : int
+;
+
+
+guarantees {G ( |beat = 1| <-> |accent|) }
+
+guarantees {G ( |beat = 1| -> X |beat = 2| & X X |beat = 3| & X X X |beat = 1| )  }
+
+
+setup : 
+	ensures { [beat = 1 & accent] }
+    
+	beat := 1;
+    accent := true;
+
+
+loop:
+    if beat = 3 then 
+	    beat := 1;
+        accent := true;
+    else 
+        beat := beat + 1;
+        accent := false;
+    end

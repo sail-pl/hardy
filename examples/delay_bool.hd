@@ -1,0 +1,15 @@
+input i : bool;
+output o : bool;
+var x : bool; 
+
+guarantees { ~ [o] }
+guarantees { G [x  = i] }
+guarantees { G (([x] -> X [o]) & (~ [x] -> X (~ [o]))) }
+
+setup:
+    ensures { x = false }
+    x := false;
+
+loop:
+    o := x;
+    x := i;

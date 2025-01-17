@@ -1,0 +1,16 @@
+input i : int;
+output o : int;
+var x : int;
+
+
+guarantees { |x = 0| }
+guarantees { G |x = i| }
+guarantees { X G |o =  i| }
+
+setup :
+    ensures { x = 0 }
+    x := 0;
+
+loop :
+    emit x to o ;
+    x := i ;

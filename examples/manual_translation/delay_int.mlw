@@ -1,0 +1,37 @@
+use int.Int
+use ref.Ref
+use list.List 
+use option.Option
+use list.HdTl
+use list.NthNoOpt
+
+(* guarantee : x = 0 /\ X (G (o = prev(i) /\ x = i)) *)
+
+
+let i = any(int)
+let o = ref (any int)
+let x = ref (any int)
+
+let hist_i = any (list int)
+
+let _setup () =
+  ensures {!x = 0}
+  x := 0
+
+let node1 () =
+  requires { !x = 0 } 
+  ensures {!o = 0 && !x = i}
+  o := !x;
+  x := i
+
+let node2 () =
+  requires { !o = 0 && !x = nth 0 hist_i } 
+  ensures { !o = nth 0 hist_i && !x = i}
+  o := !x;
+  x := i
+
+let node3 () =
+  requires { !o = nth 1 hist_i && !x = nth 0 hist_i } 
+  ensures {!o = nth 0 hist_i && !x = i}
+  o := !x;
+  x := i

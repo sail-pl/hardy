@@ -1,0 +1,66 @@
+use ref.Ref
+use int.Int
+use list.ListRich
+use list.Quant
+use list.FoldRight
+use option.Option
+use int.EuclideanDivision
+
+type input = {value:int; set:bool}
+type output = option int 
+type state = option int
+
+type history = list input
+
+
+(*
+
+    à chaque nouvel input, l'output est égale à la moyenne de tous les inputs recus jusqu'à présent
+
+    il faut pouvoir compter le nombre d'input reçu jusqu'à présent
+
+    G with i,o (
+        X 
+    )
+
+
+pas d'input -> input 1 -> input 2 -> input 3 ....
+
+/           -> input 1 -> (input 1 + input 2) / 2 -> (input 1 + input 2 + input 3) / 2 -> ....
+
+
+*)
+
+predicate history_coherent (h: history) = true
+
+
+(* state is the last input value for which set was enabled *)
+predicate state_coherent (s : state) (h : history ) = 
+    match h with
+    | Nil -> s = None
+    | Cons i t -> if i.set then s = Some i.value else state_coherent s t
+    end
+
+
+ 
+predicate spec (i: input) (o : output) (h : history) = 
+    
+
+
+(* global vars *)
+val h : history 
+val s : ref state 
+
+let init() = 
+    ensures {state_coherent !s Nil}
+    s := None
+
+
+let register (i:input) : output =
+    requires {history_coherent h}
+    requires {state_coherent !s h}
+    ensures {state_coherent !s (Cons i h)}
+    ensures {spec i result h}
+    let res = !s in
+    if i.set then s := Some i.value;
+    res

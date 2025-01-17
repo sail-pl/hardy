@@ -1,0 +1,102 @@
+use ref.Ref
+use int.Int
+use list.ListRich
+use list.Quant
+use list.FoldRight
+use option.Option
+use int.EuclideanDivision
+
+type input = {value:int; set:bool}
+type output = option int 
+type state = option int
+
+type history = list input
+
+
+predicate history_coherent (h: history) = true
+
+
+(* state is the last input value for which set was enabled *)
+predicate state_coherent (s : state) (h : history ) = 
+    match h with
+    | Nil -> s = None
+    | Cons i t -> if i.set then s = Some i.value else state_coherent s t
+    end
+
+
+
+(*
+Au niveau de la spec pour le registre j'avais pensé faire ça : 
+
+
+
+À chaque opérateur temporel on associe un nom pour l'input et l'output associé que peut manipuler le prédicat à l'intérieur. 
+
+Est-ce que cette spec a du sens ? 
+
+
+
+    G with prev_i,prev_o.
+
+        X with i,o.
+
+            i.set -> X with _,xo. xo = i.val
+
+            /\
+
+            o = prev_o
+
+
+
+Je me place dans un contexte ou j'ai un instant précédent (avec un input prev_i et output prev_o) et je dis 
+qu'à l'instant présent (input i et output o), si i.set est vrai, alors la sortie de  l'instant suivant, est égal à i.val  et la sortie actuelle correspond à la sortie de l'instant précédent.
+
+
+*)
+
+(* spec : 
+
+    problem : inside temporal operators, we should be able to talk about a certain (input/output)
+    G (i -> X (o = i) ) is it the i of G or the i of X ? Is the o for X or G ?
+
+    idea : force naming vars and do not allow same name , 
+    o and i refer to nearest formula, if we use a binder, we must refer to the 
+
+    syntax ::= OP "with" lid1 "," lid2 "."   ; OP with input bound as lid1 and output bound as lid2
+
+
+
+    un opérateur spécial supplémentaire à l'intérieur des prédicats : 
+    LATEST p  (fun i,o => ... ) donne le i/o le plus récent qui satisfait p (i/o)
+    EARLIEST p (fun i,o => ... ) donne le i/o  le plus ancien qui satisfait p
+
+
+    
+
+
+    G with prev_i,prev_o. 
+        (i.set -> X. o = prev_i )
+        /\
+        {{ LATEST li _, i.set. o = li.val }} Voir avec RELEASE
+ *)
+predicate spec (i: input) (o : output) (h : history) = 
+    
+
+
+(* global vars *)
+val h : history 
+val s : ref state 
+
+let init() = 
+    ensures {state_coherent !s Nil}
+    s := None
+
+
+let register (i:input) : output =
+    requires {history_coherent h}
+    requires {state_coherent !s h}
+    ensures {state_coherent !s (Cons i h)}
+    ensures {spec i result h}
+    let res = !s in
+    if i.set then s := Some i.value;
+    res

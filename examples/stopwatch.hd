@@ -1,0 +1,48 @@
+// stopwatch example used in https://homepage.divms.uiowa.edu/~tinelli/papers/ChaEtAl-SEFM-16.pdf 
+// cannot be done yet 
+// todo:
+// - support for comments
+// - support for intermediate temporal predicates
+// - allow refering to past value : specify incrementation when running and constant when stopped
+input toggle reset : bool;
+output  count : int ;
+var running : bool;
+
+
+relies on { [! (reset && toggle)] }
+
+guarantees {G [count >= 0]}
+
+guarantees { [count = 0] && X [running = toggle] }
+
+guarantees { G ([reset] -> [count = 0]) }
+
+guarantees { G (
+    ![reset]  && 
+    []
+    count = x -> X [count + 1 = 0]
+    ) 
+}
+
+
+guarantees {G ( [temps = 1] <-> [accent]) }
+
+guarantees {G ( [temps = 1] -> X [temps = 2] & X X [temps = 3] & X X X [temps = 1] )  }
+
+
+setup : 
+	ensures { [running && !toggle && count = 0] }
+    running := false;
+    toggle := true;
+    count := 0;
+
+loop:
+    running := !(running == toggle);
+
+    if reset then 
+	    count := 0;
+    else 
+        if running then 
+            count := count + 1;
+    end
+
