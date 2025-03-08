@@ -45,7 +45,7 @@ module M :
     hoare_triple
     list
 
-  type output = (string * NcSyntax.neverclaim) hoare_pair
+  type output = input * (string * NcSyntax.neverclaim) hoare_pair
   type automaton = Triples.BProd.t
   (* { pa_pair :  (string * B.t) P.hoare_pair; pa_prod : (string * BB.t) } *)
 
@@ -90,7 +90,7 @@ module M :
       (name, Ltl2nc.ltl_to_neverclaim cli never_file spec)
     in
     (* transform LTL formula to a neverclaim representation of a buchi automaton  *)
-    { requires = ltl2ba_nc i.requires; ensures = ltl2ba_nc i.ensures }
+    i,{ requires = ltl2ba_nc i.requires; ensures = ltl2ba_nc i.ensures }
 
   let automaton_to_dot (type t) (module G : BuchiSig.S with type t = t) cli
       ((name, auto) : string * G.t) =
@@ -99,11 +99,15 @@ module M :
     Out_channel.with_open_text (output_file cli name ".dot") (fun o ->
         D.output_graph o auto)
 
-  let output_to_automaton (cli : Cli.info) (o : output) : automaton =
+  let output_to_automaton (cli : Cli.info) (i,o : output) : automaton =
     let rely_a = pair_map (Right Triples.B.create) o.requires
     and guarantee_a = pair_map (Right Triples.B.create) o.ensures in
     automaton_to_dot (module Triples.B) cli rely_a;
     automaton_to_dot (module Triples.B) cli guarantee_a;
+    (* check automata exactly represents the formulas *)
+    let module V = Validator.Verif.M (Triples.B) (Triples.Atom)  in
+    V.verif_a ((snd i.requires,snd rely_a), (snd i.ensures, snd guarantee_a));
+
     (* create synchronized product automaton *)
     let prod_a =
       ("product", Triples.BProd.create (snd rely_a, snd guarantee_a))

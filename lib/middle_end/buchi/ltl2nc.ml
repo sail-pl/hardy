@@ -27,6 +27,9 @@ let ltl_to_neverclaim (i : Cli.info) (never_file : string) (f : string ltl) :
       ~stdout:never_file ~stderr:(never_file ^ ".err")
   in
   if i.verbose then Format.printf "ltl2ba command line : %s" cmd;
+
+  (* do not generate neverclaim, for testing validator *)
+  (* let cmd = ":" in  *)
   let ret = Sys.command cmd in
   if ret <> 0 then
     failwith Format.(sprintf "non-0 exit-code (%i) from ltl2ba" ret)

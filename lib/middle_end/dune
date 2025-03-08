@@ -3,4 +3,11 @@
 (library
  (name hardyMiddleEnd)
  (public_name hardy.middle_end)
- (libraries middleParser hardyMisc hardyFrontEnd ocamlgraph))
+ (libraries
+  middleParser
+  hardyMisc
+  hardyFrontEnd
+  ocamlgraph
+  msat.sat
+  msat.tseitin
+  why3))
