@@ -12,7 +12,6 @@ and expression_ =
   | True
   | False
   | Var of string
-  | Prev of string
   | Read of string
   | BinOp of expr * arithm_binop * expr
 
@@ -23,13 +22,13 @@ let private_var = String.cat "_"
 let rec fold_expr : type a. (expr -> a -> a) -> expr -> a -> a =
  fun j e init ->
   match e.value with
-  | Int _ | True | False | Var _ | Prev _ | Read _ -> j e init
+  | Int _ | True | False | Var _ | Read _ -> j e init
   | BinOp (e1, _, e2) -> j e (fold_expr j e2 (fold_expr j e1 init))
 
 let rec map_expr : (expr -> expr) -> expr -> expr =
  fun m e ->
   match e.value with
-  | Int _ | True | False | Var _ | Prev _ | Read _ -> m e
+  | Int _ | True | False | Var _ | Read _ -> m e
   | BinOp (e1, op, e2) ->
       m { e with value = BinOp (map_expr m e1, op, map_expr m e2) }
 

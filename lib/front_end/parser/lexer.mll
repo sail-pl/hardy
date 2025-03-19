@@ -51,10 +51,6 @@ rule tokenize = parse
   | "relies on"             { RELY }
   | "guarantees"            { GUARANTEE }
   | "requires"              { REQUIRES }
-  | "prev"                  { PREV }
-  | "any"                   { ANY }
-  | "all"                   { ALL }
-  | "at"                    { AT }
   | "ensures"               { ENSURES }
   | "invariant"             { INVARIANT }
   | "variant"               { VARIANT }
@@ -95,9 +91,6 @@ rule tokenize = parse
   | "M"                     { SRELEASE }
   | "F"                     { EVENTUALLY }
   | "G"                     { ALWAYS }
-  | "last"                  { LAST }
-  | "first"                 { FIRST }
-  | "start"                 { START }
   | "~"                     { NOT }
   | "->" | "=>"             { ARROW }
   | "<->" | "<=>"           { DARROW }

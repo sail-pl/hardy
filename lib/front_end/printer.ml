@@ -41,7 +41,6 @@ let rec string_of_exp (e : expr) : string =
   | Int n -> string_of_int n
   | True -> "true"
   | False -> "false"
-  | Prev s -> Format.sprintf "prev(%s)" s
   | Var s | Read s -> s
   | BinOp (e1, op, e2) ->
       Format.sprintf "(%s) %s (%s)" (string_of_exp e1) (string_of_binop op)

@@ -72,7 +72,6 @@ let expr :=
         | ~ = INT ; <Int>
         | ~ = ID  ; <Var>
         | READ ; ~ = ID ; <Read>
-        | PREV ; ~ = ID ; <Prev> 
         | e1 = expr ; op = binExpOp ; e2 = expr ; {BinOp (e1,op,e2)}
         )
     | ~ = delimited("(",expr,")") ; <>

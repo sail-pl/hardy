@@ -26,11 +26,6 @@ let get_binding_type v f =
   | None -> failwith @@ Printf.sprintf "no why3 binding for identifier '%s'" v
   | Some v -> f v
 
-(* let deref = Ptree_helpers.qualid [ Ident.op_prefix "!" ] *)
-(* let assgn = Ptree_helpers.qualid [ Ident.op_infix ":=" ] *)
-(* let hd = Ptree_helpers.qualid [ "List"; "hd" ] *)
-(* let prev = Ptree_helpers.qualid [ "prev" ] *)
-
 let ty_suffix s = s ^ "_t"
 
 let get_quant_binders vars =
@@ -69,7 +64,6 @@ let rec translate_expression ({ value = e; loc } : expr) : Ptree.expr =
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
   | Int n -> econst n ~loc
-  | Prev _ -> Loc.(error ~loc @@ Message "Prev only allowed inside formulas")
   | Var s -> get_var s loc eapp evar
   | Read s -> Easref (qualid [ s ]) |> expr ~loc
   | BinOp (e1, binop, e2) ->
@@ -84,9 +78,6 @@ let rec translate_term (e : expr) : Ptree.term =
   | True -> term ~loc Ttrue
   | False -> term ~loc Tfalse
   | Int n -> tconst ~loc n
-  | Prev _s ->
-      tconst 2
-      (* Tapply (term ~loc (Tident prev),translate_term { value = Var s; loc = e.loc }) *)
   | Var s -> get_var s loc tapp tvar
   | Read s -> Tasref (qualid [ s ]) |> term ~loc
   | BinOp (e1, binop, e2) ->
@@ -231,21 +222,7 @@ module M : Sig.S with type fun_id = fun_id_t and type in_ty = ty = struct
     and output_t, o = create_record Output env.env_output
     and state_t, s = create_record State env.env_variables in
 
-    let ios_t =
-      List.map
-        (fun t -> get_pty (fun t -> string_of_cat_ty t |> ty_suffix) t)
-        [ Input; Output; State ]
-    in
-
-    let hist =
-      Dlet
-        ( ident "history",
-          true,
-          RKnone,
-          mk_decl (PTtyapp ([ "list" ] |> qualid, [ PTtuple ios_t ])) )
-    in
-
-    [ input_t; output_t; state_t; i; o; s; hist ]
+    [ input_t; output_t; state_t; i; o; s; ]
 
   let generate_body = fun x -> expr_of_statements pterm_of_inv x
 
@@ -294,9 +271,6 @@ module M : Sig.S with type fun_id = fun_id_t and type in_ty = ty = struct
       [
         [ "int"; "Int" ];
         [ "ref"; "Ref" ];
-        [ "list"; "List" ];
-        [ "list"; "HdTlNoOpt" ];
-        [ "list"; "NthNoOpt" ];
       ]
     in
     let m =
