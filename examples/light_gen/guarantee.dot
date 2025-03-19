@@ -1,0 +1,13 @@
+digraph G {
+  node [fontsize=10, height=0.800000, fixedsize=true, shape=circle, ];
+  "S2" [shape=doublecircle, ];
+  "init" [shape=doublecircle, ];
+  
+  
+  edge [fontsize=10, ];
+  "S2" -> "S2" [label="(! (off)) && (light)", ];
+  "S2" -> "init" [label="((! (on)) && (off)) && (! (light))", ];
+  "init" -> "S2" [label="((on) && (! (off))) && (light)", ];
+  "init" -> "init" [label="(! (on)) && (! (light))", ];
+  
+  }

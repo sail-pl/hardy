@@ -1,0 +1,59 @@
+module Program
+  use ref.Ref
+  use int.Int
+  
+  type inputs_t = { i : bool }
+  
+  type outputs_t = { mutable o : bool }
+  
+  type state_t = { mutable x : bool }
+  
+  val inputs : inputs_t
+  
+  val outputs : outputs_t
+  
+  val state : state_t
+  
+  let setup = begin
+    
+    ensures { (state.x) = false }
+    state.x <- false end
+  
+  let pre_init_post_S3 = begin
+    
+    requires { exists _prev_i : bool.
+                 (((outputs.o) /\ _prev_i) /\ ((state.x) = _prev_i))
+                   \/
+                   ((not (outputs.o)) /\ _prev_i)
+                   /\
+                   ((state.x) = _prev_i)
+    }
+    ensures { (((outputs.o) /\ (inputs.i)) /\ ((state.x) = (inputs.i)))
+                \/
+                ((outputs.o) /\ (not (inputs.i)))
+                /\
+                ((state.x) = (inputs.i)) }
+    (outputs.o <- (state.x));
+    (state.x <- (inputs.i))
+  end
+  
+  let pre_init_post_init = begin
+    
+    requires { ((state.x) = false)
+                 \/
+                 (exists _prev_i : bool.
+                    (((outputs.o) /\ (not _prev_i)) /\ ((state.x) = _prev_i))
+                      \/
+                      ((not (outputs.o)) /\ (not _prev_i))
+                      /\
+                      ((state.x) = _prev_i))
+    }
+    ensures { (((not (outputs.o)) /\ (inputs.i)) /\ ((state.x) = (inputs.i)))
+                \/
+                ((not (outputs.o)) /\ (not (inputs.i)))
+                /\
+                ((state.x) = (inputs.i)) }
+    (outputs.o <- (state.x));
+    (state.x <- (inputs.i))
+  end
+end

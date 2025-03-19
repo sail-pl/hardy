@@ -1,0 +1,217 @@
+module Program
+  use ref.Ref
+  use int.Int
+  
+  type inputs_t = {  }
+  
+  type outputs_t = { mutable accent : bool; mutable beat : int }
+  
+  type state_t = {  }
+  
+  val inputs : inputs_t
+  
+  val outputs : outputs_t
+  
+  val state : state_t
+  
+  let setup = begin
+    
+    ensures { ((outputs.beat) = 1) /\ (outputs.accent) }
+    (outputs.beat <- 1);
+    (outputs.accent <- true)
+  end
+  
+  let pre_init_post_S4 = begin
+    
+    requires { (((not ((outputs.beat) = 1)) /\ ((outputs.beat) = 2))
+                  /\
+                  ((outputs.beat) > 0))
+                 /\
+                 (not (outputs.accent))
+    }
+    ensures { (((((outputs.beat) = 1) /\ ((outputs.beat) = 3))
+                  /\
+                  ((outputs.beat) > 0))
+                 /\
+                 (outputs.accent))
+                \/
+                (((not ((outputs.beat) = 1)) /\ ((outputs.beat) = 3))
+                   /\
+                   ((outputs.beat) > 0))
+                /\
+                (not (outputs.accent)) }
+    if ((outputs.beat) = 3) then
+      ((outputs.beat <- 1); (outputs.accent <- true))
+    else ((outputs.beat <- ((outputs.beat) + 1)); (outputs.accent <- false))
+  end
+  
+  let pre_init_post_S5 = begin
+    
+    requires { (((((outputs.beat) = 1) /\ ((outputs.beat) = 3))
+                   /\
+                   ((outputs.beat) > 0))
+                  /\
+                  (outputs.accent))
+                 \/
+                 ((((outputs.beat) = 1) /\ ((outputs.beat) = 3))
+                    /\
+                    ((outputs.beat) > 0))
+                 /\
+                 (outputs.accent)
+    }
+    ensures { ((((outputs.beat) = 1) /\ ((outputs.beat) = 2))
+                 /\
+                 ((outputs.beat) > 0))
+                /\
+                (outputs.accent) }
+    if ((outputs.beat) = 3) then
+      ((outputs.beat <- 1); (outputs.accent <- true))
+    else ((outputs.beat <- ((outputs.beat) + 1)); (outputs.accent <- false))
+  end
+  
+  let pre_init_post_S7 = begin
+    
+    requires { ((((((outputs.beat) = 1) /\ ((outputs.beat) = 3))
+                    /\
+                    ((outputs.beat) = 2))
+                   /\
+                   ((outputs.beat) > 0))
+                  /\
+                  (outputs.accent))
+                 \/
+                 (((((outputs.beat) = 1) /\ ((outputs.beat) = 3))
+                     /\
+                     ((outputs.beat) = 2))
+                    /\
+                    ((outputs.beat) > 0))
+                 /\
+                 (outputs.accent)
+    }
+    ensures { (((((outputs.beat) = 1) /\ ((outputs.beat) = 3))
+                  /\
+                  ((outputs.beat) = 2))
+                 /\
+                 ((outputs.beat) > 0))
+                /\
+                (outputs.accent) }
+    if ((outputs.beat) = 3) then
+      ((outputs.beat <- 1); (outputs.accent <- true))
+    else ((outputs.beat <- ((outputs.beat) + 1)); (outputs.accent <- false))
+  end
+  
+  let pre_init_post_S3 = begin
+    
+    requires { (((((outputs.beat) = 1) /\ ((outputs.beat) = 2))
+                   /\
+                   ((outputs.beat) > 0))
+                  /\
+                  (outputs.accent))
+                 \/
+                 ((((outputs.beat) = 1) /\ ((outputs.beat) = 2))
+                    /\
+                    ((outputs.beat) > 0))
+                 /\
+                 (outputs.accent)
+    }
+    ensures { ((((((outputs.beat) = 1) /\ ((outputs.beat) = 3))
+                   /\
+                   ((outputs.beat) = 2))
+                  /\
+                  ((outputs.beat) > 0))
+                 /\
+                 (outputs.accent))
+                \/
+                ((((not ((outputs.beat) = 1)) /\ ((outputs.beat) = 3))
+                    /\
+                    ((outputs.beat) = 2))
+                   /\
+                   ((outputs.beat) > 0))
+                /\
+                (not (outputs.accent)) }
+    if ((outputs.beat) = 3) then
+      ((outputs.beat <- 1); (outputs.accent <- true))
+    else ((outputs.beat <- ((outputs.beat) + 1)); (outputs.accent <- false))
+  end
+  
+  let pre_init_post_S2 = begin
+    
+    requires { ((((outputs.beat) = 1) /\ ((outputs.beat) > 0))
+                  /\
+                  (outputs.accent))
+                 \/
+                 (((outputs.beat) = 1) /\ ((outputs.beat) > 0))
+                 /\
+                 (outputs.accent)
+    }
+    ensures { (((((outputs.beat) = 1) /\ ((outputs.beat) = 2))
+                  /\
+                  ((outputs.beat) > 0))
+                 /\
+                 (outputs.accent))
+                \/
+                (((not ((outputs.beat) = 1)) /\ ((outputs.beat) = 2))
+                   /\
+                   ((outputs.beat) > 0))
+                /\
+                (not (outputs.accent)) }
+    if ((outputs.beat) = 3) then
+      ((outputs.beat <- 1); (outputs.accent <- true))
+    else ((outputs.beat <- ((outputs.beat) + 1)); (outputs.accent <- false))
+  end
+  
+  let pre_init_post_init = begin
+    
+    requires { (((outputs.beat) = 1) /\ (outputs.accent))
+                 \/
+                 ((not ((outputs.beat) = 1)) /\ ((outputs.beat) > 0))
+                 /\
+                 (not (outputs.accent))
+    }
+    ensures { ((((outputs.beat) = 1) /\ ((outputs.beat) > 0))
+                 /\
+                 (outputs.accent))
+                \/
+                ((not ((outputs.beat) = 1)) /\ ((outputs.beat) > 0))
+                /\
+                (not (outputs.accent)) }
+    if ((outputs.beat) = 3) then
+      ((outputs.beat <- 1); (outputs.accent <- true))
+    else ((outputs.beat <- ((outputs.beat) + 1)); (outputs.accent <- false))
+  end
+  
+  let pre_init_post_S6 = begin
+    
+    requires { (((not ((outputs.beat) = 1)) /\ ((outputs.beat) = 3))
+                  /\
+                  ((outputs.beat) > 0))
+                 /\
+                 (not (outputs.accent))
+    }
+    ensures { (((outputs.beat) = 1) /\ ((outputs.beat) > 0))
+                /\
+                (outputs.accent) }
+    if ((outputs.beat) = 3) then
+      ((outputs.beat <- 1); (outputs.accent <- true))
+    else ((outputs.beat <- ((outputs.beat) + 1)); (outputs.accent <- false))
+  end
+  
+  let pre_init_post_S8 = begin
+    
+    requires { ((((not ((outputs.beat) = 1)) /\ ((outputs.beat) = 3))
+                   /\
+                   ((outputs.beat) = 2))
+                  /\
+                  ((outputs.beat) > 0))
+                 /\
+                 (not (outputs.accent))
+    }
+    ensures { ((((outputs.beat) = 1) /\ ((outputs.beat) = 3))
+                 /\
+                 ((outputs.beat) > 0))
+                /\
+                (outputs.accent) }
+    if ((outputs.beat) = 3) then
+      ((outputs.beat <- 1); (outputs.accent <- true))
+    else ((outputs.beat <- ((outputs.beat) + 1)); (outputs.accent <- false))
+  end
+end

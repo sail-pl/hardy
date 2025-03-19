@@ -1,0 +1,6 @@
+never { /* true */
+accept_init:
+	if
+	:: (1) -> goto accept_init
+	fi;
+}

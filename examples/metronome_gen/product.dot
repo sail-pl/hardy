@@ -1,0 +1,83 @@
+digraph G {
+  node [fontsize=10, height=0.800000, fixedsize=true, shape=circle, ];
+  "{pre_init 
+ post_S8}" [shape=doublecircle, ];
+  "{pre_init 
+ post_S6}" [shape=doublecircle, ];
+  "{pre_init 
+ post_init}" [shape=doublecircle, ];
+  "{pre_init 
+ post_S2}" [shape=doublecircle, ];
+  "{pre_init 
+ post_S3}" [shape=doublecircle, ];
+  "{pre_init 
+ post_S7}" [shape=doublecircle, ];
+  "{pre_init 
+ post_S5}" [shape=doublecircle, ];
+  "{pre_init 
+ post_S4}" [shape=doublecircle, ];
+  
+  
+  edge [fontsize=10, ];
+  "{pre_init 
+ post_S8}" -> "{pre_init 
+ post_S5}" [label="requires: true 
+ ensures : ((((beat) = (1)) && ((beat) = (3))) && ((beat) > (0))) && (accent)",
+                                                    ];
+  "{pre_init 
+ post_S6}" -> "{pre_init 
+ post_S2}" [label="requires: true 
+ ensures : (((beat) = (1)) && ((beat) > (0))) && (accent)",
+                                                    ];
+  "{pre_init 
+ post_init}" -> "{pre_init 
+ post_S2}" [label="requires: true 
+ ensures : (((beat) = (1)) && ((beat) > (0))) && (accent)",
+                                                      ];
+  "{pre_init 
+ post_init}" -> "{pre_init 
+ post_init}" [label="requires: true 
+ ensures : ((! ((beat) = (1))) && ((beat) > (0))) && (! (accent))",
+                                                        ];
+  "{pre_init 
+ post_S2}" -> "{pre_init 
+ post_S3}" [label="requires: true 
+ ensures : ((((beat) = (1)) && ((beat) = (2))) && ((beat) > (0))) && (accent)",
+                                                    ];
+  "{pre_init 
+ post_S2}" -> "{pre_init 
+ post_S4}" [label="requires: true 
+ ensures : (((! ((beat) = (1))) && ((beat) = (2))) && ((beat) > (0))) && (! (accent))",
+                                                    ];
+  "{pre_init 
+ post_S3}" -> "{pre_init 
+ post_S7}" [label="requires: true 
+ ensures : (((((beat) = (1)) && ((beat) = (3))) && ((beat) = (2))) && ((beat) > (0))) && (accent)",
+                                                    ];
+  "{pre_init 
+ post_S3}" -> "{pre_init 
+ post_S8}" [label="requires: true 
+ ensures : ((((! ((beat) = (1))) && ((beat) = (3))) && ((beat) = (2))) && ((beat) > (0))) && (! (accent))",
+                                                    ];
+  "{pre_init 
+ post_S7}" -> "{pre_init 
+ post_S7}" [label="requires: true 
+ ensures : (((((beat) = (1)) && ((beat) = (3))) && ((beat) = (2))) && ((beat) > (0))) && (accent)",
+                                                    ];
+  "{pre_init 
+ post_S5}" -> "{pre_init 
+ post_S3}" [label="requires: true 
+ ensures : ((((beat) = (1)) && ((beat) = (2))) && ((beat) > (0))) && (accent)",
+                                                    ];
+  "{pre_init 
+ post_S4}" -> "{pre_init 
+ post_S5}" [label="requires: true 
+ ensures : ((((beat) = (1)) && ((beat) = (3))) && ((beat) > (0))) && (accent)",
+                                                    ];
+  "{pre_init 
+ post_S4}" -> "{pre_init 
+ post_S6}" [label="requires: true 
+ ensures : (((! ((beat) = (1))) && ((beat) = (3))) && ((beat) > (0))) && (! (accent))",
+                                                    ];
+  
+  }

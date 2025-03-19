@@ -1,0 +1,64 @@
+module Program
+  use ref.Ref
+  use int.Int
+  
+  type inputs_t = { on : bool; off : bool }
+  
+  type outputs_t = { mutable light : bool }
+  
+  type state_t = { mutable x : bool }
+  
+  val inputs : inputs_t
+  
+  val outputs : outputs_t
+  
+  val state : state_t
+  
+  let setup = begin
+    
+    ensures { (outputs.light) = false }
+    outputs.light <- false
+  end
+  
+  let pre_init_post_S2 = begin
+    
+    requires { exists _prev_off : bool, _prev_on : bool.
+                 ((not _prev_off) /\ (outputs.light))
+                   \/
+                   (_prev_on /\ (not _prev_off))
+                   /\
+                   (outputs.light)
+    }
+    requires { (not (inputs.on)) \/ (not (inputs.off)) }
+    ensures { ((not (inputs.off)) /\ (outputs.light))
+                \/
+                ((not (inputs.on)) /\ (inputs.off))
+                /\
+                (not (outputs.light)) }
+    if (inputs.on) then (outputs.light <- true)
+    else (if (inputs.off) then (outputs.light <- false)
+          else ())
+  end
+  
+  let pre_init_post_init = begin
+    
+    requires { ((outputs.light) = false)
+                 \/
+                 (exists _prev_off : bool, _prev_on : bool.
+                    (((not _prev_on) /\ _prev_off) /\ (not (outputs.light)))
+                      \/
+                      (not _prev_on)
+                      /\
+                      (not (outputs.light)))
+    }
+    requires { (not (inputs.on)) \/ (not (inputs.off)) }
+    ensures { (((inputs.on) /\ (not (inputs.off))) /\ (outputs.light))
+                \/
+                (not (inputs.on))
+                /\
+                (not (outputs.light)) }
+    if (inputs.on) then (outputs.light <- true)
+    else (if (inputs.off) then (outputs.light <- false)
+          else ())
+  end
+end

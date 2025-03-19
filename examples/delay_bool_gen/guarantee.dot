@@ -1,0 +1,13 @@
+digraph G {
+  node [fontsize=10, height=0.800000, fixedsize=true, shape=circle, ];
+  "S3" [shape=doublecircle, ];
+  "init" [shape=doublecircle, ];
+  
+  
+  edge [fontsize=10, ];
+  "S3" -> "S3" [label="((o) && (i)) && ((x) = (i))", ];
+  "S3" -> "init" [label="((o) && (! (i))) && ((x) = (i))", ];
+  "init" -> "S3" [label="((! (o)) && (i)) && ((x) = (i))", ];
+  "init" -> "init" [label="((! (o)) && (! (i))) && ((x) = (i))", ];
+  
+  }

@@ -1,0 +1,31 @@
+digraph G {
+  node [fontsize=10, height=0.800000, fixedsize=true, shape=circle, ];
+  "{pre_init 
+ post_init}" [shape=doublecircle, ];
+  "{pre_init 
+ post_S2}" [shape=doublecircle, ];
+  
+  
+  edge [fontsize=10, ];
+  "{pre_init 
+ post_init}" -> "{pre_init 
+ post_S2}" [label="requires: (! (on)) || (! (off)) 
+ ensures : ((on) && (! (off))) && (light)",
+                                                      ];
+  "{pre_init 
+ post_init}" -> "{pre_init 
+ post_init}" [label="requires: (! (on)) || (! (off)) 
+ ensures : (! (on)) && (! (light))",
+                                                        ];
+  "{pre_init 
+ post_S2}" -> "{pre_init 
+ post_S2}" [label="requires: (! (on)) || (! (off)) 
+ ensures : (! (off)) && (light)",
+                                                    ];
+  "{pre_init 
+ post_S2}" -> "{pre_init 
+ post_init}" [label="requires: (! (on)) || (! (off)) 
+ ensures : ((! (on)) && (off)) && (! (light))",
+                                                      ];
+  
+  }
