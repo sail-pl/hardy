@@ -3,9 +3,11 @@ output
     beat : int
 ;
 
+guarantees G {beat > 0}.
+
 guarantees G ( {beat = 1} <-> {accent}).
 
-guarantees {G ( |beat = 1| -> X |beat = 2| && X X |beat = 3| && X X X |beat = 1| )  }
+guarantees G ( {beat = 1} -> X {beat = 2} && X X {beat = 3} && X X X {beat = 1} ).
 
 
 setup : 
@@ -20,6 +22,6 @@ loop:
 	    emit 1 to beat;
         emit true to accent;
     else 
-        emit beat +1 to beat;
+        emit beat+1 to beat;
         emit false to accent;
     end
