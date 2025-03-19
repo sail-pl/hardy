@@ -1,6 +1,8 @@
 (** {1 Back-end signature} *)
 
-open HardyFrontEnd.Syntax.Program
+open HardyFrontEnd.Syntax
+open Program
+open Shared
 
 (** The back-end requires:
 
@@ -12,20 +14,21 @@ open HardyFrontEnd.Syntax.Program
     - generation of the program from the declarations, initialization procedure
       and functions *)
 module type S = sig
-  type in_pgrm = base_program
+  type in_ty
+  type in_pgrm = (in_ty temp_spec_t, in_ty inst_spec_t, variant_t) program
   type out_pgrm
   type out_decl
   type fun_id
-  type in_spec = inst_spec_t list hoare_pair
+  type in_spec = in_ty inst_spec_t list hoare_pair
   type out_spec
-  type in_setup = (inst_spec_t, variant_t) setup option
+  type in_setup = (in_ty inst_spec_t, variant_t) setup option
   type out_setup
-  type in_body = (inst_spec_t, variant_t) stmt list
+  type in_body = (in_ty inst_spec_t, variant_t) stmt list
   type out_body
-  type in_fun = (fun_id, inst_spec_t list) hoare_triple
+  type in_fun = (fun_id, in_ty inst_spec_t list) hoare_triple
   type out_fun
 
-  val generate_declarations : env -> out_decl list
+  val generate_declarations : base_ty env -> out_decl list
   val generate_setup : in_setup -> out_setup
   val generate_body : in_body -> out_body
   val generate_spec : in_spec -> out_spec
@@ -36,7 +39,7 @@ end
 
 module F (B : S) = struct
   let translate_program (p : B.in_pgrm) (triples : B.in_fun list) : B.out_pgrm =
-    let decls = B.generate_declarations p.prog_env in
+    let decls = B.generate_declarations p.prog_decls in
     let setup = B.generate_setup p.prog_setup in
     let body = B.generate_body p.prog_main.main_body in
     let f : B.in_fun -> B.out_fun =

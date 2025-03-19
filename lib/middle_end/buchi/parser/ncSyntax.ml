@@ -37,8 +37,8 @@ let string_of_bform (convert_atom : string -> string) =
   in
   aux
 
-let fol_of_bform (convert_atom : 'a -> 'b fol) : 'a bform -> 'b fol =
-  let rec aux : 'a bform -> 'b fol = function
+let fol_of_bform (convert_atom : 'a -> ('b, _) fol) : 'a bform -> ('b, _) fol =
+  let rec aux : 'a bform -> ('b, _) fol = function
     | True -> mk_dummy_loc FOL_True
     | False -> mk_dummy_loc FOL_False
     | Atom s -> convert_atom s

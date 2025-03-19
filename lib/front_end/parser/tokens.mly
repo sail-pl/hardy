@@ -5,11 +5,11 @@
 
 // EXP & LOGIC
 %token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" 
-%token EQ "=" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
+%token EQ "=" NEQ "<>" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
 %token LSQBRACE "[" RSQBRACE "]"
 
 // LOGIC
-%token FORALL EXISTS ARROW DARROW AND OR XOR TRUE FALSE NOT
+%token FORALL EXISTS ARROW DARROW AND OR TRUE FALSE NOT
 %token EOF
 
 // IMP 
@@ -33,10 +33,9 @@
 
 // ASSOC
 %right ARROW DARROW
-%left XOR
 %left OR
 %left AND
-%right EQ GT LT GTE LTE 
+%right EQ NEQ GT LT GTE LTE 
 %left PLUS MINUS
 %left TIMES DIVIDE
 %right UNTIL WUNTIL SRELEASE RELEASE

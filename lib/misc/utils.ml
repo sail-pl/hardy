@@ -9,10 +9,11 @@ let dummy_pos : loc = (Lexing.dummy_pos, Lexing.dummy_pos)
 let mk_locatable loc value = { loc; value }
 let mk_dummy_loc value = { value; loc = None }
 
-(** [fold_mjoin f j init l] behaves like [List.fold_left f init l], when
-    [List.length l < 2]. Otherwise, the join function [j] is used to combine the
-    last two values. Particularly, the initial value [init] is replaced by [j]
-    applied to the first two elements.
+(** [fold_mjoin f j init l] returns [init] if [l = nil], [f x] if [l] = [x] and
+    otherwise, behaves like [List.fold_left] where the current value is applied
+    to [f] before being applied with the accumulator to [j]. In the latter case,
+    the initial value [init] is replaced by [j] applied to the first two
+    elements.
 
     This function is useful to prevent extra terms in formulas: Instead of
     {m true \wedge x > 3}, we directly get {m x > 3}. *)
@@ -27,7 +28,15 @@ let fold_mjoin f j init = function
 let ( << ) f g x = f (g x)
 let ( >> ) f g x = g (f x)
 
-(* pairs *)
+type (_, _, _, _) pair_app =
+  | Left : ('a -> 'c) -> ('a, 'b, 'c, 'b) pair_app
+  | Right : ('b -> 'd) -> ('a, 'b, 'a, 'd) pair_app
+  | Both : ('a -> 'c) * ('b -> 'd) -> ('a, 'b, 'c, 'd) pair_app
 
-let pair_lmap f (a, b) = (f a, b)
-let pair_rmap f (a, b) = (a, f b)
+(** function application to a pair *)
+let pair_map (type i1 i2 o1 o2) (f : (i1, i2, o1, o2) pair_app)
+    ((a, b) : i1 * i2) : o1 * o2 =
+  match f with
+  | Left f -> (f a, b)
+  | Right f -> (a, f b)
+  | Both (f1, f2) -> (f1 a, f2 b)

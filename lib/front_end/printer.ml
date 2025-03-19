@@ -5,9 +5,16 @@ open FrontParser
 open SharedSyntax
 open FOLSyntax
 open LTLSyntax
-open Program
+open ProgramSyntax
 
-let string_of_ty = function Ty_Bool -> "bool" | Ty_Int -> "int"
+let string_of_cat_ty = function
+  | Input -> "inputs"
+  | Output -> "outputs"
+  | State -> "state"
+  | Local -> "local"
+
+let string_of_base_ty = function Ty_Bool -> "bool" | Ty_Int -> "int"
+let string_of_ty (c, t) = string_of_cat_ty c ^ "." ^ string_of_base_ty t
 let string_of_unop : common_logic_unary -> string = function Not -> "~"
 
 let string_of_binop : arithm_binop -> string = function
@@ -20,9 +27,9 @@ let string_of_binop : arithm_binop -> string = function
   | Gte -> ">="
   | Lte -> "<="
   | Eq -> "="
+  | Neq -> "<>"
 
 let string_of_common_logic_binary : common_logic_binary -> string = function
-  | Xor -> "^"
   | Equiv -> "<->"
   | Or -> "OR"
   | And -> "AND"
@@ -40,7 +47,8 @@ let rec string_of_exp (e : expr) : string =
       Format.sprintf "(%s) %s (%s)" (string_of_exp e1) (string_of_binop op)
         (string_of_exp e2)
 
-let rec string_of_fol (f : expr fol) : string =
+let rec string_of_fol (f : (expr, 'a) fol) (string_of_ty : 'a -> string) :
+    string =
   let open Format in
   let print_idty idty =
     String.concat " "
@@ -53,15 +61,17 @@ let rec string_of_fol (f : expr fol) : string =
   | FOL_True -> "true"
   | FOL_False -> "false"
   | Pred e -> string_of_exp e
-  | FOL_Unary (op, f) -> sprintf "%s (%s)" (string_of_unop op) (string_of_fol f)
+  | FOL_Unary (op, f) ->
+      sprintf "%s (%s)" (string_of_unop op) (string_of_fol f string_of_ty)
   | FOL_Binary (f1, op, f2) ->
-      sprintf "(%s) %s (%s)" (string_of_fol f1)
+      sprintf "(%s) %s (%s)"
+        (string_of_fol f1 string_of_ty)
         (string_of_common_logic_binary op)
-        (string_of_fol f2)
+        (string_of_fol f2 string_of_ty)
   | Forall (idty, f) ->
-      sprintf "forall %s. %s" (print_idty idty) (string_of_fol f)
+      sprintf "forall %s. %s" (print_idty idty) (string_of_fol f string_of_ty)
   | Exists (idty, f) ->
-      asprintf "exists %s. %s" (print_idty idty) (string_of_fol f)
+      asprintf "exists %s. %s" (print_idty idty) (string_of_fol f string_of_ty)
 
 let string_of_ltl_binop : ltl_binary -> string = function
   | Until -> "U"

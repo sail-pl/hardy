@@ -1,9 +1,11 @@
 open FrontParser
 open HardyFrontEnd
 open MiddleParser
-module P = HardyFrontEnd.Syntax.Program
+module PSyn = HardyFrontEnd.Syntax
+open ProgramSyntax
 open HardyMisc.Utils
 open LTLSyntax
+module SSyn = Syntax.Shared
 
 (** {1 Build Buchi Automaton from string formula} *)
 
@@ -26,14 +28,21 @@ module InputSpec = struct
     map_ltl_pred (fun p -> Triples.Atom.add_and_get p |> snd)
 end
 
-module Builder : Sig.S with type fun_id = string = struct
-  type input = (string * string ltl) P.hoare_pair
-  type fun_id = string
-  type output = (string * NcSyntax.neverclaim) P.hoare_pair
+module M : Sig.S with type fun_id = Program.fun_id_t and type ty = SSyn.ty =
+struct
+  type input = (string * string ltl) hoare_pair
+  type fun_id = Program.fun_id_t
+  type ty = SSyn.ty
+
+  type in_program =
+    (ty PSyn.temp_spec_t, ty PSyn.inst_spec_t, PSyn.variant_t) program
+
+  type output = (string * NcSyntax.neverclaim) hoare_pair
   type automaton = Triples.BProd.t
   (* { pa_pair :  (string * B.t) P.hoare_pair; pa_prod : (string * BB.t) } *)
 
-  let spec_to_input (cli : Cli.info) (spec : _ P.hoare_pair) : input =
+  let spec_to_input (cli : Cli.info)
+      (spec : SSyn.ty PSyn.temp_spec_t list hoare_pair) : input =
     let print_formula (name, spec) =
       if cli.verbose then
         Format.printf "%s formula : @,%s@," name
@@ -43,21 +52,22 @@ module Builder : Sig.S with type fun_id = string = struct
     let fjoin = fold_mjoin Fun.id and_ltl true_ltl in
     let rely = ("rely", fjoin spec.requires) in
     print_formula rely;
-    let rely_spec = pair_rmap InputSpec.from_ltl rely in
+    let rely_spec = pair_map (Right InputSpec.from_ltl) rely in
     let guarantee = ("guarantee", fjoin spec.ensures) in
     print_formula guarantee;
 
     let guarantee_spec =
-      pair_rmap
-        (fun g ->
-          (* because the input is read-only, any predicate on input is
+      pair_map
+        (Right
+           (fun g ->
+             (* because the input is read-only, any predicate on input is
           obviously still true at the end of the instant.
           It is added to the guarantee formula to potentialy simplify
           the product automaton.
       *)
-          (if cli.no_i_a_conj || snd rely = true_ltl then g
-           else and_ltl (snd rely) g)
-          |> InputSpec.from_ltl)
+             (if cli.no_i_a_conj || snd rely = true_ltl then g
+              else and_ltl (snd rely) g)
+             |> InputSpec.from_ltl))
         guarantee
     in
     { requires = rely_spec; ensures = guarantee_spec }
@@ -82,8 +92,8 @@ module Builder : Sig.S with type fun_id = string = struct
         D.output_graph o auto)
 
   let output_to_automaton (cli : Cli.info) (o : output) : automaton =
-    let rely_a = pair_rmap Triples.B.create o.requires
-    and guarantee_a = pair_rmap Triples.B.create o.ensures in
+    let rely_a = pair_map (Right Triples.B.create) o.requires
+    and guarantee_a = pair_map (Right Triples.B.create) o.ensures in
     automaton_to_dot (module Triples.B) cli rely_a;
     automaton_to_dot (module Triples.B) cli guarantee_a;
     (* create synchronized product automaton *)
@@ -93,5 +103,9 @@ module Builder : Sig.S with type fun_id = string = struct
     automaton_to_dot (module Triples.BProd) cli prod_a;
     snd prod_a
 
-  let generate_triples = Triples.generate_triples
+  let generate_triples :
+      (ty PSyn.temp_spec_t, ty PSyn.inst_spec_t, PSyn.variant_t) program ->
+      automaton ->
+      (fun_id, ty PSyn.inst_spec_t list) hoare_triple list =
+    Triples.generate_triples
 end

@@ -78,6 +78,7 @@ rule tokenize = parse
   | "*"                     { TIMES }
   | "/"                     { DIVIDE }
   | "="                     { EQ }
+  | "<>"                    { NEQ }
   | ">"                     { GT }
   | "<"                     { LT }
   | ">="                    { GTE }
@@ -102,7 +103,6 @@ rule tokenize = parse
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }
   | "||"                    { OR }
-  | "^"                     { XOR }
   | digit+ as lxm           { INT (int_of_string lxm) }
   | id as lxm               { ID (lxm) }
   | newline                 { next_line lexbuf; tokenize lexbuf }
