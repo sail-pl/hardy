@@ -1,13 +1,13 @@
 module Parser = HardyFrontEnd.Parsing
 module Cli = HardyFrontEnd.Cli.Init
 
-let main (type fun_id)
+let main (type triple_data) (type fol_data)
     (module Middle : HardyMiddleEnd.Sig.S
-      with type fun_id = fun_id
-       and type ty = HardyFrontEnd.Syntax.Shared.ty)
+      with type triple_data = triple_data
+       and type fol_data = fol_data)
     (module Back : HardyBackEnd.Sig.S
-      with type fun_id = Middle.fun_id
-       and type in_ty = Middle.ty) =
+      with type triple_data = Middle.triple_data
+       and type fol_data = Middle.fol_data) =
   let module Cli = Cli () in
   let translate_spec = HardyMiddleEnd.Sig.translate_spec (module Middle) in
   let module Back = HardyBackEnd.Sig.F (Back) in

@@ -6,6 +6,7 @@ open SharedSyntax
 open FOLSyntax
 open LTLSyntax
 open ProgramSyntax
+open InstantSyntax
 
 let string_of_cat_ty = function
   | Input -> "inputs"
@@ -36,19 +37,25 @@ let string_of_common_logic_binary : common_logic_binary -> string = function
   | Arrow -> "->"
   | Arithm o -> string_of_binop o
 
-let rec string_of_exp (e : expr) : string =
+let string_of_hist (v, h) =
+  match h with
+  | Some (Previous 0) | None -> v
+  | Some (Previous n) -> Printf.sprintf "prev %i %s" n v
+  | Some (At n) -> Printf.sprintf "%s at %i" v n
+
+let rec string_of_exp (e : 't expr) (f : string * 't -> string) : string =
   match e.value with
   | Int n -> string_of_int n
   | True -> "true"
   | False -> "false"
-  | Prev s -> Format.sprintf "prev(%s)" s
-  | Var s | Read s -> s
+  | Var (s, i) -> f (s, i)
+  | Read s -> s
   | BinOp (e1, op, e2) ->
-      Format.sprintf "(%s) %s (%s)" (string_of_exp e1) (string_of_binop op)
-        (string_of_exp e2)
+      Format.sprintf "(%s) %s (%s)" (string_of_exp e1 f) (string_of_binop op)
+        (string_of_exp e2 f)
 
-let rec string_of_fol (f : (expr, 'a) fol) (string_of_ty : 'a -> string) :
-    string =
+let rec string_of_fol (f : (instant option expr, 'a) fol)
+    (string_of_ty : 'a -> string) : string =
   let open Format in
   let print_idty idty =
     String.concat " "
@@ -60,7 +67,7 @@ let rec string_of_fol (f : (expr, 'a) fol) (string_of_ty : 'a -> string) :
   match f.value with
   | FOL_True -> "true"
   | FOL_False -> "false"
-  | Pred e -> string_of_exp e
+  | Pred e -> string_of_exp e string_of_hist
   | FOL_Unary (op, f) ->
       sprintf "%s (%s)" (string_of_unop op) (string_of_fol f string_of_ty)
   | FOL_Binary (f1, op, f2) ->

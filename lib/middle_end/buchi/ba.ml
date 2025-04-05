@@ -17,12 +17,27 @@ module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t = string bform = struct
   let default = True
 end
 
+module Utils (G : Graph.Sig.I) = struct
+  (* no vertex find function ??
+    -> from the manual: 
+    "you should better keep the vertices as long as you create them."
+  *)
+  exception Found of G.V.t
+
+  let find_v_opt g i =
+    try
+      G.iter_vertex (fun v -> if G.V.label v = i then raise (Found v)) g;
+      None
+    with Found v -> Some v
+end
+
 module Make (Atoms : Atom.S with type 'a t = 'a) :
   BuchiSig.S with type E.label = string bform and type init_val = neverclaim =
 struct
   include Graph.Imperative.Digraph.ConcreteLabeled (Vertex) (Arc)
 
   type init_val = neverclaim
+  type vdata = unit
 
   let acceptant v = List.hd String.(split_on_char '_' v) = "accept"
   let is_start_node (v : V.t) = String.ends_with (V.label v) ~suffix:"init"
@@ -49,4 +64,9 @@ struct
 
   let id_of_vertex = string_of_vertex
   let string_of_edge (f : string bform) = string_of_bform Atoms.subst f
+  let get_vdata _ = ()
+
+  let get_edge_type (e : E.label) =
+    let open BuchiSig in
+    match e with True -> Universal | False -> Blocking | _ -> Unknown
 end

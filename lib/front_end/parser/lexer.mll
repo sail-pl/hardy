@@ -52,9 +52,17 @@ rule tokenize = parse
   | "guarantees"            { GUARANTEE }
   | "requires"              { REQUIRES }
   | "prev"                  { PREV }
+  | "^"                     { HAT }
   | "any"                   { ANY }
+  | "?"                     { QMARK }
   | "all"                   { ALL }
+  | "#"                     { SHARP }
+  | "$"                     { DOLLAR }
   | "at"                    { AT }
+  | "@"                     { SYMB_AT }
+  | "last"                  { LAST }
+  | "first"                 { FIRST }
+  | "start"                 { START }
   | "ensures"               { ENSURES }
   | "invariant"             { INVARIANT }
   | "variant"               { VARIANT }
@@ -95,9 +103,6 @@ rule tokenize = parse
   | "M"                     { SRELEASE }
   | "F"                     { EVENTUALLY }
   | "G"                     { ALWAYS }
-  | "last"                  { LAST }
-  | "first"                 { FIRST }
-  | "start"                 { START }
   | "~"                     { NOT }
   | "->" | "=>"             { ARROW }
   | "<->" | "<=>"           { DARROW }

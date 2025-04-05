@@ -1,13 +1,20 @@
 (** {1 Misc Utilities} *)
 
+type ('v, 'l) labeled = { value : 'v; label : 'l }
+
 (** Token Location *)
 
 type loc = Lexing.position * Lexing.position
-type 'v locatable = { loc : loc option; value : 'v }
+type 'v locatable = ('v, loc option) labeled
 
+let mk_labeled label value = { label; value }
 let dummy_pos : loc = (Lexing.dummy_pos, Lexing.dummy_pos)
-let mk_locatable loc value = { loc; value }
-let mk_dummy_loc value = { value; loc = None }
+let mk_dummy_loc value = { value; label = None }
+
+type 'f disjunction = { disjunct : 'f list }
+(** type alias for list of disjunctive and conjunctive formulas *)
+
+type 'f conjunction = { conjunct : 'f list }
 
 (** [fold_mjoin f j init l] returns [init] if [l = nil], [f x] if [l] = [x] and
     otherwise, behaves like [List.fold_left] where the current value is applied
@@ -40,3 +47,6 @@ let pair_map (type i1 i2 o1 o2) (f : (i1, i2, o1, o2) pair_app)
   | Left f -> (f a, b)
   | Right f -> (a, f b)
   | Both (f1, f2) -> (f1 a, f2 b)
+
+let add_opt_to_list (x : 'a option) (l : 'a list) : 'a list =
+  Option.fold ~none:l ~some:(fun x -> x :: l) x

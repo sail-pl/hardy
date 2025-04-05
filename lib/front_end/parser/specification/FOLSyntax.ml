@@ -55,7 +55,7 @@ let rec map_fol_ty m = map_fol (map_fol_ty m) m
 let rec map_fol_pred m =
   map_fol
     (function
-      | { value = Pred x; loc } -> { value = Pred (m x); loc }
+      | { value = Pred x; label = loc } -> { value = Pred (m x); label = loc }
       | e -> map_fol_pred m e)
     Fun.id
 

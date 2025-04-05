@@ -3,6 +3,7 @@
 module Cli = HardyFrontEnd.Cli
 open HardyFrontEnd.Syntax.Program
 open FrontParser.Program
+open HardyMisc.Utils
 
 (** The middle-end requires :
 
@@ -22,21 +23,31 @@ module type S = sig
   type automaton
   (** internal automaton type *)
 
-  type fun_id
-  type ty
-  type in_program = (ty temp_spec_t, ty inst_spec_t, variant_t) program
+  type triple_data
+  (** additional information over a triple *)
 
-  val spec_to_input : Cli.info -> ty temp_spec_t list hoare_pair -> input
+  type fol_data
+  (** additional information over a formula *)
+
+  type in_program = base_program
+  (* (ty temp_spec_t, (ty,unit) inst_spec_t, variant_t, unit) program *)
+
+  type triples =
+    ( triple_data,
+      (Shared.ty, fol_data) inst_spec_t disjunction conjunction )
+    hoare_triple
+    list
+
+  val spec_to_input : Cli.info -> Shared.ty temp_spec_t list hoare_pair -> input
   val exec : Cli.info -> input -> output
   val output_to_automaton : Cli.info -> output -> automaton
-
-  val generate_triples :
-    in_program -> automaton -> (fun_id, ty inst_spec_t list) hoare_triple list
+  val generate_triples : in_program -> automaton -> triples
 end
 
-let translate_spec (type fun_id) (type out_ty)
-    (module M : S with type fun_id = fun_id and type ty = out_ty) info
-    (p : M.in_program) : (M.fun_id, M.ty inst_spec_t list) hoare_triple list =
+let translate_spec (type triple_data) (type fol_data)
+    (module M : S
+      with type triple_data = triple_data
+       and type fol_data = fol_data) info (p : M.in_program) : M.triples =
   M.(
     spec_to_input info p.prog_spec
     |> exec info |> output_to_automaton info |> generate_triples p)

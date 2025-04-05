@@ -6,6 +6,7 @@ open ProgramSyntax
 open HardyMisc.Utils
 open LTLSyntax
 module SSyn = Syntax.Shared
+module Hist = Syntax.Instant
 
 (** {1 Build Buchi Automaton from string formula} *)
 
@@ -28,14 +29,21 @@ module InputSpec = struct
     map_ltl_pred (fun p -> Triples.Atom.add_and_get p |> snd)
 end
 
-module M : Sig.S with type fun_id = Program.fun_id_t and type ty = SSyn.ty =
-struct
+module M :
+  Sig.S
+    with type triple_data = Program.triple_data_t
+     and type fol_data = Hist.min_nb_instants = struct
   type input = (string * string ltl) hoare_pair
-  type fun_id = Program.fun_id_t
-  type ty = SSyn.ty
+  type fol_data = Hist.min_nb_instants
+  type triple_data = Program.triple_data_t
+  type in_program = PSyn.base_program
 
-  type in_program =
-    (ty PSyn.temp_spec_t, ty PSyn.inst_spec_t, PSyn.variant_t) program
+  (* (SSyn.ty PSyn.temp_spec_t, (SSyn.ty,unit) PSyn.inst_spec_t, PSyn.variant_t, unit) program *)
+  type triples =
+    ( triple_data,
+      (SSyn.ty, fol_data) PSyn.inst_spec_t disjunction conjunction )
+    hoare_triple
+    list
 
   type output = (string * NcSyntax.neverclaim) hoare_pair
   type automaton = Triples.BProd.t
@@ -103,9 +111,6 @@ struct
     automaton_to_dot (module Triples.BProd) cli prod_a;
     snd prod_a
 
-  let generate_triples :
-      (ty PSyn.temp_spec_t, ty PSyn.inst_spec_t, PSyn.variant_t) program ->
-      automaton ->
-      (fun_id, ty PSyn.inst_spec_t list) hoare_triple list =
+  let generate_triples : in_program -> automaton -> triples =
     Triples.generate_triples
 end

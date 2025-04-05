@@ -1,0 +1,27 @@
+input i : int;
+output o : int;
+var x : int init : bool;
+
+// private spec
+guarantees G {~init}.
+// for now we manually split the first operator 
+// (semantics should be the first input ever received but curreent implementation doesn't account for initial instant where history is empty)
+guarantees X G {x = first i}. 
+guarantees {x = i}.
+
+// public spec 
+// for now we manually split the first operator 
+guarantees X G {o = first i}.
+guarantees {o = i}.
+
+
+setup :
+    ensures { init = true }
+    init := true;
+
+loop :
+    if init then
+        x := i;
+        init := false;
+    end
+    emit x to o;

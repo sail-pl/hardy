@@ -4,6 +4,7 @@
 %token TY_INT TY_BOOL
 
 // EXP & LOGIC
+%token SYMB_AT DOLLAR QMARK HAT SHARP
 %token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" 
 %token EQ "=" NEQ "<>" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
 %token LSQBRACE "[" RSQBRACE "]"

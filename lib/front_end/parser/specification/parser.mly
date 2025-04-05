@@ -1,6 +1,7 @@
 %{
     open LTLSyntax
     open FOLSyntax
+    open InstantSyntax
 %}
 
 %%
@@ -40,4 +41,4 @@ let prog_requires == delimited(RELY, ltl, ".")
 let prog_ensures == delimited(GUARANTEE, ltl, ".") 
 
 %public
-let setup_ensures == preceded(ENSURES, braced(fol)) 
+let setup_ensures == preceded(ENSURES, braced(fol))

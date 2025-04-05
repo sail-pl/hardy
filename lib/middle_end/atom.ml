@@ -3,13 +3,14 @@ open HardyFrontEnd.Printer
 open Program
 open Fol
 open Shared
+open HardyMisc.Utils
 
 (** maintains a correspondance between an atom and its associated unique
     identifier *)
 module type S = sig
   type 'a t
 
-  val get : string -> (string * ty inst_spec_t) t
+  val get : string -> (string * ty fol_t) t
   (** [get i] returns the atom corresponding to the identifier [i] *)
 
   val subst : string t -> string t
@@ -17,7 +18,7 @@ module type S = sig
       printing-friendly string where the types inside the atoms are replaced by
       [f_ty_to_str] *)
 
-  val add_and_get : ty inst_spec_t -> (string * string) t
+  val add_and_get : ty fol_t -> (string * string) t
   (** [add_and_get a] returns the short and long identifier corresponding to the
       atom [a], creating a fresh one if it does not exist *)
 end
@@ -34,7 +35,7 @@ let sub_atom_in_str subst =
 let atom_id_to_int s = String.(sub s 2 (length s - 2) |> int_of_string)
 
 (** [remove_exp_loc e] replaces all locations of expression [e] with None *)
-let rec remove_exp_loc (e : expr) : expr =
+let rec remove_exp_loc (e : 't expr) : 't expr =
   let value =
     match e.value with
     | BinOp (e1, op, e2) ->
@@ -42,10 +43,10 @@ let rec remove_exp_loc (e : expr) : expr =
         BinOp (e1, op, e2)
     | _ as x -> x
   in
-  { value; loc = None }
+  mk_dummy_loc value
 
 (** [remove_fol_loc f] replaces all locations of fol formula [f] with None *)
-let rec remove_fol_loc (f : (expr, _) fol) : (expr, _) fol =
+let rec remove_fol_loc (f : ('t expr, _) fol) : ('t expr, _) fol =
   let value =
     match f.value with
     | Pred p -> Pred (remove_exp_loc p)
@@ -63,12 +64,12 @@ let rec remove_fol_loc (f : (expr, _) fol) : (expr, _) fol =
         Exists (x, f)
     | _ as x -> x
   in
-  { value; loc = None }
+  mk_dummy_loc value
 
 module Functional : S = struct
   module M = Map.Make (Int)
 
-  type formula = string * (expr, ty) fol
+  type formula = string * ty fol_t
   (** string representing formula and the formula itself *)
 
   type 'a t = int * formula M.t -> 'a * (int * formula M.t)
@@ -82,13 +83,13 @@ module Functional : S = struct
 
   (* let get_f i proj : formula option t = fun m -> (M.find i (proj m), m) *)
 
-  let get (s : string) : (string * _ inst_spec_t) t =
+  let get (s : string) : (string * ty fol_t) t =
    fun (cnt, m) -> (M.find (atom_id_to_int s) m, (cnt, m))
 
   let subst (f : string t) : string t =
    fun m ->
     let f, (cnt, m) = f m in
-    let get a : _ inst_spec_t = get a (cnt, m) |> fst |> snd in
+    let get a : ty fol_t = get a (cnt, m) |> fst |> snd in
     ( sub_atom_in_str
         (fun s ->
           let a = get s in
@@ -98,7 +99,7 @@ module Functional : S = struct
 
   (* let get_and_incr : int t = fun (cnt,m) -> cnt,(cnt+1,m) *)
 
-  let add_and_get (atom : _ inst_spec_t) : (string * string) t =
+  let add_and_get (atom : ty fol_t) : (string * string) t =
     let key = Hashtbl.hash (remove_fol_loc atom) in
     let label = Format.sprintf "f_%i" key in
     fun (cnt, m) ->
@@ -113,18 +114,15 @@ end
 module Imperative () : S with type 'a t = 'a = struct
   exception Atom_not_found of string
 
-  open HardyFrontEnd.Syntax.Fol
   open HardyFrontEnd.Printer
 
   type 'a t = 'a
 
   (* key is a hash of fol, value is a short name for fol + fol itself*)
-  let atomic_bindings : (int, string * (expr, _) fol) Hashtbl.t =
-    Hashtbl.create 100
-
+  let atomic_bindings : (int, string * ty fol_t) Hashtbl.t = Hashtbl.create 100
   let cnt = ref 0
 
-  let get (s : string) =
+  let get (s : string) : (string * ty fol_t) t =
     try Hashtbl.find atomic_bindings (atom_id_to_int s)
     with Not_found -> raise (Atom_not_found s)
 
@@ -133,9 +131,12 @@ module Imperative () : S with type 'a t = 'a = struct
         let _, inv = get s in
         string_of_fol inv string_of_ty)
 
-  let add_and_get (atom : _ inst_spec_t) =
-    (* we must get the same atom if the formulas are syntactically equal*)
-    let key = Hashtbl.hash (remove_fol_loc atom) in
+  let add_and_get (atom : ty fol_t) =
+    (* we must get the same atom if the formulas are syntactically equal
+      warning: hash function doesn't recursively check all structure's nodes,
+      but by default only 10 "meaningful" nodes (see manual).  
+      *)
+    let key = Hashtbl.hash_param 100 256 (remove_fol_loc atom) in
     let label = Format.sprintf "f_%i" key in
     match Hashtbl.find_opt atomic_bindings key with
     | None ->

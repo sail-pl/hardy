@@ -32,7 +32,7 @@ let program :=
 
 let invariant == preceded(INVARIANT, braced(fol)) 
 
-let variant == ~ = preceded(VARIANT, braced(expr)); <mk_variant>
+let variant == ~ = preceded(VARIANT, braced(basic_expr)); <mk_variant>
 
 %public
 let braced(x) == delimited("{", x, "}")
@@ -59,23 +59,34 @@ let ty :=
     | TY_INT ; { Ty_Int }
 
 let stmt := located (
-    | ~ = ID ; ":=" ; ~ = expr ; ";" ; <Assign>
-    | EMIT ; ~ = expr  ; TO ; ~ = ID ; ";" ; <Emit>
-    | IF ; ~ = expr ; THEN ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; END ; <If>
-    | WHILE ; ~ = expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
+    | ~ = ID ; ":=" ; ~ = basic_expr ; ";" ; <Assign>
+    | EMIT ; ~ = basic_expr  ; TO ; ~ = ID ; ";" ; <Emit>
+    | IF ; ~ = basic_expr ; THEN ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; END ; <If>
+    | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
 )
 
-let expr := 
+let expr(var_e) := 
     | located (
         | LTRUE ; {True}
         | LFALSE ; {False}
         | ~ = INT ; <Int>
-        | ~ = ID  ; <Var>
+        | (id,x) = var_e ; {Var (id,x)}
         | READ ; ~ = ID ; <Read>
-        | PREV ; ~ = ID ; <Prev> 
-        | e1 = expr ; op = binExpOp ; e2 = expr ; {BinOp (e1,op,e2)}
+        | e1 = expr(var_e) ; op = binExpOp ; e2 = expr(var_e) ; {BinOp (e1,op,e2)}
         )
-    | ~ = delimited("(",expr,")") ; <>
+    | ~ = delimited("(",expr(var_e),")") ; <>
+
+
+let basic_expr == expr(id = ID ; {id,()})
+
+
+let tq_expr == expr(
+    | id = ID ; {id,None}
+    | id = ID ; endrule(AT|SYMB_AT) ; n = INT ; {id,Some (At n)}
+    | endrule(PREV | LAST) ; n = endrule(n = option(INT); {Option.value ~default:1 n}) ; id = ID ;  {id,Some (Previous n)}
+    | id = ID ; SHARP ; n = INT ; {id,Some (Previous n)}
+    | endrule(START | FIRST | DOLLAR) ; id = ID ;  {id,Some (At 0)}
+)
 
 
 %public
@@ -83,7 +94,7 @@ let fol :=
     | located(
         | TRUE ; {FOL_True}
         | FALSE ; {FOL_False}
-        | ~ = expr ; <Pred>
+        | ~ = tq_expr ; <Pred>
         | ~ = common_logic_unary ; ~ = fol ; <FOL_Unary>
         | f1 = fol ; op = common_logic_binary ; f2 = fol ; {FOL_Binary (f1,op,f2)}
         | FORALL ; vars = typed_state_id+ ; COMMA ; f = fol ; {Forall (List.flatten vars, f)}
@@ -116,4 +127,4 @@ let binExpOp ==
     | "<>" ; {Neq}
 
 %public
-let located(x) == ~ = x ; { mk_locatable (Some $loc) x }
+let located(x) == ~ = x ; { mk_labeled (Some $loc) x }

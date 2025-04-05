@@ -1,7 +1,10 @@
+type edge_type = Blocking | Universal | Unknown
+
 module type S = sig
   include Graph.Sig.G
 
   type init_val
+  type vdata
 
   val create : init_val -> t
   val is_start_node : V.t -> bool
@@ -9,6 +12,8 @@ module type S = sig
   val string_of_vertex : V.t -> string
   val id_of_vertex : V.t -> string
   val string_of_edge : E.label -> string
+  val get_edge_type : E.label -> edge_type
+  val get_vdata : V.t -> vdata
 end
 
 (** Buchi-specific graph utilities *)
@@ -27,7 +32,6 @@ functor
   (G : S)
   ->
   struct
-    (* no vertex find function ?? *)
     let get_all_init_nodes g =
       G.fold_vertex
         (fun v acc -> if G.is_start_node v then v :: acc else acc)
@@ -49,7 +53,17 @@ functor
       let get_subgraph _ = None
       let graph_attributes _g = []
       let vertex_name (v : vertex) = "\"" ^ string_of_vertex v ^ "\""
-      let edge_attributes e = [ `Label (E.label e |> string_of_edge) ]
+
+      let edge_attributes e =
+        let l = E.label e in
+        [
+          `Label (string_of_edge l);
+          `Color
+            (match get_edge_type l with
+            | Universal -> 16762880
+            | Blocking -> 16711680
+            | Unknown -> 0);
+        ]
 
       let vertex_attributes v =
         if acceptant v then [ `Shape `Doublecircle ] else []

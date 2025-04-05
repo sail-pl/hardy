@@ -5,36 +5,38 @@ open SharedSyntax
 
 (* Expressions *)
 
-type expr = expression_ locatable
+type 't expr = 't expression_ locatable
+(** variables can carry extra information of type ['t] *)
 
-and expression_ =
+and 't expression_ =
   | Int of int
   | True
   | False
-  | Var of string
-  | Prev of string
+  | Var of string * 't
   | Read of string
-  | BinOp of expr * arithm_binop * expr
+  | BinOp of 't expr * arithm_binop * 't expr
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
 let private_var = String.cat "_"
 
-let rec fold_expr : type a. (expr -> a -> a) -> expr -> a -> a =
+let rec fold_expr : type a. ('t expr -> a -> a) -> 't expr -> a -> a =
  fun j e init ->
   match e.value with
-  | Int _ | True | False | Var _ | Prev _ | Read _ -> j e init
+  | Int _ | True | False | Var _ | Read _ -> j e init
   | BinOp (e1, _, e2) -> j e (fold_expr j e2 (fold_expr j e1 init))
 
-let rec map_expr : (expr -> expr) -> expr -> expr =
+let rec map_expr : ('t expr -> 't expr) -> 't expr -> 't expr =
  fun m e ->
   match e.value with
-  | Int _ | True | False | Var _ | Prev _ | Read _ -> m e
+  | Int _ | True | False | Var _ | Read _ -> m e
   | BinOp (e1, op, e2) ->
       m { e with value = BinOp (map_expr m e1, op, map_expr m e2) }
 
-let expr_vars : expr -> string list -> string list =
-  fold_expr (fun e l -> match e.value with Var x -> x :: l | _ -> l)
+let expr_vars (e : 't expr) : (string * 't) list -> (string * 't) list =
+  fold_expr
+    (fun e l -> match e.value with Var (x, t) -> (x, t) :: l | _ -> l)
+    e
 
 type 'spec hoare_pair = { requires : 'spec; ensures : 'spec }
 (** generic hoare requires/ensures pair *)
@@ -45,24 +47,25 @@ type 'v variant = { variant : 'v }
 let mk_variant x : _ variant = { variant = x }
 let variant x = x.variant
 
-type ('inv, 'var) stmt = ('inv, 'var) stmt_ locatable
+type ('inv, 'var, 't) stmt = ('inv, 'var, 't) stmt_ locatable
 (** program statements *)
 
-and ('inv, 'var) stmt_ =
-  | Assign of string * expr
-  | Emit of expr * string
-  | If of expr * ('inv, 'var) stmt list * ('inv, 'var) stmt list option
-  | While of expr * 'inv * 'var * ('inv, 'var) stmt list
+and ('inv, 'var, 't) stmt_ =
+  | Assign of string * 't expr
+  | Emit of 't expr * string
+  | If of
+      't expr * ('inv, 'var, 't) stmt list * ('inv, 'var, 't) stmt list option
+  | While of 't expr * 'inv * 'var * ('inv, 'var, 't) stmt list
 
-type ('inv, 'var) setup = {
+type ('inv, 'var, 't) setup = {
   setup_ensures : 'inv list;
-  setup_body : ('inv, 'var) stmt list;
+  setup_body : ('inv, 'var, 't) stmt list;
 }
 (** setup routine signature *)
 
-type ('inv, 'var) main = {
+type ('inv, 'var, 't) main = {
   main_loop_inv : 'inv option;
-  main_body : ('inv, 'var) stmt list;
+  main_body : ('inv, 'var, 't) stmt list;
 }
 (** main function signature *)
 
@@ -73,11 +76,9 @@ type 'ty env = {
 }
 (** program memory environment *)
 
-type ('temp_spec, 'inv, 'var) program = {
+type ('temp_spec, 'inv, 'var, 't) program = {
   prog_decls : base_ty env;
   prog_spec : 'temp_spec list hoare_pair;
-  prog_setup : ('inv, 'var) setup option;
-  prog_main : ('inv, 'var) main;
+  prog_setup : ('inv, 'var, 't) setup option;
+  prog_main : ('inv, 'var, 't) main;
 }
-
-type 's fun_id = { id : 's }
