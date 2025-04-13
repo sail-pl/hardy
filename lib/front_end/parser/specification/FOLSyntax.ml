@@ -14,6 +14,7 @@ and ('a, 'qty) fol_ =
   | FOL_Binary of ('a, 'qty) fol * common_logic_binary * ('a, 'qty) fol
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
+  | ExistsPrev of string * ('a,'qty) fol (* temporal existential quantification *)
 
 let map_fol : type a b ty_a ty_b.
     ((a, ty_a) fol -> (b, ty_b) fol) ->
@@ -35,6 +36,9 @@ let map_fol : type a b ty_a ty_b.
   | Exists (l, f) ->
       let value = Exists (List.map m_ty l, m f) in
       { form with value }
+  | ExistsPrev (v, f) ->
+      let value = ExistsPrev (v, m f) in
+      { form with value }
 
 let rec fold_fol : type a b t.
     ((a, t) fol -> b -> b) -> (a -> b -> b) -> b -> (a, t) fol -> b =
@@ -44,7 +48,7 @@ let rec fold_fol : type a b t.
   | Pred p -> pj p init
   | FOL_Unary (_, f) -> j form (fold_fol j pj init f)
   | FOL_Binary (f1, _, f2) -> j form (fold_fol j pj (fold_fol j pj init f1) f2)
-  | Forall (_, f) | Exists (_, f) -> j form (fold_fol j pj init f)
+  | Forall (_, f) | Exists (_, f) | ExistsPrev (_,f) -> j form (fold_fol j pj init f)
 
 (** [map_fol_ty m f] replaces every quantifer [Exists (l,e)] and [Forall (l,e)]
     of [f] by [X (List.map m l,e)] *)

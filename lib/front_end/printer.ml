@@ -79,6 +79,8 @@ let rec string_of_fol (f : (instant option expr, 'a) fol)
       sprintf "forall %s. %s" (print_idty idty) (string_of_fol f string_of_ty)
   | Exists (idty, f) ->
       asprintf "exists %s. %s" (print_idty idty) (string_of_fol f string_of_ty)
+  | ExistsPrev (id, f) ->
+        asprintf "exists_prev %s. %s" id (string_of_fol f string_of_ty)
 
 let string_of_ltl_binop : ltl_binary -> string = function
   | Until -> "U"

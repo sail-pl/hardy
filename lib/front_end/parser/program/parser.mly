@@ -98,6 +98,7 @@ let fol :=
         | ~ = common_logic_unary ; ~ = fol ; <FOL_Unary>
         | f1 = fol ; op = common_logic_binary ; f2 = fol ; {FOL_Binary (f1,op,f2)}
         | FORALL ; vars = typed_state_id+ ; COMMA ; f = fol ; {Forall (List.flatten vars, f)}
+        | EXISTS_PREV ; v = ID; COMMA ; f = fol ; {ExistsPrev (v, f)}
         | EXISTS ; vars = typed_state_id+ ; COMMA ; f = fol ; {Exists (List.flatten vars , f)}
     )
     | ~ = delimited("|",fol,"|") ; <> 

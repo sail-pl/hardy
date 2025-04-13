@@ -60,7 +60,11 @@ let get_quant_binders vars =
          PH.one_binder v ~pty)
        vars)
 
-let translate_binop op = PH.qualid [ Ident.op_infix (string_of_binop op) ]
+let translate_binop app infix op  = 
+  let id =  PH.ident (Ident.op_infix (string_of_binop op)) in
+  match op with 
+| Add | Sub | Mul | Div ->  fun e1 e2 -> app (P.Qident id) [e1;e2]
+| Gt | Lt | Gte | Lte | Eq | Neq -> infix id
 
 let rec translate_expression ({ value = e; label = loc } : unit expr) : P.expr =
   let open P in
@@ -78,9 +82,10 @@ let rec translate_expression ({ value = e; label = loc } : unit expr) : P.expr =
               eapp (qualid [ s ])
                 [ [ string_of_cat_ty cat ] |> qualid |> evar ~loc ])
   | Read s -> Easref (qualid [ s ]) |> expr ~loc
-  | BinOp (e1, binop, e2) ->
-      eapp ~loc (translate_binop binop)
-        [ translate_expression e1; translate_expression e2 ]
+  | BinOp (e1, binop, e2) -> 
+      let e1 = translate_expression e1
+      and e2 = translate_expression e2 in 
+      translate_binop (eapp ~loc) (fun x e1 e2 -> Einnfix (e1,x,e2) |> expr ~loc) binop e1 e2
 
 let rec translate_term (e : instant option expr) : P.term =
   let open P in
@@ -94,7 +99,7 @@ let rec translate_term (e : instant option expr) : P.term =
   | Var (s, t) ->
       get_binding_type s (fun (cat, _) ->
           match cat with
-          | Local -> failwith "no local variables should be present "
+          | Local -> tvar (qualid [ s ])
           | _ -> (
               let field = [ instant_field cat ] |> qualid in
               let nth = [ "NthNoOpt"; "nth" ] |> qualid in
@@ -118,8 +123,10 @@ let rec translate_term (e : instant option expr) : P.term =
                   let inst = tapp nth [ n; tvar (qualid [ history_id ]) ] in
                   tapp ~loc (qualid [ s ]) [ tapp field [ inst ] ]))
   | Read s -> Tasref (qualid [ s ]) |> term ~loc
-  | BinOp (e1, binop, e2) ->
-      tapp ~loc (translate_binop binop) [ translate_term e1; translate_term e2 ]
+  | BinOp (t1, binop, t2) ->
+    let t1 = translate_term t1
+    and t2 = translate_term t2 in
+    translate_binop (tapp ~loc) (fun x e1 e2 -> Tinnfix (e1,x,e2) |> term ~loc) binop t1 t2
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b, unit) stmt list) :
     P.expr =
@@ -184,7 +191,8 @@ let rec pterm_of_fol
       | Or -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
       | Arrow -> Tbinop (t1, Dterm.DTimplies, t2) |> term ~loc
       | Equiv -> Tbinop (t1, Dterm.DTiff, t2) |> term ~loc
-      | Arithm op -> tapp ~loc (translate_binop op) [ t1; t2 ])
+      | Arithm op -> translate_binop (tapp ~loc) (fun x e1 e2 -> Tinnfix (e1,x,e2) |> term ~loc) op t1 t2
+  )
   | Forall (v, f) ->
       let locals = List.to_seq v in
       add_bindings locals;
@@ -197,6 +205,20 @@ let rec pterm_of_fol
       let t = Tquant (DTexists, get_quant_binders v, [], pterm_of_fol f) in
       remove_bindings (Seq.map fst locals);
       term t ~loc
+  | ExistsPrev (v, f) -> 
+    get_binding_type v (fun (cat, bty) ->
+      let field = [ instant_field cat ] |> qualid in
+      let local_v = v,(Local,bty) in
+      (* for now, easier to make a local decl and mask the variable *)    
+      add_bindings Seq.(cons local_v empty);  
+      let e = tapp (qualid [ v ]) [ tapp field [ tvar (qualid ["_inst"]) ] ] in 
+      let f = Tlet (ident v,e,pterm_of_fol f) |> term in
+      remove_bindings Seq.(cons (fst local_v) empty); 
+      let f_abs = Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc in
+      let for_some = [ "Quant"; "for_some" ] |> qualid in
+      tapp for_some [ f_abs ;  tvar (qualid [ history_id ]) ] 
+      )
+
 
 let pterm_of_inv = pterm_of_fol
 
@@ -411,6 +433,7 @@ module M :
         [ "list"; "Length" ];
         [ "list"; "HdTlNoOpt" ];
         [ "list"; "NthNoOpt" ];
+        ["list"; "Quant"];
       ]
     in
     let m =
@@ -427,7 +450,7 @@ module M :
         let _mods = Why3.Typing.type_mlw_file w3.env [] "???" pgrm in
         (* continue *)
         ()
-      with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e
+      with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e 
     in
     pgrm
 

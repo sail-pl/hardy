@@ -103,7 +103,7 @@ let generate_spec (inputs : (string * base_ty) list)
     (ty, min_nb_instants) inst_spec_t disjunction conjunction hoare_pair list =
   assert (not (List.is_empty out_e));
 
-  assert ((not (List.is_empty in_e)) || Option.is_some init_post);
+  (* assert ((not (List.is_empty in_e)) || Option.is_some init_post); *)
 
   (* get the previous node ensures and adapt it to the current instant *)
   let previous_ens = previous_instant_spec inputs in_e init_post in
