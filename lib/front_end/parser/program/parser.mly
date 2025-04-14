@@ -101,7 +101,7 @@ let fol :=
         | EXISTS_PREV ; v = ID; COMMA ; f = fol ; {ExistsPrev (v, f)}
         | EXISTS ; vars = typed_state_id+ ; COMMA ; f = fol ; {Exists (List.flatten vars , f)}
     )
-    | ~ = delimited("|",fol,"|") ; <> 
+    | ~ = delimited("(",fol,")") ; <> 
 
 %public 
 let common_logic_unary == 

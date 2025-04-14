@@ -133,7 +133,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b, unit) stmt list) :
   let open P in
   let open PH in
   let rec tr_seq s =
-    fold_mjoin tr_stmt (fun x y -> Esequence (x, y) |> expr) (expr unit_val) s
+    List.fold_right (fun x y -> Esequence (tr_stmt x, y) |> expr) s (expr unit_val)
   and tr_stmt (stmt : ('a, 'b, unit) stmt) =
     let loc = get_loc stmt.label in
     match stmt.value with
@@ -341,7 +341,7 @@ module M :
                ([ "list" ] |> qualid, [ PTtyapp (qualid [ "instant_t" ], []) ]))
         )
     in
-
+    
     [ input_t; output_t; state_t; instant_t; i; o; s; hist ]
 
   let generate_body (b : in_body) : out_body = expr_of_statements pterm_of_inv b
@@ -397,7 +397,7 @@ module M :
 
         note: adding this might not be needed
       *)
-      (* let curr cat =
+       let curr cat =
         Tinfix
           ( tapp ([ instant_field cat ] |> qualid) [ history_head ],
             Ident.op_infix "=" |> ident,
@@ -406,7 +406,7 @@ module M :
       in
 
       curr State :: curr Output
-      :: *)
+      ::
       List.map
         (fun disj ->
           fold_mjoin (convert length_assert) why3_or (term Ttrue) disj.disjunct)
