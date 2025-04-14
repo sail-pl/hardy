@@ -7,8 +7,8 @@ let spin_binop : ltl_binary -> string = function
   | Until -> "U"
   | Release -> "V"
   | LTL_BArithm Arrow -> "->"
-  | LTL_BArithm Or -> "||"
-  | LTL_BArithm And -> "&&"
+  | LTL_BArithm (Arithm Or) -> "||"
+  | LTL_BArithm (Arithm And) -> "&&"
   | LTL_BArithm Equiv -> "<->"
   | _ -> failwith "unsupported bop"
 

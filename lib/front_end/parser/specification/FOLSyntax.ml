@@ -73,10 +73,10 @@ let not_fold (f : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (FOL_Unary (Not, f))
 
 let and_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =
-  mk_dummy_loc (FOL_Binary (f1, And, f2))
+  mk_dummy_loc (FOL_Binary (f1, (Arithm And), f2))
 
 let or_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =
-  mk_dummy_loc (FOL_Binary (f1, Or, f2))
+  mk_dummy_loc (FOL_Binary (f1, (Arithm Or), f2))
 
 let equiv_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (FOL_Binary (f1, Equiv, f2))

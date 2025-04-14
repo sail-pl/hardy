@@ -64,7 +64,7 @@ let translate_binop app infix op  =
   let id =  PH.ident (Ident.op_infix (string_of_binop op)) in
   match op with 
 | Add | Sub | Mul | Div ->  fun e1 e2 -> app (P.Qident id) [e1;e2]
-| Gt | Lt | Gte | Lte | Eq | Neq -> infix id
+| Gt | Lt | Gte | Lte | Eq | Neq | And | Or -> infix id
 
 let rec translate_expression ({ value = e; label = loc } : unit expr) : P.expr =
   let open P in
@@ -82,10 +82,14 @@ let rec translate_expression ({ value = e; label = loc } : unit expr) : P.expr =
               eapp (qualid [ s ])
                 [ [ string_of_cat_ty cat ] |> qualid |> evar ~loc ])
   | Read s -> Easref (qualid [ s ]) |> expr ~loc
+  | Not e -> Enot (translate_expression e) |> expr  ~loc
   | BinOp (e1, binop, e2) -> 
       let e1 = translate_expression e1
       and e2 = translate_expression e2 in 
-      translate_binop (eapp ~loc) (fun x e1 e2 -> Einnfix (e1,x,e2) |> expr ~loc) binop e1 e2
+      match binop with 
+      | And -> Eand (e1,e2) |> expr
+      | Or -> Eor (e1,e2) |> expr
+      | _ -> translate_binop (eapp ~loc) (fun x e1 e2 ->  Einnfix (e1,x,e2) |> expr ~loc) binop e1 e2
 
 let rec translate_term (e : instant option expr) : P.term =
   let open P in
@@ -123,17 +127,24 @@ let rec translate_term (e : instant option expr) : P.term =
                   let inst = tapp nth [ n; tvar (qualid [ history_id ]) ] in
                   tapp ~loc (qualid [ s ]) [ tapp field [ inst ] ]))
   | Read s -> Tasref (qualid [ s ]) |> term ~loc
+  | Not t -> Tnot (translate_term t) |> term  ~loc
   | BinOp (t1, binop, t2) ->
     let t1 = translate_term t1
     and t2 = translate_term t2 in
-    translate_binop (tapp ~loc) (fun x e1 e2 -> Tinnfix (e1,x,e2) |> term ~loc) binop t1 t2
+    match binop with 
+    | And -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
+    | Or -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
+    | _ ->  translate_binop (tapp ~loc) (fun x e1 e2 -> Tinnfix (e1,x,e2) |> term ~loc) binop t1 t2
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b, unit) stmt list) :
     P.expr =
   let open P in
   let open PH in
-  let rec tr_seq s =
-    List.fold_right (fun x y -> Esequence (tr_stmt x, y) |> expr) s (expr unit_val)
+  let rec tr_seq = function [] -> expr unit_val | [x] -> tr_stmt x | s ->
+    List.fold_right (fun x y -> match tr_stmt x,y with
+      | {expr_desc=Etuple [];_},x | x, {expr_desc=Etuple [];_} -> x
+      | _ -> Esequence (tr_stmt x, y) |> expr
+    ) s (expr unit_val)
   and tr_stmt (stmt : ('a, 'b, unit) stmt) =
     let loc = get_loc stmt.label in
     match stmt.value with
@@ -181,16 +192,15 @@ let rec pterm_of_fol
   | FOL_True -> term ~loc Ttrue
   | FOL_False -> term ~loc Tfalse
   | Pred p -> translate_term p
-  | FOL_Unary (uop, t) -> (
-      match uop with Not -> Tnot (pterm_of_fol t) |> term ~loc)
+  | FOL_Unary (Not, t) -> Tnot (pterm_of_fol t) |> term ~loc
   | FOL_Binary (t1, bop, t2) -> (
       let t1 = pterm_of_fol t1 in
       let t2 = pterm_of_fol t2 in
       match bop with
-      | And -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
-      | Or -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
       | Arrow -> Tbinop (t1, Dterm.DTimplies, t2) |> term ~loc
       | Equiv -> Tbinop (t1, Dterm.DTiff, t2) |> term ~loc
+      | Arithm And -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
+      | Arithm Or -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
       | Arithm op -> translate_binop (tapp ~loc) (fun x e1 e2 -> Tinnfix (e1,x,e2) |> term ~loc) op t1 t2
   )
   | Forall (v, f) ->

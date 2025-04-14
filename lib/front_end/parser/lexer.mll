@@ -81,7 +81,7 @@ rule tokenize = parse
   | "emit"                  { EMIT }
   | "to"                    { TO }
   | "."                     { DOT }
-  | "!"                     { READ }
+  | "!"                     { EMARK }
   | "+"                     { PLUS }
   | "-"                     { MINUS }
   | "*"                     { TIMES }
@@ -104,7 +104,7 @@ rule tokenize = parse
   | "M"                     { SRELEASE }
   | "F"                     { EVENTUALLY }
   | "G"                     { ALWAYS }
-  | "~"                     { NOT }
+  | "~"                     { TILDE }
   | "->" | "=>"             { ARROW }
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }

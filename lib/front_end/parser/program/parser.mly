@@ -71,7 +71,7 @@ let expr(var_e) :=
         | LFALSE ; {False}
         | ~ = INT ; <Int>
         | (id,x) = var_e ; {Var (id,x)}
-        | READ ; ~ = ID ; <Read>
+        | EMARK ;  ~ = expr(var_e) ; <Not>
         | e1 = expr(var_e) ; op = binExpOp ; e2 = expr(var_e) ; {BinOp (e1,op,e2)}
         )
     | ~ = delimited("(",expr(var_e),")") ; <>
@@ -104,18 +104,17 @@ let fol :=
     | ~ = delimited("(",fol,")") ; <> 
 
 %public 
-let common_logic_unary == 
-    | NOT ; {Not}
+let common_logic_unary == EMARK ; {(Not:common_logic_unary)}
 
 %public
 let common_logic_binary == 
     | DARROW ; {Equiv}
     | ARROW ; {Arrow}
-    | OR ; {Or}
-    | AND ; {And}
     | ~ = binExpOp ; <Arithm>
 
 let binExpOp ==
+    | OR ; {Or}
+    | AND ; {And}
     | "+" ; {Add} 
     | "-" ; {Sub}
     | "*" ; {Mul}
@@ -126,6 +125,7 @@ let binExpOp ==
     | ">=" ; {Gte}
     | "=" ; {Eq}
     | "<>" ; {Neq}
+
 
 %public
 let located(x) == ~ = x ; { mk_labeled (Some $loc) x }

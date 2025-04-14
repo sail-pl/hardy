@@ -47,7 +47,7 @@ let rec map_ltl_pred : type a b. (a -> b) -> a ltl -> b ltl =
 (** {2 Helpers to build locatable formulas} *)
 
 let and_ltl (f1 : 'a ltl) (f2 : 'a ltl) : 'a ltl =
-  mk_dummy_loc (LTL_Binary (f1, LTL_BArithm And, f2))
+  mk_dummy_loc (LTL_Binary (f1, LTL_BArithm (Arithm And), f2))
 
 let true_ltl = mk_dummy_loc LTL_True
 let false_ltl = mk_dummy_loc LTL_True

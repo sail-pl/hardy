@@ -93,7 +93,7 @@ module Functional : S = struct
     ( sub_atom_in_str
         (fun s ->
           let a = get s in
-          string_of_fol a string_of_ty)
+          string_of_fol string_of_ty a)
         f,
       (cnt, m) )
 
@@ -129,7 +129,7 @@ module Imperative () : S with type 'a t = 'a = struct
   let subst =
     sub_atom_in_str (fun s ->
         let _, inv = get s in
-        string_of_fol inv string_of_ty)
+        string_of_fol string_of_ty inv)
 
   let add_and_get (atom : ty fol_t) =
     (* we must get the same atom if the formulas are syntactically equal

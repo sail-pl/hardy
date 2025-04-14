@@ -15,7 +15,7 @@ guarantees {set} R ({set} ||  {x = 0}).
 
 
 // while set is enabled, x is the current input until it is disabled
-guarantees G ({set} -> ~{set} R (~{set} || {x = value})).
+guarantees G ({set} -> !{set} R (!{set} || {x = value})).
 
 
 
@@ -27,7 +27,7 @@ guarantees {set} R ({set} ||  {o = 0}).
 
 // whenever set is enabled, every following outputs are the input received at the previous instant until 
 // set is disabled
-guarantees G ({set} -> ~{set} R (~{set} || X {o = prev value})).
+guarantees G ({set} -> !{set} R (!{set} || X {o = prev value})).
 
 // whenever set is disabled, every following outputs are the last input received when set was disabled until
 // it is enabled again

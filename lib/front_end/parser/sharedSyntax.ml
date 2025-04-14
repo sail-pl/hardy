@@ -8,6 +8,6 @@ type ty = cat_ty * base_ty
 
 (** Standard Operators *)
 
-type arithm_binop = Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq
+type arithm_binop = Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq | And | Or
 type common_logic_unary = Not
-type common_logic_binary = Equiv | Or | And | Arrow | Arithm of arithm_binop
+type common_logic_binary = Equiv | Arrow | Arithm of arithm_binop

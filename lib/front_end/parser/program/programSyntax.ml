@@ -14,6 +14,7 @@ and 't expression_ =
   | False
   | Var of string * 't
   | Read of string
+  | Not of 't expr
   | BinOp of 't expr * arithm_binop * 't expr
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
@@ -23,13 +24,13 @@ let private_var = String.cat "_"
 let rec fold_expr : type a. ('t expr -> a -> a) -> 't expr -> a -> a =
  fun j e init ->
   match e.value with
-  | Int _ | True | False | Var _ | Read _ -> j e init
+  | Int _ | True | False | Var _ | Read _ | Not _ -> j e init
   | BinOp (e1, _, e2) -> j e (fold_expr j e2 (fold_expr j e1 init))
 
 let rec map_expr : ('t expr -> 't expr) -> 't expr -> 't expr =
  fun m e ->
   match e.value with
-  | Int _ | True | False | Var _ | Read _ -> m e
+  | Int _ | True | False | Var _ | Read _ | Not _-> m e
   | BinOp (e1, op, e2) ->
       m { e with value = BinOp (map_expr m e1, op, map_expr m e2) }
 
