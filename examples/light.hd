@@ -2,18 +2,21 @@ input on off : bool;
 output light : bool;
 var x : bool;
 
-
 relies on  G (! {on} || ! {off}).
 
 guarantees {on}  R ({on} || ! {light}).
 guarantees G ({on} -> {off} R ({off} || {light})).
 guarantees G ({off} -> {on} R ({on} || ! {light})).
 
-setup : 
+START : 
 	ensures { light = false }
+{
 	emit false to light;
+} GOTO LOOP
 
-loop:
+
+LOOP:
+{
 	if on then 
 		emit true to light;
 	else 
@@ -21,4 +24,4 @@ loop:
 			emit false to light;
 		end
 	end
-	
+}	

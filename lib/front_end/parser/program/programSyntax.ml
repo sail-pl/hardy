@@ -48,38 +48,43 @@ type 'v variant = { variant : 'v }
 let mk_variant x : _ variant = { variant = x }
 let variant x = x.variant
 
-type ('inv, 'var, 't) stmt = ('inv, 'var, 't) stmt_ locatable
+type ('inv, 't) stmt = ('inv, 't) stmt_ locatable
 (** program statements *)
 
-and ('inv, 'var, 't) stmt_ =
+and ('inv, 't) stmt_ =
   | Assign of string * 't expr
   | Emit of 't expr * string
   | If of
-      't expr * ('inv, 'var, 't) stmt list * ('inv, 'var, 't) stmt list option
-  | While of 't expr * 'inv * 'var * ('inv, 'var, 't) stmt list
+      't expr * ('inv, 't) stmt list * ('inv, 't) stmt list option
+  | While of 't expr * 'inv * unit expr * ('inv,'t) stmt list
 
-type ('inv, 'var, 't) setup = {
-  setup_ensures : 'inv list;
-  setup_body : ('inv, 'var, 't) stmt list;
-}
-(** setup routine signature *)
 
-type ('inv, 'var, 't) main = {
-  main_loop_inv : 'inv option;
-  main_body : ('inv, 'var, 't) stmt list;
+
+type 'ty var_decls = (string * 'ty) list
+
+type ('inst_spec, 't) node = {
+  node_id : string;
+  node_variables : base_ty var_decls;
+  node_spec : 'inst_spec list hoare_pair;
+  node_body : ('inst_spec,unit) stmt list;
+  node_transitions : (unit expr option * string) list ;
 }
-(** main function signature *)
+
+let init_node = "START"
+
+let find_node id l = List.find (fun n -> n.node_id = id) l
+
+let find_start_node l = find_node init_node l
 
 type 'ty env = {
-  env_input : (string * 'ty) list;
-  env_output : (string * 'ty) list;
-  env_variables : (string * 'ty) list;
+  env_input : 'ty var_decls;
+  env_output : 'ty var_decls;
+  env_variables : 'ty var_decls;
 }
 (** program memory environment *)
 
-type ('temp_spec, 'inv, 'var, 't) program = {
+type ('temp_spec, 'inst_spec, 't) program = {
   prog_decls : base_ty env;
   prog_spec : 'temp_spec list hoare_pair;
-  prog_setup : ('inv, 'var, 't) setup option;
-  prog_main : ('inv, 'var, 't) main;
+  prog_nodes : ('inst_spec, 't) node list;
 }

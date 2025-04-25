@@ -33,6 +33,18 @@ let binary ==
     | UNTIL ; {Until}
     | ~ = common_logic_binary ; <LTL_BArithm>
 
+%public
+let tq_expr == expr(
+    | id = ID ; {id,None}
+    | id = ID ; endrule(AT|SYMB_AT) ; n = INT ; {id,Some (At n)}
+    | endrule(PREV | LAST) ; n = endrule(n = option(INT); {Option.value ~default:1 n}) ; id = ID ;  {id,Some (Previous n)}
+    | id = ID ; SHARP ; n = INT ; {id,Some (Previous n)}
+    | endrule(START | FIRST | DOLLAR) ; id = ID ;  {id,Some (At 0)}
+)
+
+
+%public
+let inst_spec == braced(fol)
 
 %public
 let prog_requires == delimited(RELY, ltl, ".")
@@ -41,4 +53,7 @@ let prog_requires == delimited(RELY, ltl, ".")
 let prog_ensures == delimited(GUARANTEE, ltl, ".") 
 
 %public
-let setup_ensures == preceded(ENSURES, braced(fol))
+let state_requires == preceded(REQUIRES, inst_spec)
+
+%public
+let state_ensures == preceded(ENSURES, inst_spec) 

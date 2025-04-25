@@ -10,14 +10,15 @@ guarantees G ( {beat = 1} <-> {accent}).
 guarantees G ( {beat = 1} -> X {beat = 2} && X X {beat = 3} && X X X {beat = 1} ).
 
 
-setup : 
+START : 
 	ensures { beat = 1 && accent }
-    
+{
 	emit 1 to beat;
     emit true to accent;
+} GOTO LOOP
 
-
-loop:
+LOOP:
+{
     if beat = 3 then 
 	    emit 1 to beat;
         emit true to accent;
@@ -25,3 +26,4 @@ loop:
         emit beat+1 to beat;
         emit false to accent;
     end
+}

@@ -191,10 +191,11 @@ let generate_triples (p : base_program) (a : BProd.t) :
     let extra_req =
       if BProd.is_start_node v then
         Option.(
-          bind p.prog_setup (fun setup ->
+          let setup = find_start_node p.prog_nodes
+          in
               fold_mjoin some
                 (fun x y -> bind (map and_fol y) (fun f -> map f x))
-                None setup.setup_ensures))
+                None setup.node_spec.ensures)
       else None
     in
 
@@ -214,7 +215,7 @@ let generate_triples (p : base_program) (a : BProd.t) :
         let open Format in
         let index = if i <> 0 then sprintf "_%i" i else "" in
         let id = BProd.(id_of_vertex v) ^ index in
-        let data = { triple_id = id } in
+        let data = { triple_id = id; triple_node_id = Program.init_node } in
         (data, s))
       specs
   in

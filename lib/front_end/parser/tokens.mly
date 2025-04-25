@@ -15,10 +15,15 @@
 
 // IMP 
 %token IF "if" THEN "then"
-%token ELSE "else" WHILE "while" DO "do" DONE "done" END "end" ASSIGN ":="
+%token ELSE "else" WHILE "while" DO "do" DONE "done" END "end" ASSIGN ":=" 
+
 
 // REACTIVE
-%token SETUP LOOP EMIT TO VAR INPUT OUTPUT LAST FIRST START PREV ALL ANY AT
+%token EMIT TO VAR INPUT OUTPUT LAST FIRST START PREV ALL ANY AT
+
+// AUTOMATON
+%token <string> STATE
+%token LOCAL WHEN GOTO
 
 // SPEC
 %token RELY GUARANTEE REQUIRES ENSURES INVARIANT VARIANT 

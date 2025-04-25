@@ -6,6 +6,7 @@ type info = {
   verbose : bool;
   outdir : string;
   no_i_a_conj : bool;
+  eval: bool;
 }
 (** parameters provided by the cli *)
 
@@ -31,6 +32,8 @@ functor
     let ltl2baPath = ref ""
     let cwd = Sys.getcwd ()
 
+    let eval = ref false
+
     let parseLtl2baPath p =
       if not @@ Sys.file_exists p then raise @@ Bad "Can't stat ltl2ba program"
       else ltl2baPath := p
@@ -42,6 +45,7 @@ functor
           Set no_i_a_conj,
           "do not add the rely the formula to the guarantee one" );
         ("-ltl2ba", String parseLtl2baPath, "set ltl2ba program path");
+        ("-run", Set eval, "evaluate the program");
       ]
 
     let get_input_file f =
@@ -65,5 +69,6 @@ functor
         verbose = !verbose;
         outdir = output_path;
         no_i_a_conj = !no_i_a_conj;
+        eval = !eval
       }
   end

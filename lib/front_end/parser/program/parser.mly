@@ -16,23 +16,29 @@ let program :=
     prog_decls = declaration ; 
     requires = prog_requires* ; 
     ensures = prog_ensures* ; 
-    prog_setup = midrule(
-            SETUP ; ":" ; setup_ensures= setup_ensures* ; setup_body=stmt* ; 
-            {{setup_ensures;setup_body}}
-    )? ;
-    LOOP ; ":" ; main_loop_inv = invariant? ; main_body = stmt* ; EOF ;
+    prog_nodes = state+;
+    EOF;
     {
         {
             prog_decls;
             prog_spec={requires;ensures};
-            prog_setup; 
-            prog_main = {main_loop_inv ; main_body}
+            prog_nodes
         }
     }
 
-let invariant == preceded(INVARIANT, braced(fol)) 
 
-let variant == ~ = preceded(VARIANT, braced(basic_expr)); <mk_variant>
+let state := 
+    node_id=STATE ; ":" ; 
+    node_variables = loption(vdecl(LOCAL));
+    node_spec = midrule(requires=state_requires* ; ensures=state_ensures* ; {{requires;ensures}} ) ;
+    node_body = braced(stmt*) ; 
+    node_transitions = transition* ;
+    { {node_id; node_variables; node_spec; node_body; node_transitions} }
+
+
+
+let transition ==  ~ = preceded(WHEN, basic_expr)? ;  GOTO ; ~ = STATE ; <>
+
 
 %public
 let braced(x) == delimited("{", x, "}")
@@ -52,8 +58,8 @@ let input == vdecl(INPUT)
 let output == vdecl(OUTPUT)
 
 let typed_decl_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,t) ids}
-let typed_state_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,(State,t)) ids}
 
+%public
 let ty :=
     | TY_BOOL ; { Ty_Bool }
     | TY_INT ; { Ty_Int }
@@ -65,13 +71,18 @@ let stmt := located (
     | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
 )
 
+let invariant == preceded(INVARIANT, inst_spec) 
+
+let variant == preceded(VARIANT, braced(basic_expr))
+
+%public
 let expr(var_e) := 
     | located (
         | LTRUE ; {True}
         | LFALSE ; {False}
         | ~ = INT ; <Int>
         | (id,x) = var_e ; {Var (id,x)}
-        | EMARK ;  ~ = expr(var_e) ; <Not>
+        | common_logic_unary ;  ~ = expr(var_e) ; <Not>
         | e1 = expr(var_e) ; op = binExpOp ; e2 = expr(var_e) ; {BinOp (e1,op,e2)}
         )
     | ~ = delimited("(",expr(var_e),")") ; <>
@@ -79,29 +90,6 @@ let expr(var_e) :=
 
 let basic_expr == expr(id = ID ; {id,()})
 
-
-let tq_expr == expr(
-    | id = ID ; {id,None}
-    | id = ID ; endrule(AT|SYMB_AT) ; n = INT ; {id,Some (At n)}
-    | endrule(PREV | LAST) ; n = endrule(n = option(INT); {Option.value ~default:1 n}) ; id = ID ;  {id,Some (Previous n)}
-    | id = ID ; SHARP ; n = INT ; {id,Some (Previous n)}
-    | endrule(START | FIRST | DOLLAR) ; id = ID ;  {id,Some (At 0)}
-)
-
-
-%public
-let fol := 
-    | located(
-        | TRUE ; {FOL_True}
-        | FALSE ; {FOL_False}
-        | ~ = tq_expr ; <Pred>
-        | ~ = common_logic_unary ; ~ = fol ; <FOL_Unary>
-        | f1 = fol ; op = common_logic_binary ; f2 = fol ; {FOL_Binary (f1,op,f2)}
-        | FORALL ; vars = typed_state_id+ ; COMMA ; f = fol ; {Forall (List.flatten vars, f)}
-        | EXISTS_PREV ; v = ID; COMMA ; f = fol ; {ExistsPrev (v, f)}
-        | EXISTS ; vars = typed_state_id+ ; COMMA ; f = fol ; {Exists (List.flatten vars , f)}
-    )
-    | ~ = delimited("(",fol,")") ; <> 
 
 %public 
 let common_logic_unary == EMARK ; {(Not:common_logic_unary)}
@@ -125,6 +113,24 @@ let binExpOp ==
     | ">=" ; {Gte}
     | "=" ; {Eq}
     | "<>" ; {Neq}
+
+
+%public
+let fol := 
+    | located(
+        | TRUE ; {FOL_True}
+        | FALSE ; {FOL_False}
+        | ~ = tq_expr ; <Pred>
+        | ~ = common_logic_unary ; ~ = fol ; <FOL_Unary>
+        | f1 = fol ; op = common_logic_binary ; f2 = fol ; {FOL_Binary (f1,op,f2)}
+        | FORALL ; vars = typed_state_id+ ; COMMA ; f = fol ; {Forall (List.flatten vars, f)}
+        | EXISTS_PREV ; v = ID; COMMA ; f = fol ; {ExistsPrev (v, f)}
+        | EXISTS ; vars = typed_state_id+ ; COMMA ; f = fol ; {Exists (List.flatten vars , f)}
+    )
+    | ~ = delimited("(",fol,")") ; <> 
+
+
+let typed_state_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,(State,t)) ids}
 
 
 %public
