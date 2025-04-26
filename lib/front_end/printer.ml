@@ -14,29 +14,32 @@ let pp_cat_ty fmt = function
   | State -> Format.fprintf fmt "state"
   | Local -> Format.fprintf fmt "local"
 
-let rec pp_base_ty fmt = function 
-| Ty_Bool -> Format.fprintf fmt "bool" 
-| Ty_Int -> Format.fprintf fmt "int" 
-| Ty_String -> Format.fprintf fmt "string"
-| Ty_Array (ty,_) -> Format.fprintf fmt "array %a" pp_base_ty ty
+let rec pp_base_ty fmt = function
+  | Ty_Bool -> Format.fprintf fmt "bool"
+  | Ty_Int -> Format.fprintf fmt "int"
+  | Ty_String -> Format.fprintf fmt "string"
+  | Ty_Array (ty, _) -> Format.fprintf fmt "array %a" pp_base_ty ty
 
-let pp_ty fmt (c, t)  = Format.fprintf fmt "%a.%a" pp_cat_ty c pp_base_ty t
+let pp_ty fmt (c, t) = Format.fprintf fmt "%a.%a" pp_cat_ty c pp_base_ty t
 
-let pp_unop fmt (op:common_logic_unary) = match op with Not -> Format.fprintf fmt "!"
+let pp_unop fmt (op : common_logic_unary) =
+  match op with Not -> Format.fprintf fmt "!"
 
-let pp_binop fmt (op:arithm_binop) =  Format.fprintf fmt (match op with
-  | Add -> "+"
-  | Sub -> "-"
-  | Mul -> "*"
-  | Div -> "/"
-  | Gt -> ">"
-  | Lt -> "<"
-  | Gte -> ">="
-  | Lte -> "<="
-  | Eq -> "="
-  | Neq -> "<>"
-  | Or -> "||"
-  | And -> "&&")
+let pp_binop fmt (op : arithm_binop) =
+  Format.fprintf fmt
+    (match op with
+    | Add -> "+"
+    | Sub -> "-"
+    | Mul -> "*"
+    | Div -> "/"
+    | Gt -> ">"
+    | Lt -> "<"
+    | Gte -> ">="
+    | Lte -> "<="
+    | Eq -> "="
+    | Neq -> "<>"
+    | Or -> "||"
+    | And -> "&&")
 
 let pp_common_logic_binary fmt : common_logic_binary -> unit = function
   | Equiv -> Format.fprintf fmt "<->"
@@ -49,33 +52,40 @@ let pp_hist fmt (v, h) =
   | Some (Previous n) -> Format.fprintf fmt "prev %i %s" n v
   | Some (At n) -> Format.fprintf fmt "%s at %i" v n
 
+let pp_paren_exp fmt f e =
+  match e.value with BinOp _ -> Format.fprintf fmt "(%a)" f e | _ -> f fmt e
 
-let pp_paren_exp fmt f e = match e.value with BinOp _ -> Format.fprintf fmt "(%a)" f e | _ -> f fmt e
-
-let rec pp_exp (print_var : _ -> _ * _  -> unit ) fmt (e : 't expr)  =
-  let pp_exp fmt = pp_paren_exp fmt (pp_exp  print_var) in
+let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
+  let pp_exp fmt = pp_paren_exp fmt (pp_exp print_var) in
   match e.value with
   | Int n -> Format.fprintf fmt "%i" n
   | True -> Format.fprintf fmt "true"
   | False -> Format.fprintf fmt "false"
   | String s -> Format.fprintf fmt "%s" s
-  | Array l -> Format.(fprintf fmt "[%a]" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_exp) l)
+  | Array l ->
+      Format.(
+        fprintf fmt "[%a]"
+          (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_exp)
+          l)
   | Var (s, i) -> print_var fmt (s, i)
   | Read s -> Format.fprintf fmt "%s" s
   | Not e -> Format.fprintf fmt "!%a" pp_exp e
-  | ArrayCell (id,n) -> Format.fprintf fmt "%a[%a]" pp_exp id pp_exp n
-  | BinOp (e1, op, e2) ->Format.fprintf fmt "%a %a %a" pp_exp e1 pp_binop op pp_exp e2
+  | ArrayCell (id, n) -> Format.fprintf fmt "%a[%a]" pp_exp id pp_exp n
+  | BinOp (e1, op, e2) ->
+      Format.fprintf fmt "%a %a %a" pp_exp e1 pp_binop op pp_exp e2
 
-
-let pp_paren_fol f1 f2 fmt (p:_ fol) = match p.value with 
-  | FOL_Binary _ -> Format.fprintf fmt "(%a)" f1 p 
+let pp_paren_fol f1 f2 fmt (p : _ fol) =
+  match p.value with
+  | FOL_Binary _ -> Format.fprintf fmt "(%a)" f1 p
   | Pred e -> pp_paren_exp fmt f2 e
   | _ -> f1 fmt p
 
-let rec pp_fol (pp_ty : Format.formatter -> ty -> unit) fmt (f : (instant option expr, 'a) fol) =
+let rec pp_fol (pp_ty : Format.formatter -> ty -> unit) fmt
+    (f : (instant option expr, 'a) fol) =
   let open Format in
   let pp_id_ty =
-    Format.pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "@ ")  
+    Format.pp_print_list
+      ~pp_sep:(fun fmt () -> fprintf fmt "@ ")
       (fun fmt (id, ty) -> Format.fprintf fmt "(%s:%a)" id pp_ty ty)
   in
   let pp_fol' = pp_paren_fol (pp_fol pp_ty) (pp_exp pp_hist) in
@@ -85,16 +95,15 @@ let rec pp_fol (pp_ty : Format.formatter -> ty -> unit) fmt (f : (instant option
   | FOL_False -> Format.fprintf fmt "false"
   | Pred e -> pp_exp pp_hist fmt e
   | FOL_Unary (op, f) -> Format.fprintf fmt "%a %a" pp_unop op pp_fol' f
-  | FOL_Binary (f1, op, f2) -> Format.fprintf fmt "%a %a %a"
-        pp_fol' f1
-        pp_common_logic_binary op
-        pp_fol' f2
+  | FOL_Binary (f1, op, f2) ->
+      Format.fprintf fmt "%a %a %a" pp_fol' f1 pp_common_logic_binary op pp_fol'
+        f2
   | Forall (idty, f) ->
       Format.fprintf fmt "forall %a. %a" pp_id_ty idty (pp_fol pp_ty) f
   | Exists (idty, f) ->
-    Format.fprintf fmt "exists %a. %a" pp_id_ty idty (pp_fol pp_ty) f
+      Format.fprintf fmt "exists %a. %a" pp_id_ty idty (pp_fol pp_ty) f
   | ExistsPrev (id, f) ->
-        Format.fprintf fmt "exists_prev %s. %a" id (pp_fol pp_ty) f
+      Format.fprintf fmt "exists_prev %s. %a" id (pp_fol pp_ty) f
 
 let string_of_ltl_binop : ltl_binary -> string = function
   | Until -> "U"

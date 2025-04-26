@@ -11,17 +11,16 @@ let main (type triple_data) (type fol_data)
   let module Cli = Cli () in
   let info = Cli.get_info in
 
-  Parser.parse_file info.file |> HardyFrontEnd.Typing.type_pgrm 
-  |> fun p ->
-    if info.eval then 
-      HardyFrontEnd.Interpreter.(eval_pgrm p (module ConsoleBridge)) 
-    ;
-    if info.verify then
-      let translate_spec = HardyMiddleEnd.Sig.translate_spec (module Middle) in
-      let module Back = HardyBackEnd.Sig.F (Back) in
-      if not Sys.(file_exists info.outdir) then Sys.mkdir info.outdir 0o755;
-      let output_file = Filename.(concat info.outdir @@ basename info.file) in
-      translate_spec info p |> Back.translate_program p |> Back.write_program output_file
+  Parser.parse_file info.file |> HardyFrontEnd.Typing.type_pgrm |> fun p ->
+  (if info.eval then
+     HardyFrontEnd.Interpreter.(eval_pgrm p (module ConsoleBridge)));
+  if info.verify then (
+    let translate_spec = HardyMiddleEnd.Sig.translate_spec (module Middle) in
+    let module Back = HardyBackEnd.Sig.F (Back) in
+    if not Sys.(file_exists info.outdir) then Sys.mkdir info.outdir 0o755;
+    let output_file = Filename.(concat info.outdir @@ basename info.file) in
+    translate_spec info p |> Back.translate_program p
+    |> Back.write_program output_file)
 
 let () =
   main

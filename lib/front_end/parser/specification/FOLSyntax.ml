@@ -14,7 +14,8 @@ and ('a, 'qty) fol_ =
   | FOL_Binary of ('a, 'qty) fol * common_logic_binary * ('a, 'qty) fol
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
-  | ExistsPrev of string * ('a,'qty) fol (* temporal existential quantification *)
+  | ExistsPrev of
+      string * ('a, 'qty) fol (* temporal existential quantification *)
 
 let map_fol : type a b ty_a ty_b.
     ((a, ty_a) fol -> (b, ty_b) fol) ->
@@ -48,7 +49,8 @@ let rec fold_fol : type a b t.
   | Pred p -> pj p init
   | FOL_Unary (_, f) -> j form (fold_fol j pj init f)
   | FOL_Binary (f1, _, f2) -> j form (fold_fol j pj (fold_fol j pj init f1) f2)
-  | Forall (_, f) | Exists (_, f) | ExistsPrev (_,f) -> j form (fold_fol j pj init f)
+  | Forall (_, f) | Exists (_, f) | ExistsPrev (_, f) ->
+      j form (fold_fol j pj init f)
 
 (** [map_fol_ty m f] replaces every quantifer [Exists (l,e)] and [Forall (l,e)]
     of [f] by [X (List.map m l,e)] *)
@@ -73,10 +75,10 @@ let not_fold (f : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (FOL_Unary (Not, f))
 
 let and_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =
-  mk_dummy_loc (FOL_Binary (f1, (Arithm And), f2))
+  mk_dummy_loc (FOL_Binary (f1, Arithm And, f2))
 
 let or_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =
-  mk_dummy_loc (FOL_Binary (f1, (Arithm Or), f2))
+  mk_dummy_loc (FOL_Binary (f1, Arithm Or, f2))
 
 let equiv_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (FOL_Binary (f1, Equiv, f2))

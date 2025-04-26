@@ -28,7 +28,7 @@ let rec fold_expr : type a. ('t expr -> a -> a) -> 't expr -> a -> a =
  fun j e init ->
   match e.value with
   | Int _ | True | False | Var _ | Read _ | Not _ | String _ -> j e init
-  | ArrayCell (_,e') -> j e (fold_expr j e' init)
+  | ArrayCell (_, e') -> j e (fold_expr j e' init)
   | BinOp (e1, _, e2) -> j e (fold_expr j e2 (fold_expr j e1 init))
   | Array arr -> List.fold_right (fold_expr j) arr init
 
@@ -36,7 +36,7 @@ let rec map_expr : ('t expr -> 't expr) -> 't expr -> 't expr =
  fun m e ->
   match e.value with
   | Int _ | True | False | Var _ | Read _ | Not _ | String _ -> m e
-| ArrayCell (id,e') -> m { e with value = ArrayCell (id,map_expr m e') }
+  | ArrayCell (id, e') -> m { e with value = ArrayCell (id, map_expr m e') }
   | BinOp (e1, op, e2) ->
       m { e with value = BinOp (map_expr m e1, op, map_expr m e2) }
   | Array arr -> m { e with value = Array (List.map (map_expr m) arr) }
@@ -62,11 +62,8 @@ and ('inv, 't) stmt_ =
   | Assign of 't expr * 't expr
   | Emit of 't expr option * string
   | Clear of 't expr
-  | If of
-      't expr * ('inv, 't) stmt list * ('inv, 't) stmt list option
-  | While of 't expr * 'inv * unit expr * ('inv,'t) stmt list
-
-
+  | If of 't expr * ('inv, 't) stmt list * ('inv, 't) stmt list option
+  | While of 't expr * 'inv * unit expr * ('inv, 't) stmt list
 
 type 'ty var_decls = (string * 'ty) list
 
@@ -74,14 +71,12 @@ type ('inst_spec, 't) node = {
   node_id : string;
   node_variables : base_ty var_decls;
   node_spec : 'inst_spec list hoare_pair;
-  node_body : ('inst_spec,unit) stmt list;
-  node_transitions : (unit expr option * string) list ;
+  node_body : ('inst_spec, unit) stmt list;
+  node_transitions : (unit expr option * string) list;
 }
 
 let init_node = "START"
-
 let find_node id l = List.find (fun n -> n.node_id = id) l
-
 let find_start_node l = find_node init_node l
 
 type 'ty env = {

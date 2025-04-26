@@ -6,8 +6,8 @@ type info = {
   verbose : bool;
   outdir : string;
   no_i_a_conj : bool;
-  eval: bool;
-  verify: bool;
+  eval : bool;
+  verify : bool;
 }
 (** parameters provided by the cli *)
 
@@ -32,9 +32,7 @@ functor
     let no_i_a_conj = ref false
     let ltl2baPath = ref ""
     let cwd = Sys.getcwd ()
-
     let eval = ref false
-
     let verify = ref false
 
     let parseLtl2baPath p =
