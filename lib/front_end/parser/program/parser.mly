@@ -61,14 +61,17 @@ let typed_decl_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,t) id
 
 %public
 let ty :=
-    | TY_BOOL ; { Ty_Bool }
-    | TY_INT ; { Ty_Int }
+    | TY_BOOL ; {Ty_Bool}
+    | TY_INT ; {Ty_Int}
+    | TY_STRING ; {Ty_String}
+    | TY_ARRAY ; LT ; ~ = ty ; ";" ; ~ = INT ; GT ; <Ty_Array>
 
 let stmt := located (
-    | ~ = ID ; ":=" ; ~ = basic_expr ; ";" ; <Assign>
-    | EMIT ; ~ = basic_expr  ; TO ; ~ = ID ; ";" ; <Emit>
+    | CLEAR; ~ = basic_expr ; ";" ; <Clear> 
+    | EMIT ; ~ = midrule(NOTHING ; {None} | ~ = basic_expr ; <Some>)  ; TO ; ~ = ID ; ";" ; <Emit>
     | IF ; ~ = basic_expr ; THEN ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; END ; <If>
     | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
+    | e1 = basic_expr ; ":=" ; e2 = basic_expr ; ";" ; {Assign (e1,e2)}
 )
 
 let invariant == preceded(INVARIANT, inst_spec) 
@@ -81,7 +84,10 @@ let expr(var_e) :=
         | LTRUE ; {True}
         | LFALSE ; {False}
         | ~ = INT ; <Int>
+        | "[" ; "|" ; ~ = separated_list(";", expr(var_e)) ; "|" ; "]" ; <Array>
+        | ~ = expr(var_e) ; "[" ; ~ = expr(var_e) ; "]" ; <ArrayCell>
         | (id,x) = var_e ; {Var (id,x)}
+        | ~ = STRING ; <String>
         | common_logic_unary ;  ~ = expr(var_e) ; <Not>
         | e1 = expr(var_e) ; op = binExpOp ; e2 = expr(var_e) ; {BinOp (e1,op,e2)}
         )

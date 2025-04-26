@@ -12,10 +12,13 @@ and 't expression_ =
   | Int of int
   | True
   | False
+  | String of string
   | Var of string * 't
   | Read of string
+  | Array of 't expr list
   | Not of 't expr
   | BinOp of 't expr * arithm_binop * 't expr
+  | ArrayCell of 't expr * 't expr
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
@@ -24,15 +27,19 @@ let private_var = String.cat "_"
 let rec fold_expr : type a. ('t expr -> a -> a) -> 't expr -> a -> a =
  fun j e init ->
   match e.value with
-  | Int _ | True | False | Var _ | Read _ | Not _ -> j e init
+  | Int _ | True | False | Var _ | Read _ | Not _ | String _ -> j e init
+  | ArrayCell (_,e') -> j e (fold_expr j e' init)
   | BinOp (e1, _, e2) -> j e (fold_expr j e2 (fold_expr j e1 init))
+  | Array arr -> List.fold_right (fold_expr j) arr init
 
 let rec map_expr : ('t expr -> 't expr) -> 't expr -> 't expr =
  fun m e ->
   match e.value with
-  | Int _ | True | False | Var _ | Read _ | Not _-> m e
+  | Int _ | True | False | Var _ | Read _ | Not _ | String _ -> m e
+| ArrayCell (id,e') -> m { e with value = ArrayCell (id,map_expr m e') }
   | BinOp (e1, op, e2) ->
       m { e with value = BinOp (map_expr m e1, op, map_expr m e2) }
+  | Array arr -> m { e with value = Array (List.map (map_expr m) arr) }
 
 let expr_vars (e : 't expr) : (string * 't) list -> (string * 't) list =
   fold_expr
@@ -52,8 +59,9 @@ type ('inv, 't) stmt = ('inv, 't) stmt_ locatable
 (** program statements *)
 
 and ('inv, 't) stmt_ =
-  | Assign of string * 't expr
-  | Emit of 't expr * string
+  | Assign of 't expr * 't expr
+  | Emit of 't expr option * string
+  | Clear of 't expr
   | If of
       't expr * ('inv, 't) stmt list * ('inv, 't) stmt list option
   | While of 't expr * 'inv * unit expr * ('inv,'t) stmt list

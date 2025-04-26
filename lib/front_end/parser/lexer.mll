@@ -26,6 +26,7 @@ let nameStartChar = lowercase | '_'
 let nameChar = nameStartChar | digit
 let name = nameStartChar (nameChar)*
 let id = letter (lowercase|digit|'_')* (* no uppercase because of reserved LTL keywords *)
+let state_id = uppercase (uppercase|digit|'_')*
 let newline = '\r' | '\n' | "\r\n"
 
 
@@ -34,6 +35,8 @@ rule tokenize = parse
   | "//"                    { read_comment lexbuf } (* single-line comment *)
   | "bool"                  { TY_BOOL }
   | "int"                   { TY_INT } 
+  | "string"                { TY_STRING }
+  | "array"                 { TY_ARRAY }
   | "true"                  { LTRUE  } 
   | "false"                 { LFALSE }
   | "if"                    { IF }
@@ -43,6 +46,7 @@ rule tokenize = parse
   | "do"                    { DO  }
   | "end"                   { END }
   | "done"                  { DONE }
+  | "clear"                 { CLEAR }
   | "WHEN"                  { WHEN }
   | "GOTO"                  { GOTO }
   | "var"                   { VAR }
@@ -76,10 +80,11 @@ rule tokenize = parse
   | "}"                     { RBRACE }
   | "["                     { LSQBRACE }
   | "]"                     { RSQBRACE }
-  (* | "|"                     { SEP } *)
+  | "|"                     { SEP }
   | ";"                     { SEMI }
   | ":="                    { ASSIGN }
   | "emit"                  { EMIT }
+  | "nothing"               { NOTHING }
   | "to"                    { TO }
   | "."                     { DOT }
   | "!"                     { EMARK }
@@ -110,9 +115,10 @@ rule tokenize = parse
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }
   | "||"                    { OR }
+  | '"'      { read_string (Buffer.create 17) lexbuf }
   | digit+ as lxm           { INT (int_of_string lxm) }
   | id as lxm               { ID (lxm) }
-  | uppercase+ as state_id     { STATE state_id }
+  | state_id as state_id     { STATE state_id }
   | newline                 { next_line lexbuf; tokenize lexbuf }
   | eof                     { EOF }
   | _ as char               { raise (Lexical_error (pos_range lexbuf, Printf.sprintf "Unexpected character '%s'" (Char.escaped char))) }
@@ -120,3 +126,19 @@ and read_comment = parse
   | newline { next_line lexbuf; tokenize lexbuf } 
   | eof { EOF }
   | _ { read_comment lexbuf } 
+
+and read_string buf = parse
+  | '"'       { STRING (Buffer.contents buf) }
+  | '\\' '/'  { Buffer.add_char buf '/'; read_string buf lexbuf }
+  | '\\' '\\' { Buffer.add_char buf '\\'; read_string buf lexbuf }
+  | '\\' 'b'  { Buffer.add_char buf '\b'; read_string buf lexbuf }
+  | '\\' 'f'  { Buffer.add_char buf '\012'; read_string buf lexbuf }
+  | '\\' 'n'  { Buffer.add_char buf '\n'; read_string buf lexbuf }
+  | '\\' 'r'  { Buffer.add_char buf '\r'; read_string buf lexbuf }
+  | '\\' 't'  { Buffer.add_char buf '\t'; read_string buf lexbuf }
+  | [^ '"' '\\']+
+    { Buffer.add_string buf (Lexing.lexeme lexbuf);
+      read_string buf lexbuf
+    }
+  | _ { raise (Lexical_error (pos_range lexbuf, "Illegal string character: " ^ Lexing.lexeme lexbuf )) }
+  | eof { raise (Lexical_error (pos_range lexbuf, "String is not terminated")) }
