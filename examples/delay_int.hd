@@ -6,9 +6,8 @@ guarantees G {x = i}.
 guarantees X G {o = last i}.
 
 START:
-ensures { x = 0 }
 {
-    x := 0;
+    x := i;
 }
 GOTO LOOP
 
