@@ -1,6 +1,6 @@
 input i : int;
 output o : int;
-var x : int init : bool;
+var x : int;
 
 // private spec
 guarantees G {!init}
@@ -16,17 +16,13 @@ guarantees {o = i}
 
 
 START :
-ensures { init = true }
 {
-    init := true;
+    x := i;
+    emit x to o;
 }
 GOTO LOOP
 
 LOOP :
 {
-    if init then
-        x := i;
-        init := false;
-    end
     emit x to o;
 }

@@ -13,10 +13,11 @@ guarantees X G {mem1 = prev i}
 guarantees X G {mem1 = prev mem2}
 
 
-START : {
-    mem1 := 0;
-    mem2 := 0;
-} GOTO LOOP
+START : 
+{
+    mem2 := i;
+} 
+GOTO LOOP
 
 LOOP :
 {

@@ -8,14 +8,13 @@ guarantees G ({i} -> X {o})
 guarantees G (!{i} -> X !{o})
 
 START:
-    ensures { x = false }
-    {
-        x := false;
-    }
+{
+    x := i;
+}
 GOTO LOOP
 
 LOOP:
-    {
+{
     emit x to o;
     x := i;
-    }
+}

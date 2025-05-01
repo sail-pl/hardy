@@ -187,16 +187,14 @@ module ConsoleBridge : IOBridgeSig = struct
   let send_outputs state o =
     Format.printf "=== OUTPUTS (%s) ===@." state;
     List.iter
-      (fun (o, _) ->
-        match Hashtbl.find_opt env o with
-        | Some v -> Format.printf "%s: %a@." o (fun fmt -> pp_value fmt) v
-        | None -> Format.printf "%s: absent@." o)
+      (fun (o, _) -> Format.printf "%s: %a@." o (fun fmt -> pp_value fmt) (Hashtbl.find env o))
       o
 end
 
 let eval_pgrm (p : base_program) (module B : IOBridgeSig) =
   List.iter (fun (v, _) -> Hashtbl.add env v LEmpty) p.prog_decls.env_variables;
   List.iter (fun (v, _) -> Hashtbl.add env v LEmpty) p.prog_decls.env_input;
+  List.iter (fun (v, _) -> Hashtbl.add env v LEmpty) p.prog_decls.env_output;
 
   let rec run (n : _ node) : unit =
     let rec do_transition p cleanup t =

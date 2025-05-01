@@ -1,0 +1,101 @@
+input 
+    choice: int //? // signal
+    money : int //?
+;
+
+output 
+    message : string 
+
+    // operate the item spring
+    drop_item : int
+;
+
+var 
+    timer : int // used to detect inactivity  
+    timeout : int
+    money_received : int
+    item : int
+    items_price : array<int;5>
+;
+
+
+START: 
+    {
+        clear item;
+        items_price := [|2;4;3;2;5|];
+        money_received := 0;
+        timer := 0;
+        timeout := 10;
+        emit "please select an item (1-5)" to message;
+    }    
+    GOTO ITEM_SELECTION
+
+ITEM_SELECTION:
+    {
+       item := choice; 
+
+        if !item || item < 1 || item > 5 then
+            emit "incorrect or no selection" to message;
+            clear item;
+        else
+            emit "Confirm the selection (enter the same input)" to message;
+        end
+    }
+   
+    // if no goto present, or if no 'else' clause, assume last state is repeated 
+    // present / absent signal present(choice) 
+   WHEN item GOTO CONFIRM
+
+
+// user must press the same item number or a different one to cancel
+CONFIRM:
+    local 
+        canceled : bool // node-private variable
+    ; 
+    {
+        timer := timer + 1;
+        canceled := choice && choice <> item;
+
+        if choice = item then         
+            emit "Selection confirmed, please proceed to the payment" to message; 
+        else 
+            if canceled then
+                emit "Selection cancelled" to message;
+            else
+                emit nothing to message;
+            end
+        end
+    }
+
+    // checked sequentially -> do not forget to add the negated previous guards to the current guard transition
+    WHEN choice = item GOTO ASK_MONEY
+    WHEN canceled || timer > timeout GOTO START
+
+
+
+
+ASK_MONEY:
+    local payed : bool;
+    {
+        timer := timer + 1;
+
+        if money then 
+            money_received := money_received + money;
+            // reset timer when money is introduced
+            timer := 0;
+        end
+
+        payed := money_received >= items_price[item-1];
+
+        if payed then
+            emit "Please collect your item" to message;
+            emit item to drop_item;
+        else 
+            emit nothing to message;
+        end
+    }
+
+    WHEN payed ||timer >= timeout GOTO START
+
+
+
