@@ -7,7 +7,7 @@ open Syntax.Instant
 open HardyMisc.Utils
 open MiddleParser.NcSyntax
 module Atom = Atom.Imperative ()
-module B = Ba.Make (Atom)
+module B = Nc2ba.Make (Atom)
 module DotB = BuchiSig.Dot (B)
 module BProd = BaProduct.Make (B) (Atom)
 module BProdU = BuchiSig.Utils (BProd)

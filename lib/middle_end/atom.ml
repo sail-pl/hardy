@@ -40,15 +40,12 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
     match e.value with
     | BinOp v ->
         let left = remove_exp_loc v.left and right = remove_exp_loc v.right in
-        BinOp {v with left;right}
-    | Array el  -> Array (List.map remove_exp_loc el)
-    | Not e  -> Not (remove_exp_loc e)
-    | ArrayCell v -> ArrayCell {idx=remove_exp_loc v.idx; array=remove_exp_loc v.array}
-    | Int _ 
-    | True 
-    | False 
-    | String _ 
-    | Var (_, _) as v -> v
+        BinOp { v with left; right }
+    | Array el -> Array (List.map remove_exp_loc el)
+    | Not e -> Not (remove_exp_loc e)
+    | ArrayCell v ->
+        ArrayCell { idx = remove_exp_loc v.idx; array = remove_exp_loc v.array }
+    | (Int _ | True | False | String _ | Var (_, _)) as v -> v
     | Prod l -> Prod (List.map remove_exp_loc l)
   in
   mk_dummy_loc value

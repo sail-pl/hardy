@@ -17,8 +17,8 @@ and 't expression_ =
   | Prod of 't expr list
   | Array of 't expr list
   | Not of 't expr
-  | BinOp of {left: 't expr ; op :  arithm_binop ; right : 't expr}
-  | ArrayCell of {array: 't expr; idx: 't expr}
+  | BinOp of { left : 't expr; op : arithm_binop; right : 't expr }
+  | ArrayCell of { array : 't expr; idx : 't expr }
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
@@ -36,12 +36,23 @@ let rec map_expr : ('t expr -> 't expr) -> 't expr -> 't expr =
  fun m e ->
   match e.value with
   | Int _ | True | False | Var _ | Not _ | String _ -> m e
-  | ArrayCell v -> m { e with value = ArrayCell {idx=map_expr m v.idx; array = map_expr m v.array} }
+  | ArrayCell v ->
+      m
+        {
+          e with
+          value =
+            ArrayCell { idx = map_expr m v.idx; array = map_expr m v.array };
+        }
   | BinOp v ->
-      m { e with value = BinOp { v with left = map_expr m v.left;  right = map_expr m v.right} }
+      m
+        {
+          e with
+          value =
+            BinOp
+              { v with left = map_expr m v.left; right = map_expr m v.right };
+        }
   | Array arr -> m { e with value = Array (List.map (map_expr m) arr) }
   | Prod l -> m { e with value = Prod (List.map (map_expr m) l) }
-
 
 let expr_vars (e : 't expr) : (string * 't) list -> (string * 't) list =
   fold_expr
@@ -75,7 +86,8 @@ type ('inst_spec, 't) node = {
   node_variables : base_ty var_decls;
   node_preamble : ('inst_spec, unit) stmt list;
   node_spec : 'inst_spec list hoare_pair;
-  node_transitions : (unit expr option * ('inst_spec, unit) stmt list * string option) list;
+  node_transitions :
+    (unit expr option * ('inst_spec, unit) stmt list * string option) list;
 }
 
 let init_node = "START"

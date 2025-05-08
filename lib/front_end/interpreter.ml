@@ -34,8 +34,11 @@ module M = struct
     | Path (Var s) -> Format.fprintf fmt "%s" s
     | Path (ArrayCell (id, n)) ->
         Format.fprintf fmt "%a[%i]" pp_value (Path id) n
-    | LProd l -> Format.(fprintf fmt "(%a)" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") pp_value) l)
-
+    | LProd l ->
+        Format.(
+          fprintf fmt "(%a)"
+            (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") pp_value)
+            l)
 
   (** [get_int v] returns the integer associated to [v]
       @raise TypingError if v is not an int *)
@@ -86,29 +89,28 @@ module M = struct
     | Int2Bool _, Nil, LInt _ | Int2Bool _, LInt _, Nil -> Nil
     | Poly2Bool f, x, y -> LBool (f x y)
     | Bool2Bool f, _, _ -> LBool (f (get_bool x) (get_bool y))
-    | _ -> raise (TypingError (Format.asprintf "%a %a %a" pp_value x Printer.pp_binop op pp_value y))
+    | _ ->
+        raise
+          (TypingError
+             (Format.asprintf "%a %a %a" pp_value x Printer.pp_binop op pp_value
+                y))
 
-
-  let read p id = 
+  let read p id =
     let l_ex = List.exists (fun (o, _) -> o = id) in
     if l_ex p.prog_decls.env_variables || l_ex p.prog_decls.env_input then
-      Hashtbl.find env id 
-    else 
-      if l_ex p.prog_decls.env_output then
-        raise (TypingError (Format.sprintf "attempted to read output '%s'" id))
-      else 
-        failwith @@ "unknown variable " ^ id
+      Hashtbl.find env id
+    else if l_ex p.prog_decls.env_output then
+      raise (TypingError (Format.sprintf "attempted to read output '%s'" id))
+    else failwith @@ "unknown variable " ^ id
 
-  let write p id upd = 
+  let write p id upd =
     let l_ex = List.exists (fun (o, _) -> o = id) in
     if l_ex p.prog_decls.env_variables || l_ex p.prog_decls.env_output then
       Hashtbl.replace env id (upd (Hashtbl.find env id))
-    else 
-      if l_ex p.prog_decls.env_input then
-        raise (TypingError (Format.sprintf "attempted to write input '%s'" id))
-      else 
-        failwith @@ "unknown variable " ^ id
-        
+    else if l_ex p.prog_decls.env_input then
+      raise (TypingError (Format.sprintf "attempted to write input '%s'" id))
+    else failwith @@ "unknown variable " ^ id
+
   let rec eval_rexpr p (e : _ expr) : value =
     match e.value with
     | Int x -> LInt x
@@ -167,20 +169,27 @@ module M = struct
       | Clear e -> update_path p (fun _ -> Nil) (eval_lexpr e)
       | Emit (e, id) ->
           let e = eval_rexpr e in
-          write p id (fun v -> 
-            if v <> Nil &&  List.exists (fun (o, _) -> o = id) p.prog_decls.env_output then
-              raise (TypingError (Printf.sprintf "can't emit more than once during the same instant (output '%s')" id))
-            else e
-          ) 
+          write p id (fun v ->
+              if
+                v <> Nil
+                && List.exists (fun (o, _) -> o = id) p.prog_decls.env_output
+              then
+                raise
+                  (TypingError
+                     (Printf.sprintf
+                        "can't emit more than once during the same instant \
+                         (output '%s')"
+                        id))
+              else e)
       | If (cond, s_true, s_false) ->
           if get_bool (eval_rexpr cond) then eval_seq s_true
           else Option.iter eval_seq s_false
       | When (id, s_true, s_false) ->
-         if List.exists (fun (o, _) -> o = id) p.prog_decls.env_input then
-          match Hashtbl.find env id with
-          | Nil -> Option.iter eval_seq s_false
-          | _ ->  eval_seq s_true
-        else raise (TypingError (Format.sprintf "'%s' is not an input" id))
+          if List.exists (fun (o, _) -> o = id) p.prog_decls.env_input then
+            match Hashtbl.find env id with
+            | Nil -> Option.iter eval_seq s_false
+            | _ -> eval_seq s_true
+          else raise (TypingError (Format.sprintf "'%s' is not an input" id))
       | While (cond, _, _, s') ->
           if get_bool (eval_rexpr cond) then (
             eval_seq s';
@@ -191,7 +200,6 @@ module M = struct
 end
 
 module type IOBridgeSig = sig
-
   (* *)
   val get_inputs : string -> base_ty var_decls -> unit
 
@@ -199,24 +207,25 @@ module type IOBridgeSig = sig
   val send_outputs : string -> base_ty var_decls -> unit
 end
 
-
 let eval_pgrm (p : base_program) (module B : IOBridgeSig) =
   let open M in
   List.iter (fun (v, _) -> Hashtbl.add env v Nil) p.prog_decls.env_variables;
   List.iter (fun (v, _) -> Hashtbl.add env v Nil) p.prog_decls.env_input;
   List.iter (fun (v, _) -> Hashtbl.add env v Nil) p.prog_decls.env_output;
 
-    let rec exec_transition p eval = function
+  let rec exec_transition p eval = function
     | [] -> None
-    | (None,s,next)::_ -> eval p s; next
+    | (None, s, next) :: _ ->
+        eval p s;
+        next
     | (Some guard, s, next) :: t ->
-        if get_bool (eval_rexpr p guard) then
-          (eval p s; next)
+        if get_bool (eval_rexpr p guard) then (
+          eval p s;
+          next)
         else exec_transition p eval t
   in
 
   let rec run (n : _ node) : unit =
-
     (* collect new inputs *)
     B.get_inputs n.node_id p.prog_decls.env_input;
 
@@ -239,7 +248,7 @@ let eval_pgrm (p : base_program) (module B : IOBridgeSig) =
     (* evaluate preamble code if it exists *)
     eval_stmts local_p n.node_preamble;
 
-    (* evaluate code in first matching transition, top to bottom *)    
+    (* evaluate code in first matching transition, top to bottom *)
     let next = exec_transition local_p eval_stmts n.node_transitions in
 
     (* send new outputs (sync mode)
@@ -251,10 +260,10 @@ let eval_pgrm (p : base_program) (module B : IOBridgeSig) =
     List.iter (fun (v, _) -> Hashtbl.remove env v) n.node_variables;
 
     (* get the next node *)
-    let next_node = 
-      Option.fold next 
-        ~none:n 
-        ~some:(fun n -> try find_node p.prog_nodes n with Not_found -> failwith @@ Format.sprintf "no such node '%s'"  n) 
+    let next_node =
+      Option.fold next ~none:n ~some:(fun n ->
+          try find_node p.prog_nodes n
+          with Not_found -> failwith @@ Format.sprintf "no such node '%s'" n)
     in
 
     (* go to the next node *)
@@ -285,15 +294,17 @@ module ConsoleBridge : IOBridgeSig = struct
           done;
           LArray arr
       | Ty_Prod [] -> get (fun _ -> LProd [])
-      | Ty_Prod l -> 
-        let n = List.length l in 
-        let _,p = 
-        List.fold_left (fun (cnt,l) ty-> 
-          let msg = Format.sprintf "%s(%i/%i)" i cnt n in
-          let v =  get_input (msg, ty) in
-         (cnt+1,v::l)) (1,[]) l
-        in LProd (List.rev p)
-
+      | Ty_Prod l ->
+          let n = List.length l in
+          let _, p =
+            List.fold_left
+              (fun (cnt, l) ty ->
+                let msg = Format.sprintf "%s(%i/%i)" i cnt n in
+                let v = get_input (msg, ty) in
+                (cnt + 1, v :: l))
+              (1, []) l
+          in
+          LProd (List.rev p)
     in
     Format.printf "=== INPUTS (%s) ===@." state;
     List.iter (fun (i, t) -> Hashtbl.replace env i (get_input (i, t))) i

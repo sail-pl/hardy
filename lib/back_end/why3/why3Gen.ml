@@ -191,7 +191,6 @@ let rec translate_term (e : instant option expr) : P.term =
             v.op t1 t2)
   | Prod _l -> failwith "todo tuple"
 
-
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
   let open P in
@@ -232,10 +231,17 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     | If (e, t, f) ->
         let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
         Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc
-    | When (id,t,f) -> 
-      let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
-      let t = tr_seq t in 
-      Ematch ([id] |> qualid |> evar, [(pat (Papp (qualid ["Some"], [pat (Pvar (ident id))])), t); (pat Pwild,f)], []) |> expr ~loc
+    | When (id, t, f) ->
+        let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
+        let t = tr_seq t in
+        Ematch
+          ( [ id ] |> qualid |> evar,
+            [
+              (pat (Papp (qualid [ "Some" ], [ pat (Pvar (ident id)) ])), t);
+              (pat Pwild, f);
+            ],
+            [] )
+        |> expr ~loc
     | While (e, inv, _v, stmt) ->
         Ewhile (translate_rexpr e, [ tr_form inv ], [], tr_seq stmt)
         |> expr ~loc
@@ -421,7 +427,7 @@ module M :
     [ input_t; output_t; state_t; instant_t; i; o; s; hist ]
 
   let generate_body (p : in_pgrm) (d : triple_data) : out_body =
-    let _node = find_node p.prog_nodes d.triple_node_id  in
+    let _node = find_node p.prog_nodes d.triple_node_id in
     (* expr_of_statements pterm_of_inv node.node_body *)
     expr_of_statements pterm_of_inv []
 

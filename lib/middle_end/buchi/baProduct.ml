@@ -40,7 +40,7 @@ module Make
       (Graph.Util.CMPProduct (G.V) (G.V)) (Arc)
 
   include GProd
-  module U = Ba.Utils (GProd)
+  module U = Nc2ba.Utils (GProd)
 
   type vdata = vertex_data
 
