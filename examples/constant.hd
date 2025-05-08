@@ -16,13 +16,12 @@ guarantees {o = i}
 
 
 START :
-{
+| _ {
     x := i;
     emit x to o;
-}
-GOTO LOOP
+} => LOOP
 
 LOOP :
-{
+| _ {
     emit x to o;
 }

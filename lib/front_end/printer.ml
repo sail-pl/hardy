@@ -17,6 +17,7 @@ let rec pp_base_ty fmt = function
   | Ty_Int -> Format.fprintf fmt "int"
   | Ty_String -> Format.fprintf fmt "string"
   | Ty_Array (ty, _) -> Format.fprintf fmt "array %a" pp_base_ty ty
+  | Ty_Prod l -> Format.(fprintf fmt "(%a)" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "*") pp_base_ty) l)
 
 let pp_ty fmt (c, t) = Format.fprintf fmt "%a.%a" pp_cat_ty c pp_base_ty t
 
@@ -75,7 +76,9 @@ let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
         fprintf fmt "[%a]"
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_exp)
           l)
-  | ArrayCell (id, n) -> Format.fprintf fmt "%a[%a]" pp_exp id pp_exp n
+  | ArrayCell v -> Format.fprintf fmt "%a[%a]" pp_exp v.array pp_exp v.idx
+  | Prod [x] -> Format.fprintf fmt "%a" pp_exp x
+  | Prod l -> Format.(fprintf fmt "(%a)" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ",@ ") pp_exp) l)
 
 let pp_paren_fol f1 f2 fmt (p : _ fol) =
   match p.value with

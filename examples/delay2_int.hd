@@ -14,10 +14,9 @@ guarantees X G {mem1 = prev mem2}
 
 
 START : 
-{
+| _ {
     mem2 := i;
-} 
-GOTO LOOP
+} => LOOP
 
 LOOP :
 {

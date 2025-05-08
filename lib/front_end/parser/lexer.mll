@@ -34,6 +34,7 @@ let newline = '\r' | '\n' | "\r\n"
 rule tokenize = parse
   | [' ' '\t']              { tokenize lexbuf }  (* Skip whitespaces *)
   | "//"                    { read_comment lexbuf } (* single-line comment *)
+  | "unit"                  { TY_UNIT }
   | "bool"                  { TY_BOOL }
   | "int"                   { TY_INT } 
   | "string"                { TY_STRING }
@@ -47,9 +48,9 @@ rule tokenize = parse
   | "do"                    { DO  }
   | "end"                   { END }
   | "done"                  { DONE }
-  | "WHEN"                  { WHEN }
+  | "when"                  { WHEN }
   | "clear"                 { CLEAR }
-  | "GOTO"                  { GOTO }
+  (* | "GOTO"                  { GOTO } *)
   | "var"                   { VAR }
   | "local"                 { LOCAL }
   | "input"                 { INPUT }
@@ -82,7 +83,7 @@ rule tokenize = parse
   | "["                     { LSQBRACE }
   | "]"                     { RSQBRACE }
   | "|"                     { SEP }
-  | "nothing"               { NOTHING }
+  (* | "nothing"               { NOTHING } *)
   | ";"                     { SEMI }
   | ":="                    { ASSIGN }
   | "emit"                  { EMIT }
@@ -116,10 +117,11 @@ rule tokenize = parse
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }
   | "||"                    { OR }
-  | '"'      { read_string (Buffer.create 17) lexbuf }
+  | '"'                     { read_string (Buffer.create 17) lexbuf }
   | digit+ as lxm           { INT (int_of_string lxm) }
   | id as lxm               { ID (lxm) }
-  | state_id as state_id     { STATE state_id }
+  | state_id as state_id    { STATE state_id }
+  | "_"                     { UNDERSCORE }    
   | newline                 { next_line lexbuf; tokenize lexbuf }
   | eof                     { EOF }
   | _ as char               { raise (Lexical_error (pos_range lexbuf, Format.sprintf "Unexpected character '%s'" (Char.escaped char))) }

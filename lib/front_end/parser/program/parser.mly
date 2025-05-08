@@ -46,19 +46,18 @@ let program :=
         }
     }
 
-
 let state := 
     node_id=STATE ; ":" ; 
     node_variables = loption(vdecl(LOCAL));
     node_spec = midrule(requires=state_requires* ; ensures=state_ensures* ; {{requires;ensures}} ) ;
-    node_body = braced(stmt*) ; 
+    node_preamble = stmt_block ;
     node_transitions = transition* ;
-    { {node_id; node_variables; node_spec; node_body; node_transitions} }
+    { {node_id; node_variables; node_spec; node_preamble; node_transitions} }
 
 
 
-let transition ==  ~ = preceded(WHEN, basic_expr)? ;  GOTO ; ~ = STATE ; <>
-
+let transition := 
+| SEP ; ~ = midrule(~ = some(basic_expr); <> | UNDERSCORE ; {None}) ; ~ = stmt_block ; ~ = preceded(ARROW,STATE)?  ; <>
 
 %public
 let braced(x) == delimited("{", x, "}")
@@ -81,19 +80,24 @@ let typed_decl_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,t) id
 
 %public
 let ty :=
+    | TY_UNIT ; {Ty_Prod []}
     | TY_BOOL ; {Ty_Bool}
     | TY_INT ; {Ty_Int}
     | TY_STRING ; {Ty_String}
+    | l = ty ; "*"; r = ty ; {Ty_Prod [l;r]}
     | TY_ARRAY ; LT ; ~ = ty ; ";" ; ~ = INT ; GT ; <Ty_Array>
 
 let stmt := located (
     | CLEAR; ~ = basic_expr ; ";" ; <Clear> 
-    | EMIT ; ~ = midrule(NOTHING ; {None} | ~ = basic_expr ; <Some>)  ; TO ; ~ = ID ; ";" ; <Emit>
+    | EMIT ; id = ID ; ";" ; {Emit ({label=None;value=Prod []}, id) }
+    | EMIT ; ~ = basic_expr  ; TO ; ~ = ID ; ";" ; <Emit>
+    | WHEN ; ~ = ID ; DO ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; DONE ; <When>
     | IF ; ~ = basic_expr ; THEN ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; END ; <If>
     | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
     | e1 = basic_expr ; ":=" ; e2 = basic_expr ; ";" ; {Assign (e1,e2)}
 )
 
+let stmt_block == body = braced(stmt*)?; { Option.fold ~none:[] ~some:Fun.id body }
 
 let simpl_expr(var_e) :=
 | located (
@@ -101,7 +105,7 @@ let simpl_expr(var_e) :=
     | LFALSE ; {False}
     | ~ = INT ; <Int>
     | "[" ; "|" ; ~ = separated_list(";", expr(var_e)) ; "|" ; "]" ; <Array>
-    | ~ = simpl_expr(var_e) ; "[" ; ~ = expr(var_e) ; "]" ; <ArrayCell>
+    | array = simpl_expr(var_e) ; "[" ; idx = expr(var_e) ; "]" ; {ArrayCell {idx;array}}
     | ~ = STRING ; <String>
     | (id,x) = var_e ; {Var (id,x)}
 )
@@ -110,8 +114,8 @@ let expr(var_e) :=
     | located (
         | EMARK ;  e = expr(var_e) ; %prec UNARY {UnOp (ENot,e)}
         | left = expr(var_e) ; op = binExpOp ; right = expr(var_e) ; {BinOp {left;op;right}}
+        | ~ = delimited("(",separated_list(",", expr(var_e)),")") ; <Prod>
         )
-    | ~ = delimited("(",expr(var_e),")") ; <>
     | simpl_expr(var_e)
 
 
@@ -172,3 +176,6 @@ let typed_state_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,(Sta
 
 %public
 let located(x) == ~ = x ; { mk_labeled (Some $loc) x }
+
+%public 
+let some(x) == ~ = x ; <Some>

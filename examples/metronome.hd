@@ -3,27 +3,38 @@ output
     beat : int
 ;
 
-guarantees G {beat > 0}
+var last_beat : int;
+
+guarantees G {beat > 0}.
 
 guarantees G ( {beat = 1} <-> {accent})
 
-guarantees G ( {beat = 1} -> X {beat = 2} && X X {beat = 3} && X X X {beat = 1} )
+guarantees G ( {beat = 1} -> X {beat = 2} && X X {beat = 3} && X X X {beat = 1} ).
 
+
+// if we don't have a specific construction to initialize memory, we are forced to either 
+// repeat the code so that we can emit a value or
+// acknowledge no output will be emitted after the first instant
+// moreover, an input always precedes a state so if this is undesired, we would need to make a special setup node 
+// where it is ensured no inputs are read 
 
 START : 
 	ensures { beat = 1 && accent }
-{
-	emit 1 to beat;
+| _ {
+    last_beat := 1;
+    emit last_beat to beat;
     emit true to accent;
-} GOTO LOOP
+} => LOOP
 
 LOOP:
-{
-    if beat = 3 then 
-	    emit 1 to beat;
-        emit true to accent;
-    else 
-        emit beat+1 to beat;
+| last_beat = 3 {
+    last_beat := 1;
+    emit last_beat to beat;
+    emit true to accent;
+    } => START 
+
+| _ {
+        last_beat := last_beat + 1;
+        emit last_beat to beat;
         emit false to accent;
-    end
-}
+    }

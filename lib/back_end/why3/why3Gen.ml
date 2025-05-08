@@ -22,6 +22,7 @@ let rec get_pty (to_str : 'a -> string) = function
       Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
   | Ty_Array (ty, _) ->
       Ptree.(PTtyapp (Ptree_helpers.qualid [ "array" ], [ get_pty to_str ty ]))
+  | Ty_Prod l -> PTtuple (List.map (get_pty to_str) l)
 
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
@@ -94,6 +95,7 @@ let rec translate_rexpr (e : unit expr) : P.expr =
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
   | Int n -> econst n ~loc
+  | Prod _l -> failwith "todo tuple"
   | Var (s, ()) ->
       get_binding_type s (fun (cat, _) ->
           match cat with
@@ -111,9 +113,9 @@ let rec translate_rexpr (e : unit expr) : P.expr =
           translate_binop (eapp ~loc)
             (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
             v.op e1 e2)
-  | ArrayCell (s, n) ->
-      let e = translate_rexpr s in
-      eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr n ]
+  | ArrayCell v ->
+      let e = translate_rexpr v.idx in
+      eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr v.array ]
   | String s -> econst (String.hash s) ~loc
   | Array l -> List.map translate_rexpr l |> make_elist
 
@@ -131,9 +133,9 @@ let translate_lexpr (e : unit expr) : P.expr * string option =
             @@ Format.sprintf
                  "can't assign expression to stream variable '%s' (%s)" id
                  (get_pp_string pp_cat_ty cat))
-  | ArrayCell (s, n) ->
-      let e = translate_rexpr s in
-      (eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr n ], None)
+  | ArrayCell v ->
+      let e = translate_rexpr v.idx in
+      (eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr v.array ], None)
   | _ -> failwith "not an r-value"
 
 let rec translate_term (e : instant option expr) : P.term =
@@ -183,10 +185,11 @@ let rec translate_term (e : instant option expr) : P.term =
             v.op t1 t2)
   | Array l -> List.map translate_term l |> make_tlist
   | String s -> tconst ~loc (String.hash s)
-  | ArrayCell (s, n) ->
+  | ArrayCell v ->
       tapp ~loc
         (qualid [ Ident.op_get "" ])
-        [ translate_term s; translate_term n ]
+        [ translate_term v.idx; translate_term v.array ]
+  | Prod _ -> failwith "todo prod"
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
@@ -214,7 +217,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
         |> expr ~loc
     | Clear _e -> failwith "todo"
     | Emit (e, id) ->
-        let e = Option.(map translate_rexpr e |> value ~default:(econst 69)) in
+        let e = translate_rexpr e in
         get_binding_type id (fun (cat, _) ->
             let e1, field =
               match cat with
@@ -228,6 +231,10 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     | If (e, t, f) ->
         let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
         Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc
+    | When (id,t,f) -> 
+      let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
+      let t = tr_seq t in 
+      Ematch ([id] |> qualid |> evar, [(pat (Papp (qualid ["Some"], [pat (Pvar (ident id))])), t); (pat Pwild,f)], []) |> expr ~loc
     | While (e, inv, _v, stmt) ->
         Ewhile (translate_rexpr e, [ tr_form inv ], [], tr_seq stmt)
         |> expr ~loc
@@ -409,8 +416,9 @@ module M :
     [ input_t; output_t; state_t; instant_t; i; o; s; hist ]
 
   let generate_body (p : in_pgrm) (d : triple_data) : out_body =
-    let node = find_node d.triple_node_id p.prog_nodes in
-    expr_of_statements pterm_of_inv node.node_body
+    let _node = find_node p.prog_nodes d.triple_node_id  in
+    (* expr_of_statements pterm_of_inv node.node_body *)
+    expr_of_statements pterm_of_inv []
 
   let generate_function (_p : in_pgrm) (d : triple_data_t) spec body =
     let open P in

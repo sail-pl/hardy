@@ -1,6 +1,6 @@
 input 
-    choice: int //? // signal
-    money : int //?
+    choice: int
+    money : int
 ;
 
 output 
@@ -18,84 +18,67 @@ var
     items_price : array<int;5>
 ;
 
-
 START: 
-    {
+   | _ {
         clear item;
-        items_price := [|2;4;3;2;5|];
         money_received := 0;
+        items_price := [|2;4;3;2;5|];
         timer := 0;
-        timeout := 10;
-        emit "please select an item (1-5)" to message;
-    }    
-    GOTO ITEM_SELECTION
+        timeout := 5;
+    }  => ITEM_SELECTION
+
 
 ITEM_SELECTION:
-    {
-       item := choice; 
+    |  choice && choice >= 1 && choice <= 5 {
+        item := choice;
+        emit "Confirm the selection (enter the same input)" to message;
+    } => CONFIRM
 
-        if !item || item < 1 || item > 5 then
-            emit "incorrect or no selection" to message;
-            clear item;
-        else
-            emit "Confirm the selection (enter the same input)" to message;
-        end
+    | choice {
+        emit "incorrect selection" to message;
     }
    
-    // if no goto present, or if no 'else' clause, assume last state is repeated 
-    // present / absent signal present(choice) 
-   WHEN item GOTO CONFIRM
+    | _ {
+        emit "please select an item (1-5)" to message;
+    }
 
 
 // user must press the same item number or a different one to cancel
 CONFIRM:
-    local 
-        canceled : bool // node-private variable
-    ; 
-    {
-        timer := timer + 1;
-        canceled := choice && choice <> item;
+    | timer > timeout || (choice && choice <> item) {
+        clear item;
+        emit "canceling..." to message;
+        timer := 0;
+    } => ITEM_SELECTION
 
-        if choice = item then         
-            emit "Selection confirmed, please proceed to the payment" to message; 
-        else 
-            if canceled then
-                emit "Selection cancelled" to message;
-            else
-                emit nothing to message;
-            end
-        end
+    | choice = item {
+        emit "Selection confirmed, please proceed to the payment" to message; 
+        timer := 0;
+    } => ASK_MONEY
+
+    | _ {
+        timer := timer + 1;
     }
 
-    // checked sequentially -> do not forget to add the negated previous guards to the current guard transition
-    WHEN choice = item GOTO ASK_MONEY
-    WHEN canceled || timer > timeout GOTO START
-
-
-
-
+// some statements can be executed before the transitions but must not modify the current state
+// -> can use local variables
 ASK_MONEY:
-    local payed : bool;
     {
-        timer := timer + 1;
-
-        if money then 
+        when money do
             money_received := money_received + money;
-            // reset timer when money is introduced
-            timer := 0;
-        end
+        done    
+    }
+    
+    | money_received >= items_price[item - 1] {
+        emit "Please collect your item" to message;
+        emit item to drop_item;
+    } => ITEM_SELECTION
 
-        payed := money_received >= items_price[item-1];
-
-        if payed then
-            emit "Please collect your item" to message;
-            emit item to drop_item;
-        else 
-            emit nothing to message;
-        end
+    | money {             
+        // reset timer when money is introduced
+        timer := 0; 
     }
 
-    WHEN payed ||timer >= timeout GOTO START
-
-
-
+    | _ {
+        timer := timer + 1;
+    }
