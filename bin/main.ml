@@ -8,12 +8,15 @@ let main (type triple_data) (type fol_data)
     (module Back : HardyBackEnd.Sig.S
       with type triple_data = Middle.triple_data
        and type fol_data = Middle.fol_data) =
+  let module Front = HardyFrontEnd in
+
   let module Cli = Cli () in
   let info = Cli.get_info in
 
-  Parser.parse_file info.file |> HardyFrontEnd.Typing.type_pgrm |> fun p ->
+  Parser.parse_file info.file |> Front.Typing.type_pgrm |> fun p ->
   (if info.eval then
-     HardyFrontEnd.Interpreter.(eval_pgrm p (module ConsoleBridge)));
+     Front.Interpreter.(
+       eval_pgrm p (module Front.Interpreter.ConsoleBridge)));
   if info.verify then (
     let translate_spec = HardyMiddleEnd.Sig.translate_spec (module Middle) in
     let module Back = HardyBackEnd.Sig.F (Back) in

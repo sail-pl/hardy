@@ -22,6 +22,7 @@ let rec get_pty (to_str : 'a -> string) = function
       Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
   | Ty_Array (ty, _) ->
       Ptree.(PTtyapp (Ptree_helpers.qualid [ "array" ], [ get_pty to_str ty ]))
+  | Ty_Prod l -> PTtuple (List.map (get_pty to_str) l)
 
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
@@ -96,6 +97,7 @@ let rec translate_rexpr (e : unit expr) : P.expr =
   | Int n -> econst n ~loc
   | String s -> econst (String.hash s) ~loc
   | Array l -> List.map translate_rexpr l |> make_elist
+  | Prod _l -> failwith "todo tuple"
   | Var (s, ()) ->
       get_binding_type s (fun (cat, _) ->
           match cat with
@@ -103,28 +105,27 @@ let rec translate_rexpr (e : unit expr) : P.expr =
           | _ ->
               eapp (qualid [ s ])
                 [ [ get_pp_string pp_cat_ty cat ] |> qualid |> evar ~loc ])
-  | Read s -> Easref (qualid [ s ]) |> expr ~loc
-  | ArrayCell (s, n) ->
-      let e = translate_rexpr s in
-      eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr n ]
+  | ArrayCell v ->
+      let e = translate_rexpr v.array in
+      eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr v.idx ]
   | Not e -> Enot (translate_rexpr e) |> expr ~loc
-  | BinOp (e1, binop, e2) -> (
-      let e1 = translate_rexpr e1 and e2 = translate_rexpr e2 in
-      match binop with
+  | BinOp v -> (
+      let e1 = translate_rexpr v.left and e2 = translate_rexpr v.right in
+      match v.op with
       | And -> Eand (e1, e2) |> expr
       | Or -> Eor (e1, e2) |> expr
       | _ ->
           translate_binop (eapp ~loc)
             (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
-            binop e1 e2)
+            v.op e1 e2)
 
 let translate_lexpr (e : unit expr) : P.expr * string option =
   let open PH in
   let loc = get_loc e.label in
   match e.value with
-  | ArrayCell (s, n) ->
-      let e = translate_rexpr s in
-      (eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr n ], None)
+  | ArrayCell v ->
+      let e = translate_rexpr v.array in
+      (eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr v.idx ], None)
   | Var (id, ()) ->
       get_binding_type id (function
         | State, _ ->
@@ -174,21 +175,22 @@ let rec translate_term (e : instant option expr) : P.term =
                   in
                   let inst = tapp nth [ n; tvar (qualid [ history_id ]) ] in
                   tapp ~loc (qualid [ s ]) [ tapp field [ inst ] ]))
-  | Read s -> Tasref (qualid [ s ]) |> term ~loc
-  | ArrayCell (s, n) ->
+  | ArrayCell v ->
       tapp ~loc
         (qualid [ Ident.op_get "" ])
-        [ translate_term s; translate_term n ]
+        [ translate_term v.array; translate_term v.idx ]
   | Not t -> Tnot (translate_term t) |> term ~loc
-  | BinOp (t1, binop, t2) -> (
-      let t1 = translate_term t1 and t2 = translate_term t2 in
-      match binop with
+  | BinOp v -> (
+      let t1 = translate_term v.left and t2 = translate_term v.right in
+      match v.op with
       | And -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
       | Or -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
       | _ ->
           translate_binop (tapp ~loc)
             (fun x e1 e2 -> Tinnfix (e1, x, e2) |> term ~loc)
-            binop t1 t2)
+            v.op t1 t2)
+  | Prod _l -> failwith "todo tuple"
+
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
@@ -216,7 +218,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
         |> expr ~loc
     | Clear _e -> failwith "todo"
     | Emit (e, id) ->
-        let e = Option.(map translate_rexpr e |> value ~default:(econst 69)) in
+        let e = translate_rexpr e in
         get_binding_type id (fun (cat, _) ->
             let e1, field =
               match cat with
@@ -230,6 +232,10 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     | If (e, t, f) ->
         let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
         Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc
+    | When (id,t,f) -> 
+      let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
+      let t = tr_seq t in 
+      Ematch ([id] |> qualid |> evar, [(pat (Papp (qualid ["Some"], [pat (Pvar (ident id))])), t); (pat Pwild,f)], []) |> expr ~loc
     | While (e, inv, _v, stmt) ->
         Ewhile (translate_rexpr e, [ tr_form inv ], [], tr_seq stmt)
         |> expr ~loc
@@ -415,8 +421,9 @@ module M :
     [ input_t; output_t; state_t; instant_t; i; o; s; hist ]
 
   let generate_body (p : in_pgrm) (d : triple_data) : out_body =
-    let node = find_node d.triple_node_id p.prog_nodes in
-    expr_of_statements pterm_of_inv node.node_body
+    let _node = find_node p.prog_nodes d.triple_node_id  in
+    (* expr_of_statements pterm_of_inv node.node_body *)
+    expr_of_statements pterm_of_inv []
 
   let generate_function (_p : in_pgrm) (d : triple_data_t) spec body =
     let open P in

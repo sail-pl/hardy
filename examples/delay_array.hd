@@ -5,10 +5,9 @@ var x : array<int;3>;
 guarantees X X X G {o = prev 3 i}.
 
 START :
-{
+| _ {
     x := [|0;1;2|];
-}
-GOTO LOOP
+} => LOOP
 
 LOOP :
 {

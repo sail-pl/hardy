@@ -8,10 +8,9 @@ guarantees G ({i} -> X {o}).
 guarantees G (!{i} -> X !{o}).
 
 START:
-{
+| _ {
     x := i;
-}
-GOTO LOOP
+} => LOOP
 
 LOOP:
 {

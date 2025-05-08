@@ -38,10 +38,18 @@ let atom_id_to_int s = String.(sub s 2 (length s - 2) |> int_of_string)
 let rec remove_exp_loc (e : 't expr) : 't expr =
   let value =
     match e.value with
-    | BinOp (e1, op, e2) ->
-        let e1 = remove_exp_loc e1 and e2 = remove_exp_loc e2 in
-        BinOp (e1, op, e2)
-    | _ as x -> x
+    | BinOp v ->
+        let left = remove_exp_loc v.left and right = remove_exp_loc v.right in
+        BinOp {v with left;right}
+    | Array el  -> Array (List.map remove_exp_loc el)
+    | Not e  -> Not (remove_exp_loc e)
+    | ArrayCell v -> ArrayCell {idx=remove_exp_loc v.idx; array=remove_exp_loc v.array}
+    | Int _ 
+    | True 
+    | False 
+    | String _ 
+    | Var (_, _) as v -> v
+    | Prod l -> Prod (List.map remove_exp_loc l)
   in
   mk_dummy_loc value
 

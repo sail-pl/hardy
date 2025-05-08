@@ -1,7 +1,5 @@
 input on off : bool;
 output light : bool;
-var x : bool;
-
 relies on  G (! {on} || ! {off}).
 
 guarantees {on}  R ({on} || ! {light}).
@@ -10,18 +8,28 @@ guarantees G ({off} -> {on} R ({on} || ! {light})).
 
 START : 
 	ensures { light = false }
-{
+| _ {
+	x := false;
 	emit false to light;
-} GOTO LOOP
+	} => LIGHT_OFF
 
 
-LOOP:
-{
-	if on then 
-		emit true to light;
-	else 
-		if off then 
-			emit false to light;
-		end
-	end
-}	
+LIGHT_ON:
+ | off  {
+	emit false to light;
+ } => LIGHT_OFF
+
+ | _ {
+	emit true to light;
+ } 
+
+
+LIGHT_OFF:
+
+ | on {
+	emit true to light;
+ } => LIGHT_ON
+	
+| _ {
+	emit false to light;
+}

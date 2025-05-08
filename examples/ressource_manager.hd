@@ -1,0 +1,53 @@
+input 
+    // when composed with other modules: possiblity to add spec such that an input/output signal must always be emited
+    request1: unit
+    request2: unit
+;
+
+output 
+    granted1: unit
+    granted2: unit
+;
+
+
+// assume the ressource is held for a finite amount of time
+relies on G ({request1} -> F !{request1}).
+relies on G ({request2} -> F !{request2}).
+
+// mutual exclusion
+guarantees G ({granted1} && {granted2}).
+
+// every request must eventually be granted
+guarantees G ({request1} -> F {granted1}).
+guarantees G ({request2} -> F {granted2}).
+
+// a ressource is granted as long as the customer needs it
+guarantees G ({granted1} -> !{request1} R {granted1}).
+guarantees G ({granted2} -> !{request2} R {granted2}).
+
+
+// a ressource cannot always be given to the same customer
+// interpretation: { granted1, granted2 } ⊆ Inf(σ)
+// fair {granted1} {granted2}
+
+
+//naive implem 
+
+START:
+    // will always first check request1 and then request2
+    | request1 {emit granted1;} => GRANTED1
+    | request2 {emit granted2;} => GRANTED2
+
+GRANTED1:
+    | !request1 && request2 {emit granted2;} => GRANTED2
+    | !request1 && !request2 => START
+
+GRANTED2:
+    | !request2 && request1 {emit granted1;} => GRANTED1
+    | !request2 && !request1 => START
+
+
+    
+
+    
+

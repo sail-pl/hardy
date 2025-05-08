@@ -33,6 +33,7 @@ let newline = '\r' | '\n' | "\r\n"
 rule tokenize = parse
   | [' ' '\t']              { tokenize lexbuf }  (* Skip whitespaces *)
   | "//"                    { read_comment lexbuf } (* single-line comment *)
+  | "unit"                  { TY_UNIT }
   | "bool"                  { TY_BOOL }
   | "int"                   { TY_INT } 
   | "string"                { TY_STRING }
@@ -47,7 +48,8 @@ rule tokenize = parse
   | "end"                   { END }
   | "done"                  { DONE }
   | "clear"                 { CLEAR }
-  | "WHEN"                  { WHEN }
+  | "when"                  { WHEN }
+  | "ON"                    { ON }
   | "GOTO"                  { GOTO }
   | "var"                   { VAR }
   | "local"                 { LOCAL }
@@ -84,7 +86,6 @@ rule tokenize = parse
   | ";"                     { SEMI }
   | ":="                    { ASSIGN }
   | "emit"                  { EMIT }
-  | "nothing"               { NOTHING }
   | "to"                    { TO }
   | "."                     { DOT }
   | "!"                     { EMARK }
@@ -115,10 +116,11 @@ rule tokenize = parse
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }
   | "||"                    { OR }
-  | '"'      { read_string (Buffer.create 17) lexbuf }
+  | '"'                     { read_string (Buffer.create 17) lexbuf }
   | digit+ as lxm           { INT (int_of_string lxm) }
   | id as lxm               { ID (lxm) }
-  | state_id as state_id     { STATE state_id }
+  | state_id as state_id    { STATE state_id }
+  | "_"                     { UNDERSCORE }    
   | newline                 { next_line lexbuf; tokenize lexbuf }
   | eof                     { EOF }
   | _ as char               { raise (Lexical_error (pos_range lexbuf, Printf.sprintf "Unexpected character '%s'" (Char.escaped char))) }
