@@ -8,7 +8,6 @@ homepage: "https://github.com/sail-pl/hardy"
 bug-reports: "https://github.com/sail-pl/hardy/issues"
 depends: [
   "ocaml" {>= "5.1.0"}
-  "why3"
   "coq" {>= "8.18"}
   "dune" {>= "3.11"}
   "menhir"
@@ -16,6 +15,7 @@ depends: [
   "ocaml-lsp-server" {with-dev-setup}
   "zarith"
   "ocamlgraph"
+  "why3find"
   "odoc" {with-doc}
 ]
 build: [

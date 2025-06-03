@@ -23,7 +23,6 @@
    (description "A longer description")
   (depends 
   (ocaml (>= 5.1.0))
-  why3
   (coq (>= 8.18))
   dune
   menhir
@@ -31,6 +30,7 @@
   (ocaml-lsp-server :with-dev-setup)
   zarith
   ocamlgraph
+  why3find
   )
   ; (tags
   ; (topics "to describe" your project))
