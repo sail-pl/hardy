@@ -1,7 +1,6 @@
 open HardyFrontEnd.Syntax
 open HardyFrontEnd.Printer
 open Program
-open Fol
 open Shared
 open HardyMisc.Utils
 
@@ -30,39 +29,18 @@ let sub_atom_in_str subst =
   let r = regexp {|f_\([0-9]+\)|} in
   global_substitute r (fun m -> matched_string m |> subst)
 
-(** [atom_id_to_int a] returns an integer representation of the atom identifier
-    [a]*)
-let atom_id_to_int s = String.(sub s 2 (length s - 2) |> int_of_string)
+(** [atom_of_atom_id a] extracts the atom from the identifier [a]*)
+let atom_of_atom_id s : int = String.(sub s 2 (length s - 2)) |> int_of_string
 
 (** [remove_exp_loc e] replaces all locations of expression [e] with None *)
 let rec remove_exp_loc (e : 't expr) : 't expr =
   let value =
     match e.value with
-    | BinOp x ->
-        let left = remove_exp_loc x.left and right = remove_exp_loc x.right in
-        BinOp {x with left; right}
-    | _ as x -> x
-  in
-  mk_dummy_loc value
-
-(** [remove_fol_loc f] replaces all locations of fol formula [f] with None *)
-let rec remove_fol_loc (f : ('t expr, _) fol) : ('t expr, _) fol =
-  let value =
-    match f.value with
-    | FOL_Atom p -> FOL_Atom (remove_exp_loc p)
-    | FOL_StdUnary (op, f) ->
-        let f = remove_fol_loc f in
-        FOL_StdUnary (op, f)
-    | FOL_StdBinary (f1, op, f2) ->
-        let f1 = remove_fol_loc f1 and f2 = remove_fol_loc f2 in
-        FOL_StdBinary (f1, op, f2)
-    | Forall (x, f) ->
-        let f = remove_fol_loc f in
-        Forall (x, f)
-    | Exists (x, f) ->
-        let f = remove_fol_loc f in
-        Exists (x, f)
-    | _ as x -> x
+    | BinOp v ->
+        let left = remove_exp_loc v.left and right = remove_exp_loc v.right in
+        BinOp { v with left; right }
+    | UnOp (ENot,e) -> UnOp (ENot,(remove_exp_loc e))
+    | (Int _ | True | False | Var (_, _)) as v -> v
   in
   mk_dummy_loc value
 
@@ -84,7 +62,7 @@ module Functional : S = struct
   (* let get_f i proj : formula option t = fun m -> (M.find i (proj m), m) *)
 
   let get (s : string) : (string * ty fol_t) t =
-   fun (cnt, m) -> (M.find (atom_id_to_int s) m, (cnt, m))
+   fun (cnt, m) -> (M.find (atom_of_atom_id s) m, (cnt, m))
 
   let subst (f : string t) : string t =
    fun m ->
@@ -99,7 +77,7 @@ module Functional : S = struct
   (* let get_and_incr : int t = fun (cnt,m) -> cnt,(cnt+1,m) *)
 
   let add_and_get (atom : ty fol_t) : (string * string) t =
-    let key = Hashtbl.hash (remove_fol_loc atom) in
+    let key = Hashtbl.hash (Format.asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty) atom) in
     let label = Format.sprintf "f_%i" key in
     fun (cnt, m) ->
       match M.find_opt key m with
@@ -117,12 +95,15 @@ module Imperative () : S with type 'a t = 'a = struct
 
   type 'a t = 'a
 
+  (* we need to hash the key ourselves as we use them in the output *)
+  module AtomTable = Hashtbl.Make(struct include Int let hash = Fun.id end)
+
   (* key is a hash of fol, value is a short name for fol + fol itself*)
-  let atomic_bindings : (int, string * ty fol_t) Hashtbl.t = Hashtbl.create 100
+  let atomic_bindings : (string * ty fol_t) AtomTable.t = AtomTable.create 100
   let cnt = ref 0
 
   let get (s : string) : (string * ty fol_t) t =
-    try Hashtbl.find atomic_bindings (atom_id_to_int s)
+    try AtomTable.find atomic_bindings (atom_of_atom_id s)    
     with Not_found -> raise (Atom_not_found s)
 
   let subst =
@@ -131,16 +112,12 @@ module Imperative () : S with type 'a t = 'a = struct
         Format.asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty)inv)
 
   let add_and_get (atom : ty fol_t) =
-    (* we must get the same atom if the formulas are syntactically equal
-      warning: hash function doesn't recursively check all structure's nodes,
-      but by default only 10 "meaningful" nodes (see manual).  
-      *)
-    let key = Hashtbl.hash_param 100 256 (remove_fol_loc atom) in
+    let key = Format.(asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty) atom) |> String.hash in
     let label = Format.sprintf "f_%i" key in
-    match Hashtbl.find_opt atomic_bindings key with
+    match AtomTable.find_opt atomic_bindings key with
     | None ->
         let short_name = "F" ^ string_of_int !cnt in
-        Hashtbl.add atomic_bindings key (short_name, atom);
+        AtomTable.add atomic_bindings key (short_name, atom);
         incr cnt;
         (short_name, label)
     | Some (sn, _) -> (sn, label)
