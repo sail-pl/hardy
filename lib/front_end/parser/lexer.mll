@@ -25,7 +25,7 @@ let letter = (lowercase | uppercase)
 let nameStartChar = lowercase | '_'
 let nameChar = nameStartChar | digit
 let name = nameStartChar (nameChar)*
-let id = letter (lowercase|digit|'_')* (* no uppercase because of reserved LTL keywords *)
+let id = lowercase (letter|digit|'_')* (* cannot begin with an uppercase because of reserved LTL keywords *)
 let newline = '\r' | '\n' | "\r\n"
 
 
@@ -50,12 +50,12 @@ rule tokenize = parse
   | "output"                { OUTPUT }
   | "relies on"             { RELY }
   | "guarantees"            { GUARANTEE }
-  | "requires"              { REQUIRES }
+  (* | "requires"              { REQUIRES } *)
   | "prev"                  { PREV }
-  | "^"                     { HAT }
-  | "any"                   { ANY }
-  | "?"                     { QMARK }
-  | "all"                   { ALL }
+  (* | "^"                     { HAT } *)
+  (* | "any"                   { ANY } *)
+  (* | "?"                     { QMARK } *)
+  (* | "all"                   { ALL } *)
   | "#"                     { SHARP }
   | "$"                     { DOLLAR }
   | "at"                    { AT }
@@ -73,14 +73,14 @@ rule tokenize = parse
   | ")"                     { RPAREN }
   | "{"                     { LBRACE }
   | "}"                     { RBRACE }
-  | "["                     { LSQBRACE }
-  | "]"                     { RSQBRACE }
+  (* | "["                     { LSQBRACE } *)
+  (* | "]"                     { RSQBRACE } *)
   (* | "|"                     { SEP } *)
   | ";"                     { SEMI }
   | ":="                    { ASSIGN }
   | "emit"                  { EMIT }
   | "to"                    { TO }
-  | "."                     { DOT }
+  (* | "."                     { DOT } *)
   | "!"                     { EMARK }
   | "+"                     { PLUS }
   | "-"                     { MINUS }
@@ -97,14 +97,14 @@ rule tokenize = parse
   | ";"                     { SEMI }
   | ":"                     { COLON }
   | ","                     { COMMA }
-  | "S"                     { SINCE }
+  (* | "S"                     { SINCE } *)
   | "X"                     { NEXT }
   | "U"                     { UNTIL}
   | "R" | "V"               { RELEASE }
   | "M"                     { SRELEASE }
   | "F"                     { EVENTUALLY }
   | "G"                     { ALWAYS }
-  | "~"                     { TILDE }
+  (* | "~"                     { TILDE } *)
   | "->" | "=>"             { ARROW }
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }
@@ -113,7 +113,7 @@ rule tokenize = parse
   | id as lxm               { ID (lxm) }
   | newline                 { next_line lexbuf; tokenize lexbuf }
   | eof                     { EOF }
-  | _ as char               { raise (Lexical_error (pos_range lexbuf, Printf.sprintf "Unexpected character '%s'" (Char.escaped char))) }
+  | _ as char               { raise (Lexical_error (pos_range lexbuf, Format.sprintf "Unexpected character '%s'" (Char.escaped char))) }
 and read_comment = parse
   | newline { next_line lexbuf; tokenize lexbuf } 
   | eof { EOF }

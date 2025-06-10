@@ -38,9 +38,9 @@ let atom_id_to_int s = String.(sub s 2 (length s - 2) |> int_of_string)
 let rec remove_exp_loc (e : 't expr) : 't expr =
   let value =
     match e.value with
-    | BinOp (e1, op, e2) ->
-        let e1 = remove_exp_loc e1 and e2 = remove_exp_loc e2 in
-        BinOp (e1, op, e2)
+    | BinOp x ->
+        let left = remove_exp_loc x.left and right = remove_exp_loc x.right in
+        BinOp {x with left; right}
     | _ as x -> x
   in
   mk_dummy_loc value
@@ -49,13 +49,13 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
 let rec remove_fol_loc (f : ('t expr, _) fol) : ('t expr, _) fol =
   let value =
     match f.value with
-    | Pred p -> Pred (remove_exp_loc p)
-    | FOL_Unary (op, f) ->
+    | FOL_Atom p -> FOL_Atom (remove_exp_loc p)
+    | FOL_StdUnary (op, f) ->
         let f = remove_fol_loc f in
-        FOL_Unary (op, f)
-    | FOL_Binary (f1, op, f2) ->
+        FOL_StdUnary (op, f)
+    | FOL_StdBinary (f1, op, f2) ->
         let f1 = remove_fol_loc f1 and f2 = remove_fol_loc f2 in
-        FOL_Binary (f1, op, f2)
+        FOL_StdBinary (f1, op, f2)
     | Forall (x, f) ->
         let f = remove_fol_loc f in
         Forall (x, f)
@@ -93,9 +93,8 @@ module Functional : S = struct
     ( sub_atom_in_str
         (fun s ->
           let a = get s in
-          string_of_fol string_of_ty a)
-        f,
-      (cnt, m) )
+          Format.(asprintf "%a" (pp_fol (pp_exp (fun fmt (id,_) -> pp_print_string fmt id)) pp_ty) a))
+      f, (cnt, m) )
 
   (* let get_and_incr : int t = fun (cnt,m) -> cnt,(cnt+1,m) *)
 
@@ -129,7 +128,7 @@ module Imperative () : S with type 'a t = 'a = struct
   let subst =
     sub_atom_in_str (fun s ->
         let _, inv = get s in
-        string_of_fol string_of_ty inv)
+        Format.asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty)inv)
 
   let add_and_get (atom : ty fol_t) =
     (* we must get the same atom if the formulas are syntactically equal

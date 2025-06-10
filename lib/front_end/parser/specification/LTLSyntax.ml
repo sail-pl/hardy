@@ -6,13 +6,13 @@ open SharedSyntax
 (* LTL *)
 
 type ltl_unary =
-  | LTL_UArithm of common_logic_unary
+  | LTL_StdUnary of standard_logic_uop
   | Next
   | Always
   | Eventually
 
 type ltl_binary =
-  | LTL_BArithm of common_logic_binary
+  | LTL_StdBinary of standard_logic_bop
   | Until
   | WeakUntil
   | Release
@@ -25,7 +25,7 @@ type 'a ltl = 'a ltl_ locatable
 and 'a ltl_ =
   | LTL_True
   | LTL_False
-  | LTL_Pred of 'a
+  | LTL_Atom of 'a
   | LTL_Unary of ltl_unary * 'a ltl
   | LTL_Binary of 'a ltl * ltl_binary * 'a ltl
 
@@ -33,8 +33,8 @@ and 'a ltl_ =
 let rec map_ltl_pred : type a b. (a -> b) -> a ltl -> b ltl =
  fun m form ->
   match form.value with
-  | LTL_Pred p ->
-      let value = LTL_Pred (m p) in
+  | LTL_Atom p ->
+      let value = LTL_Atom (m p) in
       { form with value }
   | LTL_Unary (un, f') ->
       let value = LTL_Unary (un, map_ltl_pred m f') in
@@ -47,7 +47,7 @@ let rec map_ltl_pred : type a b. (a -> b) -> a ltl -> b ltl =
 (** {2 Helpers to build locatable formulas} *)
 
 let and_ltl (f1 : 'a ltl) (f2 : 'a ltl) : 'a ltl =
-  mk_dummy_loc (LTL_Binary (f1, LTL_BArithm (Arithm And), f2))
+  mk_dummy_loc (LTL_Binary (f1, LTL_StdBinary LAnd, f2))
 
 let true_ltl = mk_dummy_loc LTL_True
 let false_ltl = mk_dummy_loc LTL_True

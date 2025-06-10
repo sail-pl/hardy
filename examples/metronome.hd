@@ -3,11 +3,11 @@ output
     beat : int
 ;
 
-guarantees G {beat > 0}.
+guarantees G {beat > 0}
 
-guarantees G ( {beat = 1} <-> {accent}).
+guarantees G ( {beat = 1} <-> {accent})
 
-guarantees G ( {beat = 1} -> X {beat = 2} && X X {beat = 3} && X X X {beat = 1} ).
+guarantees G ( {beat = 1} -> X {beat = 2} && X X {beat = 3} && X X X {beat = 1} )
 
 
 setup : 

@@ -22,7 +22,7 @@ functor
     open Arg
 
     let usage_msg =
-      Printf.sprintf "Usage : %s --ltl2ba <ltl2ba exe> <file> [-v]"
+      Format.sprintf "Usage : %s --ltl2ba <ltl2ba exe> <file> [-v]"
         (Sys.argv.(0) |> Filename.basename)
 
     let input_file = ref ""

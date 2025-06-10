@@ -87,7 +87,7 @@ module M :
     let ltl2ba_nc ((name, spec) : string * InputSpec.t) :
         string * NcSyntax.neverclaim =
       let never_file = output_file cli name ".never" in
-      (name, Ltl2ba.ltl_to_neverclaim cli never_file spec)
+      (name, Ltl2nc.ltl_to_neverclaim cli never_file spec)
     in
     (* transform LTL formula to a neverclaim representation of a buchi automaton  *)
     { requires = ltl2ba_nc i.requires; ensures = ltl2ba_nc i.ensures }

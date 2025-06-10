@@ -6,17 +6,17 @@ open MiddleParser
 let spin_binop : ltl_binary -> string = function
   | Until -> "U"
   | Release -> "V"
-  | LTL_BArithm Arrow -> "->"
-  | LTL_BArithm (Arithm Or) -> "||"
-  | LTL_BArithm (Arithm And) -> "&&"
-  | LTL_BArithm Equiv -> "<->"
+  | LTL_StdBinary Arrow -> "->"
+  | LTL_StdBinary LOr -> "||"
+  | LTL_StdBinary LAnd -> "&&"
+  | LTL_StdBinary Equiv -> "<->"
   | _ -> failwith "unsupported bop"
 
 let spin_unop : ltl_unary -> string = function
   | Next -> "X"
   | Always -> "[]"
   | Eventually -> "<>"
-  | LTL_UArithm Not -> "!"
+  | LTL_StdUnary LNot -> "!"
 
 let ltl_to_neverclaim (i : Cli.info) (never_file : string) (f : string ltl) :
     NcSyntax.neverclaim =

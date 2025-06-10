@@ -3,11 +3,11 @@ output light : bool;
 var x : bool;
 
 
-relies on  G (! {on} || ! {off}).
+relies on  G (! {on} || ! {off})
 
-guarantees {on}  R ({on} || ! {light}).
-guarantees G ({on} -> {off} R ({off} || {light})).
-guarantees G ({off} -> {on} R ({on} || ! {light})).
+guarantees {on}  R ({on} || ! {light})
+guarantees G ({on} -> {off} R ({off} || {light}))
+guarantees G ({off} -> {on} R ({on} || ! {light}))
 
 setup : 
 	ensures { light = false }

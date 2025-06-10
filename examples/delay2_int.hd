@@ -5,12 +5,12 @@ var mem1 mem2 : int;
 
 
 //public spec 
-guarantees G ( X X { o = i#2 }).
+guarantees G ( X X { o = i#2 })
 
 //private spec 
-guarantees G {mem2 = i}.
-guarantees X G {mem1 = prev i}.
-guarantees X G {mem1 = prev mem2}.
+guarantees G {mem2 = i}
+guarantees X G {mem1 = prev i}
+guarantees X G {mem1 = prev mem2}
 
 
 loop :

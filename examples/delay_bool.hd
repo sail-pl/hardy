@@ -2,10 +2,10 @@ input i : bool;
 output o : bool;
 var x : bool; 
 
-guarantees ! {o}.
-guarantees G {x = i}.
-guarantees G ({i} -> X {o}).
-guarantees G (!{i} -> X !{o}).
+guarantees ! {o}
+guarantees G {x = i}
+guarantees G ({i} -> X {o})
+guarantees G (!{i} -> X !{o})
 
 setup:
     ensures { x = false }

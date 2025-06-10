@@ -53,7 +53,7 @@ rule tokenize = parse
     | atom as atm             { ATOM (atm) }
     | newline                 { next_line lexbuf; tokenize lexbuf }
     | eof                     { EOF }
-    | _ as char               { failwith @@ Printf.sprintf "Unexpected character '%s'" (Char.escaped char) }
+    | _ as char               { failwith @@ Format.sprintf "Unexpected character '%s'" (Char.escaped char) }
     and ignore_comment = parse
     | "*/"                    { tokenize lexbuf }
     | newline                 { next_line lexbuf; ignore_comment lexbuf }

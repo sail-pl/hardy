@@ -19,12 +19,9 @@ type 'ty temp_spec_t = 'ty fol_t Ltl.ltl
 (** ltl logic with fol over program expression where variables can be temporally
     quantified *)
 
-type variant_t = Program.(unit expr variant)
-(** variant expression: only allowed to be a program expression *)
-
 type triple_data_t = { triple_id : string }
 
 (** extra information appended to generated hoare triples *)
 
 type base_program =
-  (Shared.ty temp_spec_t, Shared.ty fol_t, variant_t, unit) Program.program
+  (Shared.ty temp_spec_t, Shared.ty fol_t, unit) Program.program

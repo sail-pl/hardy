@@ -7,7 +7,7 @@ open Syntax.Instant
 open HardyMisc.Utils
 open MiddleParser.NcSyntax
 module Atom = Atom.Imperative ()
-module B = Ba.Make (Atom)
+module B = Nc2ba.Make (Atom)
 module DotB = BuchiSig.Dot (B)
 module BProd = BaProduct.Make (B) (Atom)
 module BProdU = BuchiSig.Utils (BProd)
@@ -214,7 +214,7 @@ let generate_triples (p : base_program) (a : BProd.t) :
         let open Format in
         let index = if i <> 0 then sprintf "_%i" i else "" in
         let id = BProd.(id_of_vertex v) ^ index in
-        let data = { triple_id = id } in
+        let data = { triple_id = id  } in
         (data, s))
       specs
   in

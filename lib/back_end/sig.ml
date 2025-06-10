@@ -19,8 +19,8 @@ module type S = sig
   (* (in_ty temp_spec_t, (in_ty,unit) inst_spec_t, variant_t, unit) program *)
   type fol_data
   type triple_data
-  type in_setup = (Shared.ty fol_t, variant_t, unit) setup
-  type in_body = (Shared.ty fol_t, variant_t, unit) stmt list
+  type in_setup = (Shared.ty fol_t, unit) setup
+  type in_body = (Shared.ty fol_t, unit) stmt list
 
   type in_fun =
     ( triple_data,

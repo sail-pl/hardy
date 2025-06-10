@@ -13,6 +13,13 @@ open HardyMisc.Utils
 module PH = Ptree_helpers
 module P = Ptree
 
+let get_pp_string a b = Format.asprintf "%a" a b
+
+let get_pty (to_str : 'a -> string) = function
+  | ( Ty_Bool
+    | Ty_Int  ) as ty ->
+      Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
+
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
 
@@ -26,7 +33,7 @@ let remove_bindings = Seq.iter (Hashtbl.remove bindings)
 
 let get_binding_type v f =
   match Hashtbl.find_opt bindings v with
-  | None -> failwith @@ Printf.sprintf "no why3 binding for identifier '%s'" v
+  | None -> failwith @@ Format.sprintf "no why3 binding for identifier '%s'" v
   | Some v -> f v
 
 let ty_suffix s = s ^ "_t"
@@ -43,34 +50,34 @@ let history_head =
       (qualid [ "NthNoOpt"; "nth" ])
       [ tconst 0; tvar (qualid [ history_id ]) ])
 
-let instant_field ty = private_var (String.sub (string_of_cat_ty ty) 0 1)
+let instant_field ty = private_var (String.sub (get_pp_string pp_cat_ty ty) 0 1)
 
 let get_quant_binders vars =
   List.concat
     (List.map
-       (fun (v, ty) ->
+       (fun (v, (cat, ty)) ->
          let pty =
            get_pty
-             (function
-               | Local, ty -> string_of_base_ty ty
-               | State, ty -> string_of_base_ty ty
-               | cat, _ -> string_of_cat_ty cat |> ty_suffix)
+             (fun ty ->
+               match (cat, ty) with
+               | Local, ty | State, ty -> get_pp_string pp_base_ty ty
+               | cat, _ -> get_pp_string pp_cat_ty cat |> ty_suffix)
              ty
          in
          PH.one_binder v ~pty)
        vars)
 
-let translate_binop app infix op  = 
-  let id =  PH.ident (Ident.op_infix (string_of_binop op)) in
-  match op with 
-| Add | Sub | Mul | Div ->  fun e1 e2 -> app (P.Qident id) [e1;e2]
-| Gt | Lt | Gte | Lte | Eq | Neq | And | Or -> infix id
+let translate_binop app infix op =
+  let id = PH.ident (Ident.op_infix (Format.asprintf "%a" pp_expr_binop op)) in
+  match op with
+  | Add | Sub | Mul | Div -> fun e1 e2 -> app (P.Qident id) [ e1; e2 ]
+  | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr -> infix id
 
-let rec translate_expression ({ value = e; label = loc } : unit expr) : P.expr =
+let rec translate_rexpr (e: unit expr) : P.expr =
   let open P in
   let open PH in
-  let loc = get_loc loc in
-  match e with
+  let loc = get_loc e.label in
+  match e.value with
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
   | Int n -> econst n ~loc
@@ -80,16 +87,33 @@ let rec translate_expression ({ value = e; label = loc } : unit expr) : P.expr =
           | Local -> evar ~loc (qualid [ s ])
           | _ ->
               eapp (qualid [ s ])
-                [ [ string_of_cat_ty cat ] |> qualid |> evar ~loc ])
-  | Read s -> Easref (qualid [ s ]) |> expr ~loc
-  | Not e -> Enot (translate_expression e) |> expr  ~loc
-  | BinOp (e1, binop, e2) -> 
-      let e1 = translate_expression e1
-      and e2 = translate_expression e2 in 
-      match binop with 
-      | And -> Eand (e1,e2) |> expr
-      | Or -> Eor (e1,e2) |> expr
-      | _ -> translate_binop (eapp ~loc) (fun x e1 e2 ->  Einnfix (e1,x,e2) |> expr ~loc) binop e1 e2
+                [ [ get_pp_string pp_cat_ty cat ] |> qualid |> evar ~loc ])
+  | UnOp (ENot,e) -> Enot (translate_rexpr e) |> expr  ~loc
+  | BinOp v -> (
+      let e1 = translate_rexpr v.left and e2 = translate_rexpr v.right in
+      match v.op with
+      | EAnd -> Eand (e1, e2) |> expr
+      | EOr -> Eor (e1, e2) |> expr
+      | _ ->
+          translate_binop (eapp ~loc)
+            (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
+            v.op e1 e2)
+let translate_lexpr (e : unit expr) : P.expr * string option =
+  let open PH in
+  let loc = get_loc e.label in
+  match e.value with
+  | Var (id, ()) ->
+      get_binding_type id (function
+        | State, _ ->
+            ([ get_pp_string pp_cat_ty State ] |> qualid |> evar ~loc, Some id)
+        | Local, _ -> ([] |> qualid |> evar ~loc, Some id)
+        | cat, _ ->
+            failwith
+            @@ Format.sprintf
+                 "can't assign expression to stream variable '%s' (%s)" id
+                 (get_pp_string pp_cat_ty cat))
+  | _ -> failwith "not an r-value"
+
 
 let rec translate_term (e : instant option expr) : P.term =
   let open P in
@@ -110,7 +134,7 @@ let rec translate_term (e : instant option expr) : P.term =
               match t with
               | Some (Previous 0) | None ->
                   tapp ~loc (qualid [ s ])
-                    [ [ string_of_cat_ty cat ] |> qualid |> tvar ]
+                    [ [ get_pp_string pp_cat_ty cat ] |> qualid |> tvar ]
               | Some (Previous n) ->
                   let n = tconst (n - 1) in
                   (* last value begins at 0 *)
@@ -126,59 +150,57 @@ let rec translate_term (e : instant option expr) : P.term =
                   in
                   let inst = tapp nth [ n; tvar (qualid [ history_id ]) ] in
                   tapp ~loc (qualid [ s ]) [ tapp field [ inst ] ]))
-  | Read s -> Tasref (qualid [ s ]) |> term ~loc
-  | Not t -> Tnot (translate_term t) |> term  ~loc
-  | BinOp (t1, binop, t2) ->
-    let t1 = translate_term t1
-    and t2 = translate_term t2 in
-    match binop with 
-    | And -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
-    | Or -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
-    | _ ->  translate_binop (tapp ~loc) (fun x e1 e2 -> Tinnfix (e1,x,e2) |> term ~loc) binop t1 t2
+  | UnOp (ENot,t) -> Tnot (translate_term t) |> term  ~loc
+    | BinOp v -> (
+      let t1 = translate_term v.left and t2 = translate_term v.right in
+      match v.op with
+      | EAnd -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
+      | EOr -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
+      | _ ->
+          translate_binop (tapp ~loc)
+            (fun x e1 e2 -> Tinnfix (e1, x, e2) |> term ~loc)
+            v.op t1 t2)
 
-let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b, unit) stmt list) :
+let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
   let open P in
   let open PH in
-  let rec tr_seq = function [] -> expr unit_val | [x] -> tr_stmt x | s ->
-    List.fold_right (fun x y -> match tr_stmt x,y with
-      | {expr_desc=Etuple [];_},x | x, {expr_desc=Etuple [];_} -> x
-      | _ -> Esequence (tr_stmt x, y) |> expr
-    ) s (expr unit_val)
-  and tr_stmt (stmt : ('a, 'b, unit) stmt) =
+  let rec tr_seq = function
+    | [] -> expr unit_val
+    | [ x ] -> tr_stmt x
+    | s ->
+        List.fold_right
+          (fun x y ->
+            match (tr_stmt x, y) with
+            | { expr_desc = Etuple []; _ }, x | x, { expr_desc = Etuple []; _ }
+              ->
+                x
+            | _ -> Esequence (tr_stmt x, y) |> expr)
+          s (expr unit_val)
+  and tr_stmt (stmt : ('a, 'b) stmt) =
     let loc = get_loc stmt.label in
     match stmt.value with
-    | Assign (id, e) ->
-        get_binding_type id (function
-          | State, _ ->
-              Eassign
-                [
-                  ( [ string_of_cat_ty State ] |> qualid |> evar,
-                    Some ([ id ] |> qualid),
-                    translate_expression e );
-                ]
-              |> expr ~loc
-          | cat, _ ->
-              failwith
-              @@ Format.sprintf
-                   "can't assign expression to stream variable '%s' (%s)" id
-                   (string_of_cat_ty cat))
+    | Assign (e1, e2) ->
+        let e1, id = translate_lexpr e1 in
+        let e2 = translate_rexpr e2 in
+        Eassign [ (e1, Option.map (fun id -> qualid [ id ]) id, e2) ]
+        |> expr ~loc
     | Emit (e, id) ->
         get_binding_type id (fun (cat, _) ->
             let e1, field =
               match cat with
               | Local -> ([ id ] |> qualid |> evar, None)
               | State | Output ->
-                  ( [ string_of_cat_ty cat ] |> qualid |> evar,
+                  ( [ get_pp_string pp_cat_ty cat ] |> qualid |> evar,
                     Some ([ id ] |> qualid) )
               | Input -> failwith @@ Format.sprintf "can't emit to '%s'" id
             in
-            Eassign [ (e1, field, translate_expression e) ] |> expr ~loc)
+            Eassign [ (e1, field, translate_rexpr e) ] |> expr ~loc)
     | If (e, t, f) ->
         let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
-        Eif (translate_expression e, tr_seq t, f) |> expr ~loc
+        Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc
     | While (e, inv, _v, stmt) ->
-        Ewhile (translate_expression e, [ tr_form inv ], [], tr_seq stmt)
+        Ewhile (translate_rexpr e, [ tr_form inv ], [], tr_seq stmt)
         |> expr ~loc
   in
   tr_seq s
@@ -191,17 +213,16 @@ let rec pterm_of_fol
   match f with
   | FOL_True -> term ~loc Ttrue
   | FOL_False -> term ~loc Tfalse
-  | Pred p -> translate_term p
-  | FOL_Unary (Not, t) -> Tnot (pterm_of_fol t) |> term ~loc
-  | FOL_Binary (t1, bop, t2) -> (
+  | FOL_Atom p -> translate_term p
+  | FOL_StdUnary (LNot, t) -> Tnot (pterm_of_fol t) |> term ~loc
+  | FOL_StdBinary (t1, bop, t2) -> (
       let t1 = pterm_of_fol t1 in
       let t2 = pterm_of_fol t2 in
       match bop with
       | Arrow -> Tbinop (t1, Dterm.DTimplies, t2) |> term ~loc
       | Equiv -> Tbinop (t1, Dterm.DTiff, t2) |> term ~loc
-      | Arithm And -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
-      | Arithm Or -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
-      | Arithm op -> translate_binop (tapp ~loc) (fun x e1 e2 -> Tinnfix (e1,x,e2) |> term ~loc) op t1 t2
+      | LAnd -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
+      | LOr -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
   )
   | Forall (v, f) ->
       let locals = List.to_seq v in
@@ -244,8 +265,8 @@ module M :
   (* type in_spec = ((in_ty,fol_data) inst_spec_t list) hoare_pair *)
 
   type in_pgrm = base_program
-  type in_setup = (Shared.ty fol_t, variant_t, unit) setup
-  type in_body = (Shared.ty fol_t, variant_t, unit) stmt list
+  type in_setup = (Shared.ty fol_t, unit) setup
+  type in_body = (Shared.ty fol_t, unit) stmt list
 
   type in_fun =
     ( triple_data,
@@ -274,7 +295,7 @@ module M :
             {
               f_loc = Loc.dummy_position;
               f_ident = ident v;
-              f_pty = get_pty string_of_base_ty ty;
+              f_pty = get_pty (get_pp_string pp_base_ty) ty;
               (* only inputs are read-only *)
               f_mutable = t <> Input;
               f_ghost = false;
@@ -285,7 +306,7 @@ module M :
       let tdecl =
         {
           td_loc = Loc.dummy_position;
-          td_ident = ident (string_of_cat_ty t |> ty_suffix);
+          td_ident = ident (get_pp_string pp_cat_ty t |> ty_suffix);
           td_params = [];
           td_vis = Public;
           (* the program does not manipulate the record directly *)
@@ -297,10 +318,10 @@ module M :
       in
       ( Dtype [ tdecl ],
         Dlet
-          ( ident (string_of_cat_ty t),
+          ( ident (get_pp_string pp_cat_ty t),
             false,
             RKnone,
-            mk_decl (get_pty (fun t -> string_of_cat_ty t |> ty_suffix) t) ) )
+            mk_decl (get_pty (fun _ -> get_pp_string pp_cat_ty t |> ty_suffix) Ty_Bool) ) )
     in
     let input_t, i = create_record Input env.env_input
     and output_t, o = create_record Output env.env_output
@@ -320,7 +341,7 @@ module M :
         pure (logic) functions *)
                  f_pty =
                    PTpure
-                     (get_pty (fun t -> string_of_cat_ty t |> ty_suffix) ty);
+                    (get_pty (fun _ -> get_pp_string pp_cat_ty ty |> ty_suffix) Ty_Bool);
                  f_mutable = false;
                  f_ghost = true;
                })
@@ -411,7 +432,7 @@ module M :
         Tinfix
           ( tapp ([ instant_field cat ] |> qualid) [ history_head ],
             Ident.op_infix "=" |> ident,
-            tvar (qualid [ string_of_cat_ty cat ]) )
+            tvar (qualid [ get_pp_string pp_cat_ty cat ]) )
         |> term
       in
 

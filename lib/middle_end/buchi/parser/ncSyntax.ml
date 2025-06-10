@@ -47,13 +47,13 @@ let fol_of_bform (convert_atom : 'a -> ('b, _) fol) : 'a bform -> ('b, _) fol =
     | And (s1, s2) ->
         let s1 = aux s1 in
         let s2 = aux s2 in
-        mk_dummy_loc (FOL_Binary (s1, (Arithm And), s2))
+        mk_dummy_loc (FOL_StdBinary (s1, LAnd, s2))
     | Or (s1, s2) ->
         let s1 = aux s1 in
         let s2 = aux s2 in
-        mk_dummy_loc (FOL_Binary (s1, (Arithm Or), s2))
+        mk_dummy_loc (FOL_StdBinary (s1, LOr, s2))
     | Not s ->
         let s = aux s in
-        mk_dummy_loc (FOL_Unary (Not, s))
+        mk_dummy_loc (FOL_StdUnary (LNot, s))
   in
   aux

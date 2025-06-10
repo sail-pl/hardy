@@ -8,36 +8,36 @@ var x : int;
 
 
 
-relies on {set}.
+relies on {set}
 
 //----- private spec -----
 
-guarantees {x = value}.
-guarantees X ({set} R ({set} ||  {x = first value})).
+guarantees {x = value}
+guarantees X ({set} R ({set} ||  {x = first value}))
 
 
 // while set is enabled, x is the current input until it is disabled
-guarantees G ({set} -> !{set} R (!{set} || {x = value})).
+guarantees G ({set} -> !{set} R (!{set} || {x = value}))
 
 
 
 //------ public spec ------
 
 // at the first instant, output is 0
-guarantees {o = 0}.
+guarantees {o = 0}
 
 // at the second instant, output is the first input
-guarantees X {o = first value}.
+guarantees X {o = first value}
 
 // just to test: this is is always true
-//guarantees X X {x = x@2}.
+//guarantees X X {x = x@2}
 
 // every output corresponds to the first input until set is enabled
-guarantees X ({set} R ({set} ||  {o = first value})).
+guarantees X ({set} R ({set} ||  {o = first value}))
 
 // whenever set is enabled, every following outputs are the input received at the previous instant until 
 // set is disabled
-guarantees G ({set} -> !{set} R (!{set} || X {o = prev value})).
+guarantees G ({set} -> !{set} R (!{set} || X {o = prev value}))
 
 // whenever set is disabled, every following outputs are the last input received when set was disabled until
 // it is enabled again

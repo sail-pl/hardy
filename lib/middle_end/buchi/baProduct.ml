@@ -40,7 +40,7 @@ module Make
       (Graph.Util.CMPProduct (G.V) (G.V)) (Arc)
 
   include GProd
-  module U = Ba.Utils (GProd)
+  module U = Nc2ba.Utils (GProd)
 
   type vdata = vertex_data
 
@@ -177,12 +177,12 @@ module Make
         in
         (match get_edge_type (E.label edge) with
         | Universal ->
-            Printf.printf
+            Format.printf
               "warning: product automaton contains a universal edge between \
                node '%s' and '%s' \n"
               (id_of_vertex curr_node) (id_of_vertex next_node)
         | Blocking ->
-            Printf.printf
+            Format.printf
               "warning: product automaton contains a blocking edge between \
                node '%s' and '%s' \n"
               (id_of_vertex curr_node) (id_of_vertex next_node)

@@ -12,6 +12,24 @@
 
 %%
 
+// begin specification ------
+
+let inst_spec == fol(tq_expr)
+let ltl_spec == ltl(braced(inst_spec))
+
+
+let prog_requires == RELY ; ~ =  ltl_spec ;  <>
+
+let prog_ensures == GUARANTEE ; ~ =  ltl_spec ;<>
+
+let setup_ensures == ENSURES ;  ~ = braced(inst_spec) ;  <>
+
+let invariant == preceded(INVARIANT, braced(inst_spec)) 
+
+let variant == ~ = preceded(VARIANT, braced(basic_expr)); <mk_variant>
+
+// end specification ---------
+
 let program :=
     prog_decls = declaration ; 
     requires = prog_requires* ; 
@@ -29,10 +47,6 @@ let program :=
             prog_main = {main_loop_inv ; main_body}
         }
     }
-
-let invariant == preceded(INVARIANT, braced(fol)) 
-
-let variant == ~ = preceded(VARIANT, braced(basic_expr)); <mk_variant>
 
 %public
 let braced(x) == delimited("{", x, "}")
@@ -59,22 +73,28 @@ let ty :=
     | TY_INT ; { Ty_Int }
 
 let stmt := located (
-    | ~ = ID ; ":=" ; ~ = basic_expr ; ";" ; <Assign>
+    | e1 = basic_expr ; ":=" ; e2 = basic_expr ; ";" ; {Assign (e1,e2)}
     | EMIT ; ~ = basic_expr  ; TO ; ~ = ID ; ";" ; <Emit>
     | IF ; ~ = basic_expr ; THEN ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; END ; <If>
     | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
 )
 
+
+let simpl_expr(var_e) :=
+| located (
+    | LTRUE ; {True}
+    | LFALSE ; {False}
+    | ~ = INT ; <Int>
+    | (id,x) = var_e ; {Var (id,x)}
+)
+
 let expr(var_e) := 
     | located (
-        | LTRUE ; {True}
-        | LFALSE ; {False}
-        | ~ = INT ; <Int>
-        | (id,x) = var_e ; {Var (id,x)}
-        | EMARK ;  ~ = expr(var_e) ; <Not>
-        | e1 = expr(var_e) ; op = binExpOp ; e2 = expr(var_e) ; {BinOp (e1,op,e2)}
+        | EMARK ;  e = expr(var_e) ; %prec UNARY {UnOp (ENot,e)}
+        | left = expr(var_e) ; op = binExpOp ; right = expr(var_e) ; {BinOp {left;op;right}}
         )
     | ~ = delimited("(",expr(var_e),")") ; <>
+    | simpl_expr(var_e)
 
 
 let basic_expr == expr(id = ID ; {id,()})
@@ -90,31 +110,33 @@ let tq_expr == expr(
 
 
 %public
-let fol := 
+let fol(atom) := 
     | located(
         | TRUE ; {FOL_True}
         | FALSE ; {FOL_False}
-        | ~ = tq_expr ; <Pred>
-        | ~ = common_logic_unary ; ~ = fol ; <FOL_Unary>
-        | f1 = fol ; op = common_logic_binary ; f2 = fol ; {FOL_Binary (f1,op,f2)}
-        | FORALL ; vars = typed_state_id+ ; COMMA ; f = fol ; {Forall (List.flatten vars, f)}
-        | EXISTS_PREV ; v = ID; COMMA ; f = fol ; {ExistsPrev (v, f)}
-        | EXISTS ; vars = typed_state_id+ ; COMMA ; f = fol ; {Exists (List.flatten vars , f)}
+        | ~ = atom ; <FOL_Atom>
+        | ~ = common_logic_unary ; ~ = fol(atom) ; %prec UNARY <FOL_StdUnary>
+        | f1 = fol(atom) ; op = common_logic_binary ; f2 = fol(atom) ; {FOL_StdBinary (f1,op,f2)}
+        | FORALL ; vars = typed_state_id+ ; COMMA ; f = fol(atom) ; {Forall (List.flatten vars, f)}
+        | EXISTS_PREV ; v = ID; COMMA ; f = fol(atom) ; {ExistsPrev (v, f)}
+        | EXISTS ; vars = typed_state_id+ ; COMMA ; f = fol(atom) ; {Exists (List.flatten vars , f)}
     )
-    | ~ = delimited("(",fol,")") ; <> 
+    | ~ = delimited("(",fol(atom),")") ; <> 
 
 %public 
-let common_logic_unary == EMARK ; {(Not:common_logic_unary)}
+let common_logic_unary == EMARK ; {LNot}
 
 %public
 let common_logic_binary == 
     | DARROW ; {Equiv}
     | ARROW ; {Arrow}
-    | ~ = binExpOp ; <Arithm>
+    | OR ; {LOr}
+    | AND ; {LAnd}
+
 
 let binExpOp ==
-    | OR ; {Or}
-    | AND ; {And}
+    | OR ; {EOr}
+    | AND ; {EAnd}
     | "+" ; {Add} 
     | "-" ; {Sub}
     | "*" ; {Mul}

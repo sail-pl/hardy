@@ -9,13 +9,11 @@
  (flags --only-tokens))
 
 (menhir
- (modules tokens specification/parser program/parser)
+ (modules tokens specification/ltl program/parser)
  (merge_into pgrmParser)
  (flags
-  --external-tokens
-  Tokens
-  --unused-tokens
-  --unused-precedence-levels
+  --external-tokens Tokens
+  ; --strict
   --explain))
 
 (library

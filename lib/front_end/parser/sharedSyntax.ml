@@ -6,8 +6,7 @@ type base_ty = Ty_Int | Ty_Bool
 type cat_ty = State | Input | Output | Local
 type ty = cat_ty * base_ty
 
-(** Standard Operators *)
+(** Standard Logic Operators *)
 
-type arithm_binop = Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq | And | Or
-type common_logic_unary = Not
-type common_logic_binary = Equiv | Arrow | Arithm of arithm_binop
+type standard_logic_bop =  Equiv | Arrow | LAnd | LOr 
+type standard_logic_uop = LNot
