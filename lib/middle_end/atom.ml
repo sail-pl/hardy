@@ -39,9 +39,9 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
     | BinOp v ->
         let left = remove_exp_loc v.left and right = remove_exp_loc v.right in
         BinOp { v with left; right }
-    | UnOp (ENot,e) -> UnOp (ENot,(remove_exp_loc e))
-    | (Int _ | True | False | Var (_, _)) | String _ as v -> v
-    | ArrayCell (e1,e2) -> ArrayCell (remove_exp_loc e1, remove_exp_loc e2)
+    | UnOp (ENot, e) -> UnOp (ENot, remove_exp_loc e)
+    | (Int _ | True | False | Var (_, _) | String _) as v -> v
+    | ArrayCell (e1, e2) -> ArrayCell (remove_exp_loc e1, remove_exp_loc e2)
     | Array l -> Array (List.map remove_exp_loc l)
   in
   mk_dummy_loc value
@@ -73,13 +73,21 @@ module Functional : S = struct
     ( sub_atom_in_str
         (fun s ->
           let a = get s in
-          Format.(asprintf "%a" (pp_fol (pp_exp (fun fmt (id,_) -> pp_print_string fmt id)) pp_ty) a))
-      f, (cnt, m) )
+          Format.(
+            asprintf "%a"
+              (pp_fol
+                 (pp_exp (fun fmt (id, _) -> pp_print_string fmt id))
+                 pp_ty)
+              a))
+        f,
+      (cnt, m) )
 
   (* let get_and_incr : int t = fun (cnt,m) -> cnt,(cnt+1,m) *)
 
   let add_and_get (atom : ty fol_t) : (string * string) t =
-    let key = Hashtbl.hash (Format.asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty) atom) in
+    let key =
+      Hashtbl.hash (Format.asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty) atom)
+    in
     let label = Format.sprintf "f_%i" key in
     fun (cnt, m) ->
       match M.find_opt key m with
@@ -98,23 +106,30 @@ module Imperative () : S with type 'a t = 'a = struct
   type 'a t = 'a
 
   (* we need to hash the key ourselves as we use them in the output *)
-  module AtomTable = Hashtbl.Make(struct include Int let hash = Fun.id end)
+  module AtomTable = Hashtbl.Make (struct
+    include Int
+
+    let hash = Fun.id
+  end)
 
   (* key is a hash of fol, value is a short name for fol + fol itself*)
   let atomic_bindings : (string * ty fol_t) AtomTable.t = AtomTable.create 100
   let cnt = ref 0
 
   let get (s : string) : (string * ty fol_t) t =
-    try AtomTable.find atomic_bindings (atom_of_atom_id s)    
+    try AtomTable.find atomic_bindings (atom_of_atom_id s)
     with Not_found -> raise (Atom_not_found s)
 
   let subst =
     sub_atom_in_str (fun s ->
         let _, inv = get s in
-        Format.asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty)inv)
+        Format.asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty) inv)
 
   let add_and_get (atom : ty fol_t) =
-    let key = Format.(asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty) atom) |> String.hash in
+    let key =
+      Format.(asprintf "%a" (pp_fol (pp_exp pp_nohist) pp_ty) atom)
+      |> String.hash
+    in
     let label = Format.sprintf "f_%i" key in
     match AtomTable.find_opt atomic_bindings key with
     | None ->

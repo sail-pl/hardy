@@ -12,11 +12,11 @@ let pp_cat_ty fmt = function
   | State -> Format.fprintf fmt "state"
   | Local -> Format.fprintf fmt "local"
 
-  let rec pp_base_ty fmt = function 
-| Ty_Bool -> Format.fprintf fmt "bool" 
-| Ty_Int -> Format.fprintf fmt "int" 
-| Ty_String -> Format.fprintf fmt "string"
-| Ty_Array (ty,_) -> Format.fprintf fmt "array %a" pp_base_ty ty
+let rec pp_base_ty fmt = function
+  | Ty_Bool -> Format.fprintf fmt "bool"
+  | Ty_Int -> Format.fprintf fmt "int"
+  | Ty_String -> Format.fprintf fmt "string"
+  | Ty_Array (ty, _) -> Format.fprintf fmt "array %a" pp_base_ty ty
 
 let pp_ty fmt (c, t) = Format.fprintf fmt "%a.%a" pp_cat_ty c pp_base_ty t
 
@@ -39,13 +39,13 @@ let pp_expr_binop fmt (op : expr_binop) =
     | EOr -> "||"
     | EAnd -> "&&")
 
-let pp_common_logic_binary fmt (op: standard_logic_bop) : unit = 
-  Format.fprintf fmt (match op with
-  | Equiv -> "<->"
-  | Arrow -> "->"
-  | LOr ->  "||"
-  | LAnd ->  "&&"
-  )
+let pp_common_logic_binary fmt (op : standard_logic_bop) : unit =
+  Format.fprintf fmt
+    (match op with
+    | Equiv -> "<->"
+    | Arrow -> "->"
+    | LOr -> "||"
+    | LAnd -> "&&")
 
 let pp_hist fmt (v, h) =
   match h with
@@ -53,7 +53,7 @@ let pp_hist fmt (v, h) =
   | Some (Previous n) -> Format.fprintf fmt "prev %i %s" n v
   | Some (At n) -> Format.fprintf fmt "%s at %i" v n
 
-let pp_nohist fmt (id,_) = Format.pp_print_string fmt id
+let pp_nohist fmt (id, _) = Format.pp_print_string fmt id
 
 let pp_paren_exp fmt f e =
   match e.value with BinOp _ -> Format.fprintf fmt "(%a)" f e | _ -> f fmt e
@@ -65,13 +65,17 @@ let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
   | True -> Format.fprintf fmt "true"
   | False -> Format.fprintf fmt "false"
   | Var (s, i) -> print_var fmt (s, i)
-  | UnOp (ENot,e) -> Format.fprintf fmt "!%a" pp_exp e
+  | UnOp (ENot, e) -> Format.fprintf fmt "!%a" pp_exp e
   | BinOp v ->
-      Format.fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp v.right
+      Format.fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp
+        v.right
   | String s -> Format.fprintf fmt "%s" s
-  | Array l -> Format.(fprintf fmt "[%a]" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_exp) l)
-  | ArrayCell (id,n) -> Format.fprintf fmt "%a[%a]" pp_exp id pp_exp n
-
+  | Array l ->
+      Format.(
+        fprintf fmt "[%a]"
+          (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_exp)
+          l)
+  | ArrayCell (id, n) -> Format.fprintf fmt "%a[%a]" pp_exp id pp_exp n
 
 let pp_paren_fol f1 f2 fmt (p : _ fol) =
   match p.value with
@@ -79,8 +83,8 @@ let pp_paren_fol f1 f2 fmt (p : _ fol) =
   | FOL_Atom e -> pp_paren_exp fmt f2 e
   | _ -> f1 fmt p
 
-let rec pp_fol (pp_exp: Format.formatter -> _ expr -> unit) (pp_ty : Format.formatter -> ty -> unit) fmt
-    (f : (_ expr, 'a) fol) =
+let rec pp_fol (pp_exp : Format.formatter -> _ expr -> unit)
+    (pp_ty : Format.formatter -> ty -> unit) fmt (f : (_ expr, 'a) fol) =
   let open Format in
   let pp_id_ty =
     Format.pp_print_list
@@ -118,17 +122,18 @@ let string_of_ltl_unop : ltl_unary -> string = function
 
 let string_of_ltl (string_of_atom : 'a -> string)
     (string_of_ltl_binop : ltl_binary -> string)
-    (string_of_ltl_unop : ltl_unary -> string) : 'a ltl -> string = 
-    let rec aux f = 
+    (string_of_ltl_unop : ltl_unary -> string) : 'a ltl -> string =
+  let rec aux f =
     match f.value with
-      | LTL_True -> "true"
-      | LTL_False -> "false"
-      | LTL_Atom p -> string_of_atom p
-      | LTL_Binary (f1, op, f2) ->
-          let f1 = aux f1 in
-          let f2 = aux f2 in
-          Format.sprintf "(%s) %s (%s)" f1 (string_of_ltl_binop op) f2
-      | LTL_Unary (op, f) ->
-          let f = aux f in
-          Format.sprintf "%s(%s)" (string_of_ltl_unop op) f
-      in aux
+    | LTL_True -> "true"
+    | LTL_False -> "false"
+    | LTL_Atom p -> string_of_atom p
+    | LTL_Binary (f1, op, f2) ->
+        let f1 = aux f1 in
+        let f2 = aux f2 in
+        Format.sprintf "(%s) %s (%s)" f1 (string_of_ltl_binop op) f2
+    | LTL_Unary (op, f) ->
+        let f = aux f in
+        Format.sprintf "%s(%s)" (string_of_ltl_unop op) f
+  in
+  aux

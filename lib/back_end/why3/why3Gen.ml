@@ -16,11 +16,12 @@ module P = Ptree
 let get_pp_string a b = Format.asprintf "%a" a b
 
 let rec get_pty (to_str : 'a -> string) = function
-| Ty_Bool 
-| Ty_String  (* string are hashed and represented as integers for now *)
-| Ty_Int as ty -> Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
-| Ty_Array (ty,_) -> Ptree.(PTtyapp (Ptree_helpers.qualid [ "array" ], [get_pty to_str ty]))
-  
+  | ( Ty_Bool
+    | Ty_String (* string are hashed and represented as integers for now *)
+    | Ty_Int ) as ty ->
+      Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
+  | Ty_Array (ty, _) ->
+      Ptree.(PTtyapp (Ptree_helpers.qualid [ "array" ], [ get_pty to_str ty ]))
 
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
@@ -75,13 +76,17 @@ let translate_binop app infix op =
   | Add | Sub | Mul | Div -> fun e1 e2 -> app (P.Qident id) [ e1; e2 ]
   | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr -> infix id
 
+let rec make_elist = function
+  | [] -> PH.(evar (qualid [ "Nil" ]))
+  | h :: t -> PH.(eapp (qualid [ "Cons" ]) [ h; make_elist t ])
 
-let rec make_elist = function [] -> PH.(evar (qualid ["Nil"])) | h::t -> PH.(eapp (qualid ["Cons"]) [h;make_elist t])
-let rec make_tlist = function [] -> PH.(tvar (qualid ["Nil"])) | h::t -> PH.(tapp (qualid ["Cons"]) [h;make_tlist t])
+let rec make_tlist = function
+  | [] -> PH.(tvar (qualid [ "Nil" ]))
+  | h :: t -> PH.(tapp (qualid [ "Cons" ]) [ h; make_tlist t ])
 
 (* no: instead, use array.Init.init and unroll each element of the list for each index of *)
 
-let rec translate_rexpr (e: unit expr) : P.expr =
+let rec translate_rexpr (e : unit expr) : P.expr =
   let open P in
   let open PH in
   let loc = get_loc e.label in
@@ -96,7 +101,7 @@ let rec translate_rexpr (e: unit expr) : P.expr =
           | _ ->
               eapp (qualid [ s ])
                 [ [ get_pp_string pp_cat_ty cat ] |> qualid |> evar ~loc ])
-  | UnOp (ENot,e) -> Enot (translate_rexpr e) |> expr  ~loc
+  | UnOp (ENot, e) -> Enot (translate_rexpr e) |> expr ~loc
   | BinOp v -> (
       let e1 = translate_rexpr v.left and e2 = translate_rexpr v.right in
       match v.op with
@@ -106,9 +111,9 @@ let rec translate_rexpr (e: unit expr) : P.expr =
           translate_binop (eapp ~loc)
             (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
             v.op e1 e2)
- | ArrayCell (s,n) -> 
-  let e = translate_rexpr s in
-      eapp ~loc (qualid [Ident.op_get ""]) [e ; translate_rexpr n]
+  | ArrayCell (s, n) ->
+      let e = translate_rexpr s in
+      eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr n ]
   | String s -> econst (String.hash s) ~loc
   | Array l -> List.map translate_rexpr l |> make_elist
 
@@ -126,11 +131,10 @@ let translate_lexpr (e : unit expr) : P.expr * string option =
             @@ Format.sprintf
                  "can't assign expression to stream variable '%s' (%s)" id
                  (get_pp_string pp_cat_ty cat))
-  | ArrayCell (s,n) -> 
-    let e = translate_rexpr s in
-    eapp ~loc (qualid [Ident.op_get ""]) [e ; translate_rexpr n], None
+  | ArrayCell (s, n) ->
+      let e = translate_rexpr s in
+      (eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr n ], None)
   | _ -> failwith "not an r-value"
-
 
 let rec translate_term (e : instant option expr) : P.term =
   let open P in
@@ -167,8 +171,8 @@ let rec translate_term (e : instant option expr) : P.term =
                   in
                   let inst = tapp nth [ n; tvar (qualid [ history_id ]) ] in
                   tapp ~loc (qualid [ s ]) [ tapp field [ inst ] ]))
-  | UnOp (ENot,t) -> Tnot (translate_term t) |> term  ~loc
-    | BinOp v -> (
+  | UnOp (ENot, t) -> Tnot (translate_term t) |> term ~loc
+  | BinOp v -> (
       let t1 = translate_term v.left and t2 = translate_term v.right in
       match v.op with
       | EAnd -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
@@ -177,12 +181,12 @@ let rec translate_term (e : instant option expr) : P.term =
           translate_binop (tapp ~loc)
             (fun x e1 e2 -> Tinnfix (e1, x, e2) |> term ~loc)
             v.op t1 t2)
-
   | Array l -> List.map translate_term l |> make_tlist
   | String s -> tconst ~loc (String.hash s)
-  | ArrayCell (s,n) ->
-    tapp ~loc (qualid [Ident.op_get ""]) [translate_term s ; translate_term n]
-
+  | ArrayCell (s, n) ->
+      tapp ~loc
+        (qualid [ Ident.op_get "" ])
+        [ translate_term s; translate_term n ]
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
@@ -210,7 +214,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
         |> expr ~loc
     | Clear _e -> failwith "todo"
     | Emit (e, id) ->
-      let e = Option.(map translate_rexpr e |> value ~default:(econst 69)) in
+        let e = Option.(map translate_rexpr e |> value ~default:(econst 69)) in
         get_binding_type id (fun (cat, _) ->
             let e1, field =
               match cat with
@@ -229,7 +233,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
         |> expr ~loc
   in
   tr_seq s
-  
+
 let rec pterm_of_fol
     ({ value = f; label = loc } : (instant option expr, ty) fol) : P.term =
   let open PH in
@@ -247,8 +251,7 @@ let rec pterm_of_fol
       | Arrow -> Tbinop (t1, Dterm.DTimplies, t2) |> term ~loc
       | Equiv -> Tbinop (t1, Dterm.DTiff, t2) |> term ~loc
       | LAnd -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
-      | LOr -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
-  )
+      | LOr -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc)
   | Forall (v, f) ->
       let locals = List.to_seq v in
       add_bindings locals;
@@ -261,20 +264,22 @@ let rec pterm_of_fol
       let t = Tquant (DTexists, get_quant_binders v, [], pterm_of_fol f) in
       remove_bindings (Seq.map fst locals);
       term t ~loc
-  | ExistsPrev (v, f) -> 
-    get_binding_type v (fun (cat, bty) ->
-      let field = [ instant_field cat ] |> qualid in
-      let local_v = v,(Local,bty) in
-      (* for now, easier to make a local decl and mask the variable *)    
-      add_bindings Seq.(cons local_v empty);  
-      let e = tapp (qualid [ v ]) [ tapp field [ tvar (qualid ["_inst"]) ] ] in 
-      let f = Tlet (ident v,e,pterm_of_fol f) |> term in
-      remove_bindings Seq.(cons (fst local_v) empty); 
-      let f_abs = Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc in
-      let for_some = [ "Quant"; "for_some" ] |> qualid in
-      tapp for_some [ f_abs ;  tvar (qualid [ history_id ]) ] 
-      )
-
+  | ExistsPrev (v, f) ->
+      get_binding_type v (fun (cat, bty) ->
+          let field = [ instant_field cat ] |> qualid in
+          let local_v = (v, (Local, bty)) in
+          (* for now, easier to make a local decl and mask the variable *)
+          add_bindings Seq.(cons local_v empty);
+          let e =
+            tapp (qualid [ v ]) [ tapp field [ tvar (qualid [ "_inst" ]) ] ]
+          in
+          let f = Tlet (ident v, e, pterm_of_fol f) |> term in
+          remove_bindings Seq.(cons (fst local_v) empty);
+          let f_abs =
+            Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc
+          in
+          let for_some = [ "Quant"; "for_some" ] |> qualid in
+          tapp for_some [ f_abs; tvar (qualid [ history_id ]) ])
 
 let pterm_of_inv = pterm_of_fol
 
@@ -344,7 +349,10 @@ module M :
           ( ident (get_pp_string pp_cat_ty t),
             false,
             RKnone,
-            mk_decl (get_pty (fun _ -> get_pp_string pp_cat_ty t |> ty_suffix) Ty_Bool) ) )
+            mk_decl
+              (get_pty
+                 (fun _ -> get_pp_string pp_cat_ty t |> ty_suffix)
+                 Ty_Bool) ) )
     in
     let input_t, i = create_record Input env.env_input
     and output_t, o = create_record Output env.env_output
@@ -364,7 +372,9 @@ module M :
         pure (logic) functions *)
                  f_pty =
                    PTpure
-                    (get_pty (fun _ -> get_pp_string pp_cat_ty ty |> ty_suffix) Ty_Bool);
+                     (get_pty
+                        (fun _ -> get_pp_string pp_cat_ty ty |> ty_suffix)
+                        Ty_Bool);
                  f_mutable = false;
                  f_ghost = true;
                })
@@ -395,14 +405,14 @@ module M :
                ([ "list" ] |> qualid, [ PTtyapp (qualid [ "instant_t" ], []) ]))
         )
     in
-    
+
     [ input_t; output_t; state_t; instant_t; i; o; s; hist ]
 
-  let generate_body (p : in_pgrm) (d : triple_data): out_body = 
+  let generate_body (p : in_pgrm) (d : triple_data) : out_body =
     let node = find_node d.triple_node_id p.prog_nodes in
     expr_of_statements pterm_of_inv node.node_body
 
-  let generate_function  (_p : in_pgrm) (d : triple_data_t) spec body =
+  let generate_function (_p : in_pgrm) (d : triple_data_t) spec body =
     let open P in
     let open PH in
     Efun ([], None, pat Pwild, Ity.MaskVisible, spec, body) |> expr |> fun m ->
@@ -453,7 +463,7 @@ module M :
 
         note: adding this might not be needed
       *)
-       let curr cat =
+      let curr cat =
         Tinfix
           ( tapp ([ instant_field cat ] |> qualid) [ history_head ],
             Ident.op_infix "=" |> ident,
@@ -462,11 +472,11 @@ module M :
       in
 
       curr State :: curr Output
-      ::
-      List.map
-        (fun disj ->
-          fold_mjoin (convert length_assert) why3_or (term Ttrue) disj.disjunct)
-        spec.requires.conjunct
+      :: List.map
+           (fun disj ->
+             fold_mjoin (convert length_assert) why3_or (term Ttrue)
+               disj.disjunct)
+           spec.requires.conjunct
     in
     let post =
       List.map
@@ -489,16 +499,15 @@ module M :
         [ "list"; "Length" ];
         [ "list"; "HdTlNoOpt" ];
         [ "list"; "NthNoOpt" ];
-        ["list"; "Quant"];
-        ["array"; "Array"]
+        [ "list"; "Quant" ];
+        [ "array"; "Array" ];
       ]
     in
     let m =
       ( PH.ident "Program",
         List.fold_left
           (fun l u -> PH.use ~import:false u :: l)
-          (decls @ funs)
-          uses )
+          (decls @ funs) uses )
     in
     let pgrm = P.Modules [ m ] in
     let () =
@@ -507,7 +516,7 @@ module M :
         let _mods = Why3.Typing.type_mlw_file w3.env [] "???" pgrm in
         (* continue *)
         ()
-      with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e 
+      with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e
     in
     pgrm
 

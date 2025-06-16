@@ -191,11 +191,10 @@ let generate_triples (p : base_program) (a : BProd.t) :
     let extra_req =
       if BProd.is_start_node v then
         Option.(
-          let setup = find_start_node p.prog_nodes
-          in
-              fold_mjoin some
-                (fun x y -> bind (map and_fol y) (fun f -> map f x))
-                None setup.node_spec.ensures)
+          let setup = find_start_node p.prog_nodes in
+          fold_mjoin some
+            (fun x y -> bind (map and_fol y) (fun f -> map f x))
+            None setup.node_spec.ensures)
       else None
     in
 

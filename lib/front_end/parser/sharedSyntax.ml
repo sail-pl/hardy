@@ -8,5 +8,5 @@ type ty = cat_ty * base_ty
 
 (** Standard Logic Operators *)
 
-type standard_logic_bop =  Equiv | Arrow | LAnd | LOr 
+type standard_logic_bop = Equiv | Arrow | LAnd | LOr
 type standard_logic_uop = LNot

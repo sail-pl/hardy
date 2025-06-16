@@ -12,7 +12,8 @@
  (modules tokens specification/ltl program/parser)
  (merge_into pgrmParser)
  (flags
-  --external-tokens Tokens
+  --external-tokens
+  Tokens
   ; --strict
   --explain))
 

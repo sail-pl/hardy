@@ -26,18 +26,20 @@ let rec map_bform_atom : type a b. (a -> b) -> a bform -> b bform =
   | Not b -> Not (map_bform_atom m b)
   | (True | False) as x -> x
 
-let paren_bform f b = match b with  And _ | Or _  -> Format.sprintf "(%s)" (f b) | _ -> f b
+let paren_bform f b =
+  match b with And _ | Or _ -> Format.sprintf "(%s)" (f b) | _ -> f b
 
 let rec string_of_bform (convert_atom : string -> string) b =
   let string_of_bform = paren_bform (string_of_bform convert_atom) in
   match b with
-    | True -> "true"
-    | False -> "false"
-    | Atom s -> convert_atom s
-    | And (s1, s2) -> Format.sprintf "%s && %s" (string_of_bform s1) (string_of_bform s2)
-    | Or (s1, s2) -> Format.sprintf "%s || %s" (string_of_bform s1) (string_of_bform s2)
-    | Not s -> Format.sprintf "!%s" (string_of_bform s)
-
+  | True -> "true"
+  | False -> "false"
+  | Atom s -> convert_atom s
+  | And (s1, s2) ->
+      Format.sprintf "%s && %s" (string_of_bform s1) (string_of_bform s2)
+  | Or (s1, s2) ->
+      Format.sprintf "%s || %s" (string_of_bform s1) (string_of_bform s2)
+  | Not s -> Format.sprintf "!%s" (string_of_bform s)
 
 let fol_of_bform (convert_atom : 'a -> ('b, _) fol) : 'a bform -> ('b, _) fol =
   let rec aux : 'a bform -> ('b, _) fol = function

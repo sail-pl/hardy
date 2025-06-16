@@ -14,7 +14,8 @@ and ('a, 'qty) fol_ =
   | FOL_StdBinary of ('a, 'qty) fol * standard_logic_bop * ('a, 'qty) fol
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
-  | ExistsPrev of string * ('a,'qty) fol (* temporal existential quantification *)
+  | ExistsPrev of
+      string * ('a, 'qty) fol (* temporal existential quantification *)
 
 let map_fol : type a b ty_a ty_b.
     ((a, ty_a) fol -> (b, ty_b) fol) ->
@@ -47,19 +48,21 @@ let rec fold_fol : type a b t.
   | FOL_True | FOL_False -> j form init
   | FOL_Atom p -> pj p init
   | FOL_StdUnary (_, f) -> j form (fold_fol j pj init f)
-  | FOL_StdBinary (f1, _, f2) -> j form (fold_fol j pj (fold_fol j pj init f1) f2)
-  | Forall (_, f) | Exists (_, f) | ExistsPrev (_,f) -> j form (fold_fol j pj init f)
+  | FOL_StdBinary (f1, _, f2) ->
+      j form (fold_fol j pj (fold_fol j pj init f1) f2)
+  | Forall (_, f) | Exists (_, f) | ExistsPrev (_, f) ->
+      j form (fold_fol j pj init f)
 
 (** [map_fol_ty m f] replaces every quantifer [Exists (l,e)] and [Forall (l,e)]
     of [f] by [X (List.map m l,e)] *)
 let rec map_fol_ty m = map_fol (map_fol_ty m) m
 
-(** [map_fol_atom m f] replaces every atom [x] of [f] by [m x]
-*)
+(** [map_fol_atom m f] replaces every atom [x] of [f] by [m x] *)
 let rec map_fol_pred m =
   map_fol
     (function
-      | { value = FOL_Atom x; label = loc } -> { value = FOL_Atom (m x); label = loc }
+      | { value = FOL_Atom x; label = loc } ->
+          { value = FOL_Atom (m x); label = loc }
       | e -> map_fol_pred m e)
     Fun.id
 
@@ -73,7 +76,7 @@ let not_fold (f : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (FOL_StdUnary (LNot, f))
 
 let and_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =
-  mk_dummy_loc (FOL_StdBinary (f1, (LAnd), f2))
+  mk_dummy_loc (FOL_StdBinary (f1, LAnd, f2))
 
 let or_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (FOL_StdBinary (f1, LOr, f2))
