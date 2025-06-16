@@ -13,8 +13,14 @@ guarantees X G {mem1 = prev i}
 guarantees X G {mem1 = prev mem2}
 
 
-loop :
+START : {
+    mem1 := 0;
+    mem2 := 0;
+} GOTO LOOP
+
+LOOP :
+{
     emit mem1 to o;
     mem1 := mem2;
     mem2 := i;
-
+}

@@ -17,7 +17,7 @@ let main (type triple_data) (type fol_data)
 
   Parser.parse_file info.file |> HardyFrontEnd.Typing.type_pgrm |> fun p ->
   translate_spec info p |> Back.translate_program p
-  |> Back.write_program output_file
+  |> Back.write_program output_file; if info.eval then HardyFrontEnd.Interpreter.(eval_pgrm p (module ConsoleBridge)) 
 
 let () =
   main

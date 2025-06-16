@@ -64,17 +64,19 @@ and ('inv, 't) stmt_ =
 
 type 'ty var_decls = (string * 'ty) list
 
-type ('inv, 't) setup = {
-  setup_ensures : 'inv list;
-  setup_body : ('inv, 't) stmt list;
+type ('inst_spec, 't) node = {
+  node_id : string;
+  node_variables : base_ty var_decls;
+  node_spec : 'inst_spec list hoare_pair;
+  node_body : ('inst_spec,unit) stmt list;
+  node_transitions : (unit expr option * string) list ;
 }
-(** setup routine signature *)
 
-type ('inv, 't) main = {
-  main_loop_inv : 'inv option;
-  main_body : ('inv, 't) stmt list;
-}
-(** main function signature *)
+let init_node = "START"
+
+let find_node id l = List.find (fun n -> n.node_id = id) l
+
+let find_start_node l = find_node init_node l
 
 type 'ty env = {
   env_input : 'ty var_decls;
@@ -83,9 +85,8 @@ type 'ty env = {
 }
 (** program memory environment *)
 
-type ('temp_spec, 'inv, 't) program = {
+type ('temp_spec, 'inst_spec, 't) program = {
   prog_decls : base_ty env;
   prog_spec : 'temp_spec list hoare_pair;
-  prog_setup : ('inv, 't) setup option;
-  prog_main : ('inv, 't) main;
+  prog_nodes : ('inst_spec, 't) node list;
 }

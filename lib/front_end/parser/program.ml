@@ -19,7 +19,8 @@ type 'ty temp_spec_t = 'ty fol_t Ltl.ltl
 (** ltl logic with fol over program expression where variables can be temporally
     quantified *)
 
-type triple_data_t = { triple_id : string }
+
+type triple_data_t = { triple_id : string ; triple_node_id : string }
 
 (** extra information appended to generated hoare triples *)
 
