@@ -7,6 +7,7 @@ type info = {
   outdir : string;
   no_i_a_conj : bool;
   eval: bool;
+  verify: bool;
 }
 (** parameters provided by the cli *)
 
@@ -33,6 +34,8 @@ functor
     let cwd = Sys.getcwd ()
 
     let eval = ref false
+    let verify = ref false
+
 
     let parseLtl2baPath p =
       if not @@ Sys.file_exists p then raise @@ Bad "Can't stat ltl2ba program"
@@ -45,7 +48,8 @@ functor
           Set no_i_a_conj,
           "do not add the rely the formula to the guarantee one" );
         ("-ltl2ba", String parseLtl2baPath, "set ltl2ba program path");
-        ("-run", Set eval, "evaluate the program");
+        ("-check", Set verify, "verify the program (default)");
+        ("-run", Set eval, "evaluate the program (disables checking by default)");
       ]
 
     let get_input_file f =
@@ -56,7 +60,9 @@ functor
 
     let () = Arg.parse speclist get_input_file usage_msg
     let () = if !input_file = "" then failwith "one input file needed"
-    let () = if !ltl2baPath = "" then failwith "ltl2ba path needed"
+    let () = if not !eval then verify := true
+    let () = if !ltl2baPath = "" && !verify then failwith "ltl2ba path needed"
+
     let dir = Filename.(!input_file |> remove_extension |> basename) ^ "_gen"
 
     (* drop generated files in $cwd/<filename>_gen/ *)
@@ -69,6 +75,7 @@ functor
         verbose = !verbose;
         outdir = output_path;
         no_i_a_conj = !no_i_a_conj;
-        eval = !eval
+        eval = !eval;
+        verify = !verify;
       }
   end

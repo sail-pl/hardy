@@ -40,7 +40,9 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
         let left = remove_exp_loc v.left and right = remove_exp_loc v.right in
         BinOp { v with left; right }
     | UnOp (ENot,e) -> UnOp (ENot,(remove_exp_loc e))
-    | (Int _ | True | False | Var (_, _)) as v -> v
+    | (Int _ | True | False | Var (_, _)) | String _ as v -> v
+    | ArrayCell (e1,e2) -> ArrayCell (remove_exp_loc e1, remove_exp_loc e2)
+    | Array l -> Array (List.map remove_exp_loc l)
   in
   mk_dummy_loc value
 

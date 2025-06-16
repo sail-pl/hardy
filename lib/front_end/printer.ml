@@ -12,9 +12,11 @@ let pp_cat_ty fmt = function
   | State -> Format.fprintf fmt "state"
   | Local -> Format.fprintf fmt "local"
 
-let pp_base_ty fmt = function
-  | Ty_Bool -> Format.fprintf fmt "bool"
-  | Ty_Int -> Format.fprintf fmt "int"
+  let rec pp_base_ty fmt = function 
+| Ty_Bool -> Format.fprintf fmt "bool" 
+| Ty_Int -> Format.fprintf fmt "int" 
+| Ty_String -> Format.fprintf fmt "string"
+| Ty_Array (ty,_) -> Format.fprintf fmt "array %a" pp_base_ty ty
 
 let pp_ty fmt (c, t) = Format.fprintf fmt "%a.%a" pp_cat_ty c pp_base_ty t
 
@@ -66,6 +68,10 @@ let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
   | UnOp (ENot,e) -> Format.fprintf fmt "!%a" pp_exp e
   | BinOp v ->
       Format.fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp v.right
+  | String s -> Format.fprintf fmt "%s" s
+  | Array l -> Format.(fprintf fmt "[%a]" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_exp) l)
+  | ArrayCell (id,n) -> Format.fprintf fmt "%a[%a]" pp_exp id pp_exp n
+
 
 let pp_paren_fol f1 f2 fmt (p : _ fol) =
   match p.value with

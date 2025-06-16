@@ -15,10 +15,12 @@ module P = Ptree
 
 let get_pp_string a b = Format.asprintf "%a" a b
 
-let get_pty (to_str : 'a -> string) = function
-  | ( Ty_Bool
-    | Ty_Int  ) as ty ->
-      Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
+let rec get_pty (to_str : 'a -> string) = function
+| Ty_Bool 
+| Ty_String  (* string are hashed and represented as integers for now *)
+| Ty_Int as ty -> Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
+| Ty_Array (ty,_) -> Ptree.(PTtyapp (Ptree_helpers.qualid [ "array" ], [get_pty to_str ty]))
+  
 
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
@@ -73,6 +75,12 @@ let translate_binop app infix op =
   | Add | Sub | Mul | Div -> fun e1 e2 -> app (P.Qident id) [ e1; e2 ]
   | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr -> infix id
 
+
+let rec make_elist = function [] -> PH.(evar (qualid ["Nil"])) | h::t -> PH.(eapp (qualid ["Cons"]) [h;make_elist t])
+let rec make_tlist = function [] -> PH.(tvar (qualid ["Nil"])) | h::t -> PH.(tapp (qualid ["Cons"]) [h;make_tlist t])
+
+(* no: instead, use array.Init.init and unroll each element of the list for each index of *)
+
 let rec translate_rexpr (e: unit expr) : P.expr =
   let open P in
   let open PH in
@@ -98,6 +106,12 @@ let rec translate_rexpr (e: unit expr) : P.expr =
           translate_binop (eapp ~loc)
             (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
             v.op e1 e2)
+ | ArrayCell (s,n) -> 
+  let e = translate_rexpr s in
+      eapp ~loc (qualid [Ident.op_get ""]) [e ; translate_rexpr n]
+  | String s -> econst (String.hash s) ~loc
+  | Array l -> List.map translate_rexpr l |> make_elist
+
 let translate_lexpr (e : unit expr) : P.expr * string option =
   let open PH in
   let loc = get_loc e.label in
@@ -112,6 +126,9 @@ let translate_lexpr (e : unit expr) : P.expr * string option =
             @@ Format.sprintf
                  "can't assign expression to stream variable '%s' (%s)" id
                  (get_pp_string pp_cat_ty cat))
+  | ArrayCell (s,n) -> 
+    let e = translate_rexpr s in
+    eapp ~loc (qualid [Ident.op_get ""]) [e ; translate_rexpr n], None
   | _ -> failwith "not an r-value"
 
 
@@ -161,6 +178,12 @@ let rec translate_term (e : instant option expr) : P.term =
             (fun x e1 e2 -> Tinnfix (e1, x, e2) |> term ~loc)
             v.op t1 t2)
 
+  | Array l -> List.map translate_term l |> make_tlist
+  | String s -> tconst ~loc (String.hash s)
+  | ArrayCell (s,n) ->
+    tapp ~loc (qualid [Ident.op_get ""]) [translate_term s ; translate_term n]
+
+
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
   let open P in
@@ -185,7 +208,9 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
         let e2 = translate_rexpr e2 in
         Eassign [ (e1, Option.map (fun id -> qualid [ id ]) id, e2) ]
         |> expr ~loc
+    | Clear _e -> failwith "todo"
     | Emit (e, id) ->
+      let e = Option.(map translate_rexpr e |> value ~default:(econst 69)) in
         get_binding_type id (fun (cat, _) ->
             let e1, field =
               match cat with
@@ -195,7 +220,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
                     Some ([ id ] |> qualid) )
               | Input -> failwith @@ Format.sprintf "can't emit to '%s'" id
             in
-            Eassign [ (e1, field, translate_rexpr e) ] |> expr ~loc)
+            Eassign [ (e1, field, e) ] |> expr ~loc)
     | If (e, t, f) ->
         let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
         Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc
@@ -204,7 +229,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
         |> expr ~loc
   in
   tr_seq s
-
+  
 let rec pterm_of_fol
     ({ value = f; label = loc } : (instant option expr, ty) fol) : P.term =
   let open PH in
@@ -465,6 +490,7 @@ module M :
         [ "list"; "HdTlNoOpt" ];
         [ "list"; "NthNoOpt" ];
         ["list"; "Quant"];
+        ["array"; "Array"]
       ]
     in
     let m =
