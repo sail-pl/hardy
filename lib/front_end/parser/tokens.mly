@@ -39,9 +39,11 @@
 
 
 // ASSOC
+%nonassoc below_COMMA
+%left COMMA
 %right ARROW DARROW
-%left OR
-%left AND
+%right OR
+%right AND
 %right EQ NEQ GT LT GTE LTE 
 %left PLUS MINUS
 %left TIMES DIVIDE
@@ -50,6 +52,5 @@
 // %right EVENTUALLY ALWAYS
 // %right NEXT
 
-%nonassoc UNARY
-%nonassoc COMMA
+%nonassoc UNARY // LPAREN
 %%
