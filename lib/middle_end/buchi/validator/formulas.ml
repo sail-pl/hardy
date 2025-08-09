@@ -140,29 +140,20 @@ let rec to_nnf (f : 'a ltl) : 'a nnf_ltl =
           | LTL_False -> LTLM_True
           | LTL_Atom a -> LTLM_NotA a
           | LTL_Unary (Next, f) -> LTLM_Next (to_nnf (ltl_not f))
-          | LTL_Unary (Always, f) ->
-              to_nnf {f with value = LTL_Unary (Eventually, ltl_not f)}
-          | LTL_Unary (Eventually, f) ->
-              to_nnf {f with value = LTL_Unary (Always, ltl_not f)}
+          | LTL_Unary (Always, f) -> LTLM_Until (LTLM_True,to_nnf (ltl_not f))
+          | LTL_Unary (Eventually, f) -> LTLM_Release (LTLM_False,to_nnf (ltl_not f))
           | LTL_Binary (f1, bop, f2) -> (
               match bop with
-              | Release -> LTLM_Release (to_nnf f1, to_nnf f2)
-              | Until -> LTLM_Until (to_nnf f1, to_nnf f2)
+              | Release -> LTLM_Until (to_nnf (ltl_not f1),to_nnf (ltl_not f2))
+              | Until -> LTLM_Release (to_nnf (ltl_not f1), to_nnf (ltl_not f2))
               | WeakUntil ->
                   let f2 = to_nnf f2 in
                   LTLM_Release (f2, LTLM_Or (f2, to_nnf f1))
               | StrongRelease ->
                   let f2 = to_nnf f2 in
                   LTLM_Until (f2, LTLM_Or (f2, to_nnf f1))
-              | LTL_StdBinary LAnd ->
-                  to_nnf
-                    { f with value = LTL_Binary (ltl_not f1, LTL_StdBinary LOr, ltl_not f2);
-                    }
-              | LTL_StdBinary LOr ->
-                  to_nnf
-                    { f with
-                      value =  LTL_Binary (ltl_not f1, LTL_StdBinary LAnd, ltl_not f2);
-                    }
+              | LTL_StdBinary LAnd -> LTLM_Or (to_nnf (ltl_not f1), to_nnf (ltl_not f2))
+              | LTL_StdBinary LOr -> LTLM_And (to_nnf (ltl_not f1), to_nnf (ltl_not f2))
               | LTL_StdBinary Equiv ->
                  let f1 = to_nnf f1
                   and not_f1 = to_nnf (ltl_not f1)
@@ -191,15 +182,14 @@ let rec to_nnf (f : 'a ltl) : 'a nnf_ltl =
                   and not_f2 = to_nnf (ltl_not f2) in
                   LTLM_And (LTLM_Or (f1, not_f2), LTLM_Or (not_f1, f2))
               | Arrow ->
-                  let f1 = to_nnf (ltl_not f1) in
-                  LTLM_Or (f1, to_nnf f2)
+                  LTLM_Or (to_nnf (ltl_not f1), to_nnf f2)
               ))
 
 let rec apply_identities : 'a nnf_ltl -> 'a nnf_ltl = function
   | (LTLM_True | LTLM_False | LTLM_A _ | LTLM_NotA _) as f -> f
   | LTLM_Next f -> LTLM_Next f (* leave it as is *)
   | LTLM_Release (f1, f2) as r ->
-      (* f2 /\ (f1 \/ X (f1 U f2)) *)
+      (* f2 /\ (f1 \/ X (f1 R f2)) *)
       let f1 = apply_identities f1 and f2 = apply_identities f2 in
       LTLM_And (f2, LTLM_Or (f1, LTLM_Next r))
   | LTLM_Until (f1, f2) as u ->
@@ -242,58 +232,54 @@ let fixpoint2 (stable : 'a -> 'a -> bool) f1 f2 =
   fixpoint stable (fixpoint stable f1 >> f2) *)
 
 
-let build_ecovering (conj : NNFSet.t) (bform_sat: string bform -> bool)=
-  let rec to_dnf = function
-    | LTLM_True ->
-        ALTL_True |> AtomicSet.singleton |> mk_eltl_empty_next
-        |> DisjunctSet.singleton
-    | LTLM_False ->
-        ALTL_False |> AtomicSet.singleton |> mk_eltl_empty_next
-        |> DisjunctSet.singleton
-    | LTLM_A a ->
-        ALTL_A a |> AtomicSet.singleton |> mk_eltl_empty_next
-        |> DisjunctSet.singleton
-    | LTLM_NotA na ->
-        ALTL_NotA na |> AtomicSet.singleton |> mk_eltl_empty_next
-        |> DisjunctSet.singleton
-    | LTLM_Next f ->
-        f |> NNFSet.singleton |> mk_eltl_empty_atoms |> DisjunctSet.singleton
-    | LTLM_And (f1, f2) ->
-        (* fixme: ugly, use params to propagate ? *)
-        let f1 = to_dnf f1 and f2 = to_dnf f2 in
-        DisjunctSet.(
-          fold
-            (fun conj1 disj ->
-              union disj
-                (map
-                   (fun conj2 ->
-                     {
-                       atoms = AtomicSet.union conj1.atoms conj2.atoms;
-                       next_rooted =
-                         NNFSet.union conj1.next_rooted conj2.next_rooted;
-                     })
-                   f2))
-            f1 empty)
-    | LTLM_Or (f1, f2) -> DisjunctSet.union (to_dnf f1) (to_dnf f2)
-    | LTLM_Release (_, _) | LTLM_Until (_, _) -> assert false
-  in
+let rec to_dnf = function
+  | LTLM_True ->
+      ALTL_True |> AtomicSet.singleton |> mk_eltl_empty_next
+      |> DisjunctSet.singleton
+  | LTLM_False ->
+      ALTL_False |> AtomicSet.singleton |> mk_eltl_empty_next
+      |> DisjunctSet.singleton
+  | LTLM_A a ->
+      ALTL_A a |> AtomicSet.singleton |> mk_eltl_empty_next
+      |> DisjunctSet.singleton
+  | LTLM_NotA na ->
+      ALTL_NotA na |> AtomicSet.singleton |> mk_eltl_empty_next
+      |> DisjunctSet.singleton
+  | LTLM_Next f ->
+      f |> NNFSet.singleton |> mk_eltl_empty_atoms |> DisjunctSet.singleton
+  | LTLM_And (f1, f2) ->
+      (* fixme: ugly, use params to propagate ? *)
+      let f1 = to_dnf f1 and f2 = to_dnf f2 in
+      DisjunctSet.(
+        fold
+          (fun conj1 disj ->
+            union disj
+              (map
+                  (fun conj2 ->
+                    {
+                      atoms = AtomicSet.union conj1.atoms conj2.atoms;
+                      next_rooted =
+                        NNFSet.union conj1.next_rooted conj2.next_rooted;
+                    })
+                  f2))
+          f1 empty)
+  | LTLM_Or (f1, f2) -> DisjunctSet.union (to_dnf f1) (to_dnf f2)
+  | LTLM_Release (_, _) | LTLM_Until (_, _) -> assert false
 
-  let rec aux ((opened, closed) : NNFSet.t * DisjunctSet.t) =
-    match NNFSet.choose_opt opened with
-    | None -> closed
-    | Some f ->
+
+(* based on "Improved Automata Generation For LTL" (Vardi99) *)
+let build_ecovering (conj : NNFSet.t) (bform_sat: string bform -> bool)=
+  let aux f =
         let dnf = (apply_identities >> to_dnf) f in
         
-        let eset_sat e = fold_mjoin atomic_ltl_to_bform
+        let conj_atoms e = fold_mjoin atomic_ltl_to_bform
               (fun x y -> And (x, y))
               True
-              (AtomicSet.to_list e.atoms) |> bform_sat
+              (AtomicSet.to_list e.atoms)
         in
         (* discard inconsistent esets *)
-        let dnf = DisjunctSet.filter eset_sat dnf in
+        let dnf = DisjunctSet.filter (conj_atoms >> bform_sat)  dnf in
 
-
-        let dnf = 
          if DisjunctSet.is_empty dnf then
           (* if there is no consistent eset, return false 
             (if left empty, the covering would be considered true)
@@ -304,7 +290,7 @@ let build_ecovering (conj : NNFSet.t) (bform_sat: string bform -> bool)=
           if DisjunctSet.exists
                 (fun e ->
                   NNFSet.is_empty e.next_rooted
-                  && e.atoms = AtomicSet.singleton ALTL_True)
+                  && (Not (conj_atoms e):_ bform) |> bform_sat |> not )
                 dnf
             then
           (* if the atoms of an elementary set with no X-formulas form a tautology,
@@ -313,12 +299,14 @@ let build_ecovering (conj : NNFSet.t) (bform_sat: string bform -> bool)=
           DisjunctSet.empty
         else 
            (* empty next_rooted are replaced by the singleton LTLM_True so that after building the covering, 
-              checking an eset with no next-time formula will result in checking for a universal path *)
+              checking an eset with no next-time formula will result in checking for a universal path
+            ( if we were to return the empty set, it would just check for any accepting path)
+              *)
           DisjunctSet.map NNFSet.(fun e -> 
             if is_empty e.next_rooted then {e with next_rooted = NNFSet.singleton LTLM_True}else e
           ) dnf
-        in
-        aux (NNFSet.remove f opened, DisjunctSet.union dnf closed)
+        
   in
-  Format.printf "building covering for: [%a]@," print_nnfset conj;
-  aux (conj, DisjunctSet.empty)
+  let conj : NNFSet.elt = NNFSet.fold (fun e acc -> LTLM_And (e,acc)) conj LTLM_True in
+  Format.printf "building covering for: [%s]@," (string_of_nnf Fun.id conj);
+  aux conj

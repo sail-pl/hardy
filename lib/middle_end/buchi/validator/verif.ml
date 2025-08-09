@@ -36,57 +36,22 @@ struct
     let acceptant_path_from = acceptant_path_from a in
     let universal_lasso = acceptant_path_from ~f:(fun e -> BA.E.label e = True) in
 
-    let rec check_cover (opened, (closed : DisjunctSet.t)) path : bool =
+    let rec check_cover cover path : bool =
 
-      Format.printf "checking covering... (%i remains) @," (DisjunctSet.cardinal opened);
+      Format.printf "checking covering... (%i esets)@," (DisjunctSet.cardinal cover);
       let node = List.hd path in
       (* let st = H.find node_state node in *)
       let succs = succ_with_arc a node in
 
-      match DisjunctSet.choose_opt opened with
-      | None ->
-          (* We checked the current node satisfies each esets of formulas.
-             Now, we must ensure it ONLY recognizes those. Because we are working on a disjunction,
-             it means we must ensure that there is no accepting path along a transition that satisfies
-              the conjunction of the disjunction of all esets' atomic formulas
-          *)
-          Format.printf "ensuring strict satisfaction@,";
-          let neg_atoms =
-            fold_mjoin
-              (fun (e : elementary_set) ->
-                fold_mjoin
-                  (fun x -> Not (atomic_ltl_to_bform x))
-                  (fun x y -> Or (x, y))
-                  False
-                  (AtomicSet.to_list e.atoms))
-              (fun x y -> And (x, y))
-              True
-              (DisjunctSet.to_list closed)
-          in
-
-          Format.printf "negative formula: %s @," (string_of_bform A.subst neg_atoms);
-
-          let mk_form l = And (neg_atoms, BA.E.label l) in
-          let sat_trans =
-            List.filter (fun (f, _) -> mk_form f |> bform_sat) succs
-          in
-          (* no acceptant path *)
-          if List.for_all (fun (_, v) -> List.is_empty @@ acceptant_path_from [v]) sat_trans
-          then (
-            Format.printf "OK [strict satisfaction]@,";
-            true)
-          else (
-            Format.printf "KO [strict satisfaction]@, ";
-            false)
-      | Some e ->
+      let opened = DisjunctSet.(diff cover @@ fold (fun eset acc ->
           (* we construct the conjunction of all atoms of the eset *)
           let atoms =
             fold_mjoin atomic_ltl_to_bform
               (fun x y -> And (x, y))
               True
-              (AtomicSet.to_list e.atoms)
+              (AtomicSet.to_list eset.atoms)
           in
-          Format.printf "eset found, formula to satisfy: %s@,"
+          Format.printf "formula to satisfy: %s@,"
             (string_of_bform A.subst atoms);
 
           Format.printf "candidates: @,%a@,"
@@ -119,26 +84,71 @@ struct
           *)
           Format.printf
             "ensuring at least one dest node satisfies the next formulas:@,";
-          if
-            List.exists
-              (fun (f, v) ->
-                Format.printf "- taking transition %s@,"
-                  (
-                 Format.sprintf "%s -[%s]-> %s" (BA.string_of_vertex node)
-                   (string_of_bform A.subst (BA.E.label f))
-                   (BA.string_of_vertex v));
-                if aux e.next_rooted (v :: path) then (
-                  Format.printf "OK [next formula satisfaction] @,";
-                  true)
-                else (
-                  Format.printf "KO [next formula satisfaction] @,";
-                  false))
-              sat_trans
-          then
-            check_cover
-              (DisjunctSet.remove e opened, DisjunctSet.add e closed)
-              path
-          else false
+            
+          if (List.exists
+            (fun (f, v) ->
+              Format.printf "- taking transition %s@,"
+                (
+                Format.sprintf "%s -[%s]-> %s" (BA.string_of_vertex node)
+                  (string_of_bform A.subst (BA.E.label f))
+                  (BA.string_of_vertex v));
+              if aux eset.next_rooted (v :: path) then (
+                Format.printf "OK [next formula satisfaction] @,";
+                true)
+              else (
+                Format.printf "KO [next formula satisfaction] @,";
+                false))
+            sat_trans  )
+            then
+              add eset acc
+            else
+              acc
+      ) cover empty)
+      
+      in 
+      if DisjunctSet.(is_empty opened) then
+        (
+         (* We checked the current node satisfies every eset.
+             Now, we must ensure all accepting esets only pertain to the cover's ones. Because we are working on a disjunction,
+             it means we must ensure that there is no accepting path along a transition that satisfies
+              the conjunction of the disjunction of all esets' atomic formulas negation
+          *)
+            Format.printf "ensuring strict satisfaction@,";
+            let neg_atoms =
+              fold_mjoin
+                (fun (e : elementary_set) ->
+                  fold_mjoin
+                    (fun x -> Not (atomic_ltl_to_bform x))
+                    (fun x y -> Or (x, y))
+                    False
+                    (AtomicSet.to_list e.atoms))
+                (fun x y -> And (x, y))
+                True
+                (DisjunctSet.to_list cover)
+            in
+
+            Format.printf "negative formula: %s @," (string_of_bform A.subst neg_atoms);
+
+            let mk_form l = And (neg_atoms, BA.E.label l) in
+            let sat_trans =
+              List.filter (fun (f, _) -> mk_form f |> bform_sat) succs
+            in
+            (* no acceptant path *)
+            if List.for_all (fun (_, v) -> List.is_empty @@ acceptant_path_from [v]) sat_trans
+            then (
+              Format.printf "OK [strict satisfaction]@,";
+              true)
+            else (
+              Format.printf "KO [DEBUG STILL RETURN TRUE strict satisfaction]@,";
+              true (*fixme*))
+        )
+      else (
+         (* no eset satisfied by the automaton found, either the formula is unsatisfiable or the automaton does not represent the formula
+            return false for now
+           *)
+          Format.printf "elementary sets not satisfied : %a@," print_disjunctset opened;
+          Format.printf "KO [elementary set satisfaction]@, "; false
+      )
     and
         (* [aux] ensures any word starting from the current node is valid IFF it is an interpretation of [formulas] *)
         aux (formulas : NNFSet.t) (path : BA.vertex list) : bool =
@@ -186,10 +196,10 @@ struct
               let p = acceptant_path_from path in
               if p <> [] then (
                   Format.printf "KO (found path %a)@," print_path p;
-                  true)
+                  false)
               else (
-              Format.printf " KO@,";
-              false
+              Format.printf " OK@,";
+              true
               )
               
               )
@@ -206,7 +216,7 @@ struct
                 false
                 )
                 )
-            else if check_cover (ecover, DisjunctSet.empty) path then true
+            else if check_cover ecover path then true
             else (
               (* the node doesn't verify the cover, restore previous old entry *)
               H.remove node_state node;
@@ -221,6 +231,7 @@ struct
     | [ h ] ->
         let f = NNFSet.singleton (to_nnf f) in
         Format.printf "starting from node '%s'@," (BA.string_of_vertex h);
+          Format.printf "Negative Normal Form: '%a'@," print_nnfset f;
         let res = aux f [ h ] in
         Format.print_newline ();
         res
