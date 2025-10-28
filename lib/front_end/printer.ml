@@ -51,7 +51,7 @@ let pp_hist fmt (v, h) =
   | Some (Previous n) -> Format.fprintf fmt "prev %i %s" n v
   | Some (At n) -> Format.fprintf fmt "%s at %i" v n
 
-let pp_nohist fmt (id,_) = Format.pp_print_string fmt id
+(* let pp_nohist fmt (id,_) = Format.pp_print_string fmt id *)
 
 let pp_paren_exp fmt f e =
   match e.value with BinOp _ -> Format.fprintf fmt "(%a)" f e | _ -> f fmt e
