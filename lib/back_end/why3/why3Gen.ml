@@ -8,7 +8,7 @@ open Fol
 open Instant
 open Printer
 open Why3
-open Why3Utils
+open HardyMisc.Why3Utils
 open HardyMisc.Utils
 module PH = Ptree_helpers
 module P = Ptree

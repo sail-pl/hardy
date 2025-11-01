@@ -1,4 +1,4 @@
 (library
  (name hardyMisc)
  (public_name hardy.misc)
- (libraries ocamlgraph))
+ (libraries ocamlgraph why3))

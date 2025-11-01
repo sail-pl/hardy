@@ -20,6 +20,10 @@ module type S = sig
   val add_and_get : ty fol_t -> (string * string) t
   (** [add_and_get a] returns the short and long identifier corresponding to the
       atom [a], creating a fresh one if it does not exist *)
+
+  val atom_id_to_int : string -> int
+  (** [atom_id_to_int a] returns an integer representation of the atom
+      identifier [a]*)
 end
 
 (** [sub_atom_in_str subst s] matches all atoms inside string [s]. Each atom [a]
@@ -61,6 +65,8 @@ module Functional : S = struct
 
   (* let get_f i proj : formula option t = fun m -> (M.find i (proj m), m) *)
 
+  let atom_id_to_int s = String.(sub s 2 (length s - 2) |> int_of_string)
+
   let get (s : string) : (string * ty fol_t) t =
    fun (cnt, m) -> (M.find (atom_of_atom_id s) m, (cnt, m))
 
@@ -101,6 +107,7 @@ module Imperative () : S with type 'a t = 'a = struct
   (* key is a hash of fol, value is a short name for fol + fol itself*)
   let atomic_bindings : (string * ty fol_t) AtomTable.t = AtomTable.create 100
   let cnt = ref 0
+  let atom_id_to_int s = String.(sub s 2 (length s - 2) |> int_of_string)
 
   let get (s : string) : (string * ty fol_t) t =
     try AtomTable.find atomic_bindings (atom_of_atom_id s)    
