@@ -154,8 +154,8 @@ let rec translate_term (e : instant option expr) : P.term =
     | BinOp v -> (
       let t1 = translate_term v.left and t2 = translate_term v.right in
       match v.op with
-      | EAnd -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
-      | EOr -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
+      | EAnd -> Tbinnop (t1, Dterm.DTand, t2) |> term ~loc
+      | EOr -> Tbinnop (t1, Dterm.DTor, t2) |> term ~loc
       | _ ->
           translate_binop (tapp ~loc)
             (fun x e1 e2 -> Tinnfix (e1, x, e2) |> term ~loc)
@@ -219,10 +219,10 @@ let rec pterm_of_fol
       let t1 = pterm_of_fol t1 in
       let t2 = pterm_of_fol t2 in
       match bop with
-      | Arrow -> Tbinop (t1, Dterm.DTimplies, t2) |> term ~loc
-      | Equiv -> Tbinop (t1, Dterm.DTiff, t2) |> term ~loc
-      | LAnd -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
-      | LOr -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
+      | Arrow -> Tbinnop (t1, Dterm.DTimplies, t2) |> term ~loc
+      | Equiv -> Tbinnop (t1, Dterm.DTiff, t2) |> term ~loc
+      | LAnd -> Tbinnop (t1, Dterm.DTand, t2) |> term ~loc
+      | LOr -> Tbinnop (t1, Dterm.DTor, t2) |> term ~loc
   )
   | Forall (v, f) ->
       let locals = List.to_seq v in
