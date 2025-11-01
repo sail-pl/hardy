@@ -141,10 +141,10 @@ let rec pterm_of_fol ({ value = f; loc } : (expr, ty) fol) : Ptree.term =
       let t1 = pterm_of_fol t1 in
       let t2 = pterm_of_fol t2 in
       match bop with
-      | And -> Tbinop (t1, Dterm.DTand, t2) |> term ~loc
-      | Or -> Tbinop (t1, Dterm.DTor, t2) |> term ~loc
-      | Arrow -> Tbinop (t1, Dterm.DTimplies, t2) |> term ~loc
-      | Equiv -> Tbinop (t1, Dterm.DTiff, t2) |> term ~loc
+      | And -> Tbinnop (t1, Dterm.DTand, t2) |> term ~loc
+      | Or -> Tbinnop (t1, Dterm.DTor, t2) |> term ~loc
+      | Arrow -> Tbinnop (t1, Dterm.DTimplies, t2) |> term ~loc
+      | Equiv -> Tbinnop (t1, Dterm.DTiff, t2) |> term ~loc
       | Arithm op -> tapp ~loc (translate_binop op) [ t1; t2 ])
   | Forall (v, f) ->
       let locals = List.to_seq v in

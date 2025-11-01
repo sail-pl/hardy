@@ -52,7 +52,7 @@ let get_loc loc =
   | None -> Why3.Mlw_printer.next_pos ()
   | Some l -> Loc.extract l
 
-let why3_and l r = Ptree.Tbinop (l, Dterm.DTand, r) |> Ptree_helpers.term
+let why3_and l r = Ptree.Tbinnop (l, Dterm.DTand, r) |> Ptree_helpers.term
 let unit_val = Why3.Ptree.Etuple []
 
 let get_pty (to_str : 'a -> string) (ty : 'a) =
