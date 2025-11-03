@@ -22,12 +22,12 @@ let ltl_to_neverclaim (i : Cli.info) (never_file : string) (f : string ltl) :
     NcSyntax.neverclaim =
   let to_spin = Printer.string_of_ltl Fun.id spin_binop spin_unop in
   let cmd =
-    Filename.quote_command i.ltl2baPath
-      [ "-f"; to_spin f ]
+    Filename.quote_command "ltl2tgba"
+      [ "-s"; to_spin f ]
       ~stdout:never_file ~stderr:(never_file ^ ".err")
   in
-  if i.verbose then Format.printf "ltl2ba command line : %s" cmd;
+  if i.verbose then Format.printf "ltl2tgba command line : %s@." cmd;
   let ret = Sys.command cmd in
   if ret <> 0 then
-    failwith Format.(sprintf "non-0 exit-code (%i) from ltl2ba" ret)
+    failwith Format.(sprintf "non-0 exit-code (%i) from ltl2tgba@." ret)
   else NcParsing.parse_automaton never_file

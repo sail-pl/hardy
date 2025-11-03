@@ -2,7 +2,6 @@
 
 type info = {
   file : string;
-  ltl2baPath : string;
   verbose : bool;
   outdir : string;
   no_i_a_conj : bool;
@@ -22,18 +21,13 @@ functor
     open Arg
 
     let usage_msg =
-      Format.sprintf "Usage : %s --ltl2ba <ltl2ba exe> <file> [-v]"
+      Format.sprintf "Usage : %s <file> [-v]"
         (Sys.argv.(0) |> Filename.basename)
 
     let input_file = ref ""
     let verbose = ref false
     let no_i_a_conj = ref false
-    let ltl2baPath = ref ""
     let cwd = Sys.getcwd ()
-
-    let parseLtl2baPath p =
-      if not @@ Sys.file_exists p then raise @@ Bad "Can't stat ltl2ba program"
-      else ltl2baPath := p
 
     let speclist =
       [
@@ -41,7 +35,6 @@ functor
         ( "-noiaconj",
           Set no_i_a_conj,
           "do not add the rely the formula to the guarantee one" );
-        ("-ltl2ba", String parseLtl2baPath, "set ltl2ba program path");
       ]
 
     let get_input_file f =
@@ -52,7 +45,6 @@ functor
 
     let () = Arg.parse speclist get_input_file usage_msg
     let () = if !input_file = "" then failwith "one input file needed"
-    let () = if !ltl2baPath = "" then failwith "ltl2ba path needed"
     let dir = Filename.(!input_file |> remove_extension |> basename) ^ "_gen"
 
     (* drop generated files in $cwd/<filename>_gen/ *)
@@ -61,7 +53,6 @@ functor
     let get_info : info =
       {
         file = !input_file;
-        ltl2baPath = !ltl2baPath;
         verbose = !verbose;
         outdir = output_path;
         no_i_a_conj = !no_i_a_conj;
