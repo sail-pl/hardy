@@ -15,10 +15,7 @@ module P = Ptree
 
 let get_pp_string a b = Format.asprintf "%a" a b
 
-let get_pty (to_str : 'a -> string) = function
-  | ( Ty_Bool
-    | Ty_Int  ) as ty ->
-      Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
+let get_pty ty = Ptree.(PTtyapp (Ptree_helpers.qualid [ty ], []))
 
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
@@ -44,13 +41,9 @@ let history_length =
     P.Tapply (tvar (qualid [ "Length"; "length" ]), tvar (qualid [ history_id ]))
     |> term)
 
-let history_head =
-  PH.(
-    tapp
-      (qualid [ "NthNoOpt"; "nth" ])
-      [ tconst 0; tvar (qualid [ history_id ]) ])
-
 let instant_field ty = private_var (String.sub (get_pp_string pp_cat_ty ty) 0 1)
+
+let nth_h cat = "_prev" ^ instant_field cat
 
 let get_quant_binders vars =
   List.concat
@@ -58,11 +51,10 @@ let get_quant_binders vars =
        (fun (v, (cat, ty)) ->
          let pty =
            get_pty
-             (fun ty ->
+             (
                match (cat, ty) with
                | Local, ty | State, ty -> get_pp_string pp_base_ty ty
                | cat, _ -> get_pp_string pp_cat_ty cat |> ty_suffix)
-             ty
          in
          PH.one_binder v ~pty)
        vars)
@@ -129,8 +121,6 @@ let rec translate_term (e : instant option expr) : P.term =
           match cat with
           | Local -> tvar (qualid [ s ])
           | _ -> (
-              let field = [ instant_field cat ] |> qualid in
-              let nth = [ "NthNoOpt"; "nth" ] |> qualid in
               match t with
               | Some (Previous 0) | None ->
                   tapp ~loc (qualid [ s ])
@@ -138,18 +128,16 @@ let rec translate_term (e : instant option expr) : P.term =
               | Some (Previous n) ->
                   let n = tconst (n - 1) in
                   (* last value begins at 0 *)
-                  let inst = tapp nth [ n; tvar (qualid [ history_id ]) ] in
-                  tapp ~loc (qualid [ s ]) [ tapp field [ inst ] ]
+                  tapp ~loc (qualid [nth_h cat]) [ n ; tvar (qualid [ s ]) ]
               | Some (At n) ->
                   let n =
-                    Tinfix
+                    Tinnfix
                       ( history_length,
                         Ident.op_infix "-" |> ident,
                         tconst (n + 1) )
                     |> term
                   in
-                  let inst = tapp nth [ n; tvar (qualid [ history_id ]) ] in
-                  tapp ~loc (qualid [ s ]) [ tapp field [ inst ] ]))
+                  tapp ~loc (qualid [nth_h cat]) [ n ; tvar (qualid [ s ]) ]))
   | UnOp (ENot,t) -> Tnot (translate_term t) |> term  ~loc
     | BinOp v -> (
       let t1 = translate_term v.left and t2 = translate_term v.right in
@@ -236,27 +224,31 @@ let rec pterm_of_fol
       let t = Tquant (DTexists, get_quant_binders v, [], pterm_of_fol f) in
       remove_bindings (Seq.map fst locals);
       term t ~loc
-  | ExistsPrev (v, f) -> 
-    get_binding_type v (fun (cat, bty) ->
-      let field = [ instant_field cat ] |> qualid in
-      let local_v = v,(Local,bty) in
-      (* for now, easier to make a local decl and mask the variable *)    
-      add_bindings Seq.(cons local_v empty);  
-      let e = tapp (qualid [ v ]) [ tapp field [ tvar (qualid ["_inst"]) ] ] in 
-      let f = Tlet (ident v,e,pterm_of_fol f) |> term in
-      remove_bindings Seq.(cons (fst local_v) empty); 
-      let f_abs = Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc in
-      let for_some = [ "Quant"; "for_some" ] |> qualid in
-      tapp for_some [ f_abs ;  tvar (qualid [ history_id ]) ] 
-      )
-
+  | ExistsPrev (v, f) ->
+      get_binding_type v (fun (cat, bty) ->
+          let field = [ instant_field cat ] |> qualid in
+          let local_v = (v, (Local, bty)) in
+          (* for now, easier to make a local decl and mask the variable *)
+          add_bindings Seq.(cons local_v empty);
+          let e =
+            tapp (qualid [ v ]) [ tapp field [ tvar (qualid [ "_inst" ]) ] ]
+          in
+          let f = Tlet (ident v, e, pterm_of_fol f) |> term in
+          remove_bindings Seq.(cons (fst local_v) empty);
+          let f_abs =
+            Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc
+          in
+          let for_some = [ "Quant"; "for_some" ] |> qualid in
+          tapp for_some [ f_abs; tvar (qualid [ history_id ]) ])
 
 let pterm_of_inv = pterm_of_fol
 
-module M :
-  Sig.S
+module
+  M
+  (* : Sig.S 
     with type triple_data = Syntax.triple_data_t
-     and type fol_data = min_nb_instants = struct
+     and type fol_data = min_nb_instants  *) =
+struct
   (* type in_ty = ty *)
   type triple_data = Syntax.triple_data_t
   type fol_data = min_nb_instants
@@ -281,6 +273,8 @@ module M :
   type out_setup = out_decl
   type out_spec = P.spec
 
+  let reset () = Hashtbl.clear bindings
+
   let generate_declarations (env : base_ty env) : out_decl list =
     let open P in
     let open PH in
@@ -295,7 +289,7 @@ module M :
             {
               f_loc = Loc.dummy_position;
               f_ident = ident v;
-              f_pty = get_pty (get_pp_string pp_base_ty) ty;
+              f_pty = get_pty (get_pp_string pp_base_ty ty);
               (* only inputs are read-only *)
               f_mutable = t <> Input;
               f_ghost = false;
@@ -321,7 +315,7 @@ module M :
           ( ident (get_pp_string pp_cat_ty t),
             false,
             RKnone,
-            mk_decl (get_pty (fun _ -> get_pp_string pp_cat_ty t |> ty_suffix) Ty_Bool) ) )
+            mk_decl (get_pty (get_pp_string pp_cat_ty t |> ty_suffix) ) ))
     in
     let input_t, i = create_record Input env.env_input
     and output_t, o = create_record Output env.env_output
@@ -341,7 +335,7 @@ module M :
         pure (logic) functions *)
                  f_pty =
                    PTpure
-                    (get_pty (fun _ -> get_pp_string pp_cat_ty ty |> ty_suffix) Ty_Bool);
+                    (get_pty (get_pp_string pp_cat_ty ty |> ty_suffix));
                  f_mutable = false;
                  f_ghost = true;
                })
@@ -363,17 +357,37 @@ module M :
     in
 
     let hist =
+      let ty = (PTtyapp
+               ([ "list" ] |> qualid, [ PTtyapp (qualid [ "instant_t" ], []) ])) in
+      let d = (Eany ([], RKnone, Some ty, pat Pwild, MaskVisible, empty_spec) |> expr) in
+
       Dlet
         ( ident history_id,
           true,
-          RKnone,
-          mk_decl
-            (PTtyapp
-               ([ "list" ] |> qualid, [ PTtyapp (qualid [ "instant_t" ], []) ]))
+          RKfunc,
+          d 
         )
     in
-    
-    [ input_t; output_t; state_t; instant_t; i; o; s; hist ]
+    (* (_prev_i n proj) =  (NthNoOpt.nth n _history)._i.proj   *)
+    let create_hist_proj cat  = 
+    let nth_history n =
+      eapp
+        (qualid [ "NthNoOpt"; "nth" ])
+        [ n; evar (qualid [ history_id ]); ] 
+      in
+      let body = eapp (qualid ["proj"]) [eapp ([ instant_field cat ] |> qualid) [ nth_history @@ evar (qualid ["n"]) ]] in
+      let args = List.append (one_binder "n") (one_binder "proj") in
+      let f = Efun (args, None, pat Pwild, Ity.MaskVisible, empty_spec, body) |> expr in
+        
+
+      Dlet (ident (nth_h cat),true,RKfunc, f)
+    in
+
+    let iproj = create_hist_proj Input 
+    and oproj = create_hist_proj Output 
+    and sproj = create_hist_proj State  in
+
+    [ input_t; output_t; state_t; instant_t; i; o; s; hist; iproj; oproj; sproj ]
 
   let generate_body (b : in_body) : out_body = expr_of_statements pterm_of_inv b
 
@@ -408,7 +422,7 @@ module M :
       (* for now, we assume knowing the minimal history length isn't helpful *)
       None
     else
-      Tinfix
+      Tinnfix
         ( history_length,
           Ident.op_infix (if n.is_max then "=" else ">=") |> ident,
           tconst n.nb_instant )
@@ -425,23 +439,21 @@ module M :
     let sp_pre =
       (* in the precondition, "naked" variables except inputs are always equal 
         to the head of the history
-
-        note: adding this might not be needed
       *)
-       let curr cat =
-        Tinfix
-          ( tapp ([ instant_field cat ] |> qualid) [ history_head ],
+      let curr cat =
+        Tinnfix
+          ( tapp (qualid [nth_h cat]) [ tconst 0; Tquant (Dterm.DTlambda, one_binder "x", [], tvar @@ qualid ["x"]) |> term ],
             Ident.op_infix "=" |> ident,
             tvar (qualid [ get_pp_string pp_cat_ty cat ]) )
         |> term
       in
 
       curr State :: curr Output
-      ::
-      List.map
-        (fun disj ->
-          fold_mjoin (convert length_assert) why3_or (term Ttrue) disj.disjunct)
-        spec.requires.conjunct
+      :: List.map
+           (fun disj ->
+             fold_mjoin (convert length_assert) why3_or (term Ttrue)
+               disj.disjunct)
+           spec.requires.conjunct
     in
     let post =
       List.map
@@ -464,24 +476,24 @@ module M :
         [ "list"; "Length" ];
         [ "list"; "HdTlNoOpt" ];
         [ "list"; "NthNoOpt" ];
-        ["list"; "Quant"];
+        [ "list"; "Quant" ];
       ]
+      |> List.map (PH.use ~import:false)
     in
-    let m =
+    let helper_m = (PH.ident "ProgramHelper", uses @ decls) in
+    let triples_m =
       ( PH.ident "Program",
-        List.fold_left
-          (fun l u -> PH.use ~import:false u :: l)
-          (decls @ add_opt_to_list setup funs)
-          uses )
+        uses
+        @ PH.use ~import:false [ "ProgramHelper" ]
+          :: add_opt_to_list setup funs )
     in
-    let pgrm = P.Modules [ m ] in
+    let pgrm = P.Modules [ helper_m; triples_m ] in
     let () =
       try
         let w3 = init_why3 () in
         let _mods = Why3.Typing.type_mlw_file w3.env [] "???" pgrm in
-        (* continue *)
         ()
-      with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e 
+      with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e
     in
     pgrm
 
