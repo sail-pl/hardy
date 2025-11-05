@@ -5,13 +5,35 @@ open Syntax.Program
 open Syntax.Shared
 open Syntax.Instant
 open HardyMisc.Utils
-open MiddleParser.NcSyntax
-module Atom = Atom.Imperative ()
-module B = Nc2ba.Make (Atom)
-module DotB = BuchiSig.Dot (B)
-module BProd = BaProduct.Make (B) (Atom)
-module BProdU = BuchiSig.Utils (BProd)
-module DotBProd = BuchiSig.Dot (BProd)
+open MiddleParser.SyntaxCommon
+
+module M(Atom : Atom.S with type 'a t = 'a)(B:  BuchiSig.S with type E.label = string bform) = struct
+  module DotB = BuchiSig.Dot (B)
+  module BProd = BaProduct.Make (B) (Atom)
+  module BProdU = BuchiSig.Utils (BProd)
+  module DotBProd = BuchiSig.Dot (BProd)
+
+
+
+  module InputSpec = struct
+    open Printer
+    open Ltl
+
+    type t = string ltl
+
+    let string_of_ltl_full =
+      string_of_ltl
+        (fun p -> Atom.add_and_get p |> snd)
+        string_of_ltl_binop string_of_ltl_unop
+
+    let string_of_ltl_short =
+      string_of_ltl
+        (fun p -> Atom.add_and_get p |> fst)
+        string_of_ltl_binop string_of_ltl_unop
+
+    let from_ltl : _ ltl -> t =
+      map_ltl_pred (fun p -> Atom.add_and_get p |> snd)
+  end
 
 (* type info = { i : int } *)
 
@@ -219,3 +241,4 @@ let generate_triples (p : base_program) (a : BProd.t) :
       specs
   in
   BProd.fold_vertex (aux >> List.append) a []
+end

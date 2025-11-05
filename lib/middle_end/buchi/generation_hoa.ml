@@ -9,9 +9,7 @@ module SSyn = Syntax.Shared
 module Hist = Syntax.Instant
 
 module Atom = Atom.Imperative ()
-module B = Nc2ba.Make (Atom)
-
-(** {1 Build Buchi Automaton from string formula} *)
+module B = Hoa2ba.Make (Atom)
 
 module Triples = Triples.M(Atom)(B)
 
@@ -31,7 +29,7 @@ module M :
     hoare_triple
     list
 
-  type output = (string * NcSyntax.neverclaim) hoare_pair
+  type output = (string * HoaSyntax.hoa) hoare_pair
   type automaton = Triples.BProd.t
   (* { pa_pair :  (string * B.t) P.hoare_pair; pa_prod : (string * BB.t) } *)
 
@@ -71,11 +69,11 @@ module M :
 
   let exec (cli : Cli.info) (i : input) : output =
     let ltl2ba_nc ((name, spec) : string * Triples.InputSpec.t) :
-        string * NcSyntax.neverclaim =
-      let never_file = output_file cli name ".never" in
-      (name, LtlConversion.ltl_to_neverclaim cli never_file spec)
+        string * HoaSyntax.hoa =
+      let hoa_file = output_file cli name ".hoa" in
+      (name, LtlConversion.ltl_to_hoa cli hoa_file spec)
     in
-    (* transform LTL formula to a neverclaim representation of a buchi automaton  *)
+    (* transform LTL formula to a hoa representation of a buchi automaton  *)
     { requires = ltl2ba_nc i.requires; ensures = ltl2ba_nc i.ensures }
 
   let automaton_to_dot (type t) (module G : BuchiSig.S with type t = t) cli

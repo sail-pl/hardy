@@ -1,4 +1,5 @@
 %{
+    open SyntaxCommon
     open NcSyntax
 %}
 

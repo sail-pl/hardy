@@ -1,8 +1,6 @@
 open HardyFrontEnd.Syntax.Fol
 open HardyMisc.Utils
 
-(** {1 Parse tree for Promela neverclaims} *)
-
 type 'a bform =
   | True
   | False
@@ -13,10 +11,6 @@ type 'a bform =
 
 let ( <-> ) f1 f2 = And (Or (Not f1, f2), Or (Not f2, f1))
 let ( --> ) f1 f2 = Or (Not f1, f2)
-
-type state = { pml_state : string }
-type transition = { pml_src : state; pml_form : string bform; pml_dst : state }
-type neverclaim = { pml_states : state list; pml_transitions : transition list }
 
 let rec map_bform_atom : type a b. (a -> b) -> a bform -> b bform =
  fun m -> function
