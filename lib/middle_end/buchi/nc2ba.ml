@@ -1,3 +1,4 @@
+open MiddleParser.SyntaxCommon
 open MiddleParser.NcSyntax
 
 module Vertex : Graph.Sig.COMPARABLE with type t = string = struct
@@ -63,7 +64,7 @@ struct
     | _ -> v (* others *)
 
   let id_of_vertex = string_of_vertex
-  let string_of_edge (f : string bform) = string_of_bform Atoms.subst f
+  let string_of_edge (f : E.label) = string_of_bform Atoms.subst f
   let get_vdata _ = ()
 
   let get_edge_type (e : E.label) =

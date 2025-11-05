@@ -21,5 +21,5 @@ let main (type triple_data) (type fol_data)
 
 let () =
   main
-    (module HardyMiddleEnd.Buchi.Generation.M)
+    (module HardyMiddleEnd.Buchi.Generation_hoa.M)
     (module HardyBackEnd.Why3Gen.M)

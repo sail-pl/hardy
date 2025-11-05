@@ -1,9 +1,24 @@
-(include_subdirs no)
+(include_subdirs unqualified)
 
-(ocamllex ncLexer)
+(rule
+ (target ncLexer.ml)
+ (deps  neverclaim/ncLexer.mll)
+ (action (chdir %{workspace_root}
+          (run %{bin:ocamllex} -q -o %{target} %{deps}))))
+
+(rule
+ (target hoaLexer.ml)
+ (deps  hoa/hoaLexer.mll)
+ (action (chdir %{workspace_root}
+          (run %{bin:ocamllex} -q -o %{target} %{deps}))))
 
 (menhir
- (modules ncParser))
+ (modules neverclaim/ncParser)
+  (merge_into ncParser))
+
+(menhir
+ (modules hoa/hoaParser)
+  (merge_into hoaParser))
 
 (library
  (name middleParser)
