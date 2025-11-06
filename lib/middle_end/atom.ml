@@ -30,7 +30,9 @@ let sub_atom_in_str subst =
   global_substitute r (fun m -> matched_string m |> subst)
 
 (** [atom_of_atom_id a] extracts the atom from the identifier [a]*)
-let atom_of_atom_id s : int = String.(sub s 2 (length s - 2)) |> int_of_string
+let atom_of_atom_id s : int = 
+    try String.(sub s 2 (length s - 2)) |> int_of_string with 
+    | Failure _ | Invalid_argument _ -> failwith @@ Format.sprintf "couldn't extract atom '%s'" s
 
 (** [remove_exp_loc e] replaces all locations of expression [e] with None *)
 let rec remove_exp_loc (e : 't expr) : 't expr =
@@ -71,13 +73,13 @@ module Functional : S = struct
     ( sub_atom_in_str
         (fun s ->
           let a = get s in
-          Format.(asprintf "%a" (pp_fol (pp_exp (fun fmt (id,_) -> pp_print_string fmt id)) pp_ty) a))
+          Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp (fun fmt (id,_) -> pp_print_string fmt id))) pp_ty) a))
       f, (cnt, m) )
 
   (* let get_and_incr : int t = fun (cnt,m) -> cnt,(cnt+1,m) *)
 
   let add_and_get (atom : ty fol_t) : (string * string) t =
-    let key = Hashtbl.hash (Format.asprintf "%a" (pp_fol (pp_exp pp_hist) pp_ty) atom) in
+    let key = Hashtbl.hash (Format.asprintf "%a" (pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) atom) in
     let label = Format.sprintf "f_%i" key in
     fun (cnt, m) ->
       match M.find_opt key m with
@@ -109,10 +111,10 @@ module Imperative () : S with type 'a t = 'a = struct
   let subst =
     sub_atom_in_str (fun s ->
         let _, inv = get s in
-        Format.asprintf "%a" (pp_fol (pp_exp pp_hist) pp_ty)inv)
+        Format.asprintf "%a" (pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) inv)
 
   let add_and_get (atom : ty fol_t) =
-    let key = Format.(asprintf "%a" (pp_fol (pp_exp pp_hist) pp_ty) atom) |> String.hash in
+    let key = Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) atom) |> String.hash in
     let label = Format.sprintf "f_%i" key in
     match AtomTable.find_opt atomic_bindings key with
     | None ->

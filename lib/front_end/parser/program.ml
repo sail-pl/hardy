@@ -5,12 +5,12 @@ module Shared = SharedSyntax
 module Instant = InstantSyntax
 module U = HardyMisc.Utils
 
-let fol_vars (f : ('a Program.expr, 'ty) Fol.fol) : (string * 'ty) list =
-  Fol.fold_fol (fun _ acc -> acc) Program.expr_vars [] f
+(* let fol_vars (f : ('a Program.expr, 'ty) Fol.fol) : (string * 'ty) list =
+  Fol.fold_fol (fun _ acc -> acc) Program.expr_vars [] f *)
 
 (** {2 type instantiation} *)
 
-type 'ty fol_t = (Instant.instant option Program.expr, 'ty) Fol.fol
+type 'ty fol_t = (Instant.instant option Program.expr, 'ty) Fol.pred_fol
 
 type ('ty, 'data) inst_spec_t = 'ty fol_t * 'data
 (** instantaneous specification of program expression *)

@@ -5,6 +5,7 @@ module PSyn = HardyFrontEnd.Syntax
 open ProgramSyntax
 open HardyMisc.Utils
 open LTLSyntax
+open NcSyntax
 module SSyn = Syntax.Shared
 module Hist = Syntax.Instant
 
@@ -13,7 +14,7 @@ module B = Nc2ba.Make (Atom)
 
 (** {1 Build Buchi Automaton from string formula} *)
 
-module Triples = Triples.M(Atom)(B)
+module Triples = Triples.M(BAAtom)(B)(Atom)
 
 module M :
   Sig.S
@@ -73,7 +74,7 @@ module M :
     let ltl2ba_nc ((name, spec) : string * Triples.InputSpec.t) :
         string * NcSyntax.neverclaim =
       let never_file = output_file cli name ".never" in
-      (name, LtlConversion.ltl_to_neverclaim cli never_file spec)
+      (name, Ltl2tool.ltl_to_neverclaim cli never_file spec)
     in
     (* transform LTL formula to a neverclaim representation of a buchi automaton  *)
     { requires = ltl2ba_nc i.requires; ensures = ltl2ba_nc i.ensures }

@@ -5,13 +5,14 @@ module PSyn = HardyFrontEnd.Syntax
 open ProgramSyntax
 open HardyMisc.Utils
 open LTLSyntax
+open HoaSyntax
 module SSyn = Syntax.Shared
 module Hist = Syntax.Instant
 
 module Atom = Atom.Imperative ()
 module B = Hoa2ba.Make (Atom)
 
-module Triples = Triples.M(Atom)(B)
+module Triples = Triples.M(BAAtom)(B)(Atom)
 
 module M :
   Sig.S
@@ -37,7 +38,7 @@ module M :
       (spec : SSyn.ty PSyn.temp_spec_t list hoare_pair) : input =
     let print_formula (name, spec) =
       if cli.verbose then
-        Format.printf "%s formula : @,%s@," name
+        Format.printf "%s formula: %s@." name
           (Triples.InputSpec.string_of_ltl_short spec)
     in
 
@@ -71,7 +72,7 @@ module M :
     let ltl2ba_nc ((name, spec) : string * Triples.InputSpec.t) :
         string * HoaSyntax.hoa =
       let hoa_file = output_file cli name ".hoa" in
-      (name, LtlConversion.ltl_to_hoa cli hoa_file spec)
+      (name, Ltl2tool.ltl_to_hoa cli hoa_file spec)
     in
     (* transform LTL formula to a hoa representation of a buchi automaton  *)
     { requires = ltl2ba_nc i.requires; ensures = ltl2ba_nc i.ensures }

@@ -2,8 +2,9 @@ open HardyFrontEnd.Syntax.Program
 open HardyFrontEnd.Syntax.Instant
 open MiddleParser.SyntaxCommon
 
+
 type 'a arc_data = {
-    arc_f :  'a bform hoare_pair;
+    arc_f : 'a hoare_pair;
         (* length of the shortest path to each edge of the graph from the initial node *)
         (* mutable arc_min_nb_instants : min_nb_instants; *)
         (* true if there is only one possible path from the source vertex.
@@ -11,28 +12,32 @@ type 'a arc_data = {
       *)
   }
 
-
-
-
 type vertex_data = { v_min_nb_instants : min_nb_instants }
 
 module Make
-    (G : BuchiSig.S with type E.label = string bform)
+    (BAAtom : BAAtomSig)
+    (G : BuchiSig.S with type E.label = BoolAlgebra(BAAtom).disjunct_set)
     (Atoms : Atom.S with type 'a t = 'a) :
   BuchiSig.S
     with type init_val = G.t * G.t
-     and type E.label = string arc_data
+     and type E.label =  BoolAlgebra(BAAtom).disjunct_set arc_data
      and type vdata = vertex_data = struct
   (* /!\ make sure to always create vertices with the same argument order *)
 
-  module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t = string arc_data = struct
-  type t = string arc_data
+
+
+  module BoolA = BoolAlgebra(BAAtom)
+  open BoolA
+
+
+  module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t =  disjunct_set arc_data = struct
+  type t =  disjunct_set arc_data
 
   let compare = Stdlib.compare
 
   let default =
     {
-      arc_f = { requires = True; ensures = True};
+      arc_f = { requires = mk_disjunct DnfBASet.empty ; ensures = mk_disjunct DnfBASet.empty};
       (* arc_min_nb_instants = { nb_instant = 0; is_max = false }; *)
     }
 end
@@ -82,12 +87,12 @@ end
       G.(string_of_vertex l2)
 
   let string_of_edge (e : E.label) = 
-    let r_s = e.arc_f.requires |> string_of_bform Atoms.subst in
-    let e_s = e.arc_f.ensures |> string_of_bform Atoms.subst in
+    let r_s = G.string_of_edge {boola_disjunct=e.arc_f.requires.boola_disjunct} 
+    and e_s = G.string_of_edge {boola_disjunct=e.arc_f.ensures.boola_disjunct} in
     match (e.arc_f.requires, e.arc_f.ensures) with
-    | True, True -> "Σ" (* universal edge *)
+    (* | True, True -> "Σ" (* universal edge *)
     | True, _ -> Format.sprintf "ensures: %s @," e_s
-    | _, True -> Format.sprintf "requires: %s @," r_s
+    | _, True -> Format.sprintf "requires: %s @," r_s *)
     | _ -> Format.sprintf "requires: %s @, ensures : %s" r_s e_s
 
   let acceptant (v : vertex) : bool =
