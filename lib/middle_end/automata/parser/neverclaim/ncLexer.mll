@@ -31,6 +31,7 @@ rule tokenize = parse
     | "/*"                     {ignore_comment lexbuf}
     | "never"                 { NEVER }
     | '1'                      { TRUE } 
+    | "true"                     { NC_TRUE } 
     | '0'                      { FALSE } 
     | "false"                   {NC_FALSE}
     | "&&"                     { AND }

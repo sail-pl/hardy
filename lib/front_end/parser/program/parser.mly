@@ -14,7 +14,7 @@
 
 // begin specification ------
 
-let inst_spec == fol(tq_expr)
+let inst_spec == fol(tq_expr_with_pred)
 let ltl_spec == ltl(braced(inst_spec))
 
 
@@ -88,6 +88,8 @@ let simpl_expr(var_e) :=
     | (id,x) = var_e ; {Var (id,x)}
 )
 
+(*         | name = ID ; args=loption(delimited("(",separated_list(COMMA, atom),")"))  {FOL_Atom (Predicate {name;args=[]}) } *)
+
 let expr(var_e) := 
     | located (
         | EMARK ;  e = expr(var_e) ; %prec UNARY {UnOp (ENot,e)}
@@ -108,13 +110,18 @@ let tq_expr == expr(
     | endrule(START | FIRST | DOLLAR) ; id = ID ;  {id,Some (At 0)}
 )
 
+let tq_expr_with_pred := 
+    | ~=tq_expr ; <Atom>
+    // | name = ID ; args=loption(delimited("(",separated_list(COMMA, tq_expr),")")) ; { Predicate {name;args} }
+
+
 
 %public
 let fol(atom) := 
     | located(
         | TRUE ; {FOL_True}
-        | FALSE ; {FOL_False}
-        | ~ = atom ; <FOL_Atom>
+        | FALSE ; {FOL_False} 
+        | ~=atom ; <FOL_Atom>
         | ~ = common_logic_unary ; ~ = fol(atom) ; %prec UNARY <FOL_StdUnary>
         | f1 = fol(atom) ; op = common_logic_binary ; f2 = fol(atom) ; {FOL_StdBinary (f1,op,f2)}
         | FORALL ; vars = typed_state_id+ ; COMMA ; f = fol(atom) ; {Forall (List.flatten vars, f)}

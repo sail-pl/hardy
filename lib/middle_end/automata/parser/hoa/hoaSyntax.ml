@@ -1,7 +1,17 @@
 (* open HardyFrontEnd.Syntax.Fol
 open HardyMisc.Utils *)
+open SyntaxCommon
 
 (** {1 Parse tree for the Hanoi Omega-Automata Format (HOA) } *)
+
+module BAAtom : BAAtomSig with type t = string = struct
+  type t = string
+  let to_string = Fun.id
+end
+
+
+module BoolA = BoolAlgebra(BAAtom)
+
 
 type any = AnyBool of bool | AnyInt of int | AnyString of string | AnyId of string
 

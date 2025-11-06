@@ -193,25 +193,33 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
   in
   tr_seq s
 
+
+let get_bop = 
+  let open Dterm in 
+  function
+  | Arrow -> DTimplies
+  | Equiv -> DTiff
+  | LAnd -> DTand
+  | LOr -> DTor
+
 let rec pterm_of_fol
-    ({ value = f; label = loc } : (instant option expr, ty) fol) : P.term =
+    ({ value = f; label = loc } : (instant option expr predicate, ty) fol) : P.term =
   let open PH in
   let open P in
   let loc = get_loc loc in
   match f with
   | FOL_True -> term ~loc Ttrue
   | FOL_False -> term ~loc Tfalse
-  | FOL_Atom p -> translate_term p
+  | FOL_Atom (Atom p) -> translate_term p
+  | FOL_Atom (Predicate p) -> tapp (qualid [p.name]) (List.map translate_term p.args)
   | FOL_StdUnary (LNot, t) -> Tnot (pterm_of_fol t) |> term ~loc
   | FOL_StdBinary (t1, bop, t2) -> (
       let t1 = pterm_of_fol t1 in
       let t2 = pterm_of_fol t2 in
-      match bop with
-      | Arrow -> Tbinnop (t1, Dterm.DTimplies, t2) |> term ~loc
-      | Equiv -> Tbinnop (t1, Dterm.DTiff, t2) |> term ~loc
-      | LAnd -> Tbinnop (t1, Dterm.DTand, t2) |> term ~loc
-      | LOr -> Tbinnop (t1, Dterm.DTor, t2) |> term ~loc
+      Tbinnop (t1, get_bop bop, t2) |> term ~loc
   )
+  | FOL_StdNary (op,l) -> let op = get_bop op in 
+    fold_mjoin pterm_of_fol (fun f1 f2 -> Tbinnop (f1,op,f2) |> term) (term ~loc Ttrue) l 
   | Forall (v, f) ->
       let locals = List.to_seq v in
       add_bindings locals;

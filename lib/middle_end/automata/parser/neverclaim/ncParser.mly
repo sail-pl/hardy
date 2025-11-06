@@ -1,11 +1,11 @@
 %{
-    open SyntaxCommon
     open NcSyntax
+    open BoolA
 %}
 
 %token<string> ATOM 
 %token<string> LABEL
-%token TRUE FALSE NC_FALSE
+%token TRUE NC_TRUE FALSE NC_FALSE
 %token LBRACE RBRACE
 %token NEVER AND OR ARROW GOTO  NOT IF  FI LPAREN RPAREN SEMI COLON SKIP
 %token EOF
@@ -38,6 +38,7 @@ let transition := COLON ; COLON ; f = bform ; ARROW ; GOTO ; s2 = LABEL ;
 let bform := 
     | ~ = ATOM ; <Atom>
     | TRUE ; {True}
+    | NC_TRUE ; {True}
     | FALSE ; {False}
     | f1 = bform ; AND ; f2 = bform ; { And (f1,f2) }
     | f1 = bform ; OR ; f2 = bform ; { Or (f1,f2) }

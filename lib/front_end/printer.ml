@@ -67,36 +67,50 @@ let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
   | BinOp v ->
       Format.fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp v.right
 
-let pp_paren_fol f1 f2 fmt (p : _ fol) =
+let pp_paren_fol pp_fol pp_atom fmt (p : _ fol) =
   match p.value with
-  | FOL_StdBinary _ -> Format.fprintf fmt "(%a)" f1 p
-  | FOL_Atom e -> pp_paren_exp fmt f2 e
-  | _ -> f1 fmt p
+  | FOL_StdBinary _ -> Format.fprintf fmt "(%a)" pp_fol p
+  | FOL_Atom e -> pp_atom fmt e
+  | _ -> pp_fol fmt p
+  
 
-let rec pp_fol (pp_exp: Format.formatter -> _ expr -> unit) (pp_ty : Format.formatter -> ty -> unit) fmt
-    (f : (_ expr, 'a) fol) =
+let rec pp_fol : 'a. (Format.formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -> _ =
+    fun pp_atom pp_ty fmt f ->
   let open Format in
   let pp_id_ty =
-    Format.pp_print_list
+    pp_print_list
       ~pp_sep:(fun fmt () -> fprintf fmt "@ ")
-      (fun fmt (id, ty) -> Format.fprintf fmt "(%s:%a)" id pp_ty ty)
+      (fun fmt (id, ty) -> fprintf fmt "(%s:%a)" id pp_ty ty)
   in
-  let pp_fol' = pp_paren_fol (pp_fol pp_exp pp_ty) pp_exp in
+  let pp_fol' = pp_paren_fol (pp_fol pp_atom pp_ty) pp_atom in
 
   match f.value with
-  | FOL_True -> Format.fprintf fmt "true"
-  | FOL_False -> Format.fprintf fmt "false"
-  | FOL_Atom e -> pp_exp fmt e
-  | FOL_StdUnary (op, f) -> Format.fprintf fmt "%a %a" pp_unop op pp_fol' f
+  | FOL_True -> fprintf fmt "true"
+  | FOL_False -> fprintf fmt "false"
+  | FOL_Atom e -> pp_atom fmt e
+  | FOL_StdUnary (op, f) -> fprintf fmt "%a %a" pp_unop op pp_fol'  f
   | FOL_StdBinary (f1, op, f2) ->
-      Format.fprintf fmt "%a %a %a" pp_fol' f1 pp_common_logic_binary op pp_fol'
+      fprintf fmt "%a %a %a" pp_fol'  f1 pp_common_logic_binary op pp_fol' 
         f2
+  | FOL_StdNary (op, l) ->
+      pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "%a" pp_common_logic_binary op) (fun fmt arg -> pp_fol' fmt arg) fmt l
   | Forall (idty, f) ->
-      Format.fprintf fmt "forall %a. %a" pp_id_ty idty (pp_fol pp_exp pp_ty) f
+      fprintf fmt "forall %a. %a" pp_id_ty idty pp_fol' f
   | Exists (idty, f) ->
-      Format.fprintf fmt "exists %a. %a" pp_id_ty idty (pp_fol pp_exp pp_ty) f
+      fprintf fmt "exists %a. %a" pp_id_ty idty pp_fol' f
   | ExistsPrev (id, f) ->
-      Format.fprintf fmt "exists_prev %s. %a" id (pp_fol pp_exp pp_ty) f
+      fprintf fmt "exists_prev %s. %a" id pp_fol' f
+
+
+  let pp_pred pp_atom fmt = 
+    let open Format in
+      function
+    | Atom a -> pp_atom fmt a
+    | Predicate {name;args} -> 
+        fprintf fmt "%s(%a)" 
+          name 
+          (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") (fun fmt arg -> pp_atom fmt arg))
+          args
 
 let string_of_ltl_binop : ltl_binary -> string = function
   | Until -> "U"

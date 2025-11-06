@@ -12,9 +12,23 @@ and ('a, 'qty) fol_ =
   | FOL_Atom of 'a
   | FOL_StdUnary of standard_logic_uop * ('a, 'qty) fol
   | FOL_StdBinary of ('a, 'qty) fol * standard_logic_bop * ('a, 'qty) fol
+  
+  (* convention: 
+    LAnd [] <=> LOr []  <=> True 
+  *)
+  | FOL_StdNary of standard_logic_bop * ('a, 'qty) fol list
+  
+  
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
   | ExistsPrev of string * ('a,'qty) fol (* temporal existential quantification *)
+
+
+type 'a predicate = Atom of 'a | Predicate of {name: string; args: 'a list}
+
+type ('a, 'qty) pred_fol = ('a predicate, 'qty) fol
+
+type 'qty pred_decl = {name: string; params: string list; body: (string,'qty) fol }
 
 let map_fol : type a b ty_a ty_b.
     ((a, ty_a) fol -> (b, ty_b) fol) ->
@@ -29,6 +43,9 @@ let map_fol : type a b ty_a ty_b.
       { form with value }
   | FOL_StdBinary (f1, o, f2) ->
       let value = FOL_StdBinary (m f1, o, m f2) in
+      { form with value }
+  | FOL_StdNary (o,l) ->
+      let value = FOL_StdNary (o, List.map m l) in
       { form with value }
   | Forall (l, f) ->
       let value = Forall (List.map m_ty l, m f) in
@@ -48,6 +65,7 @@ let rec fold_fol : type a b t.
   | FOL_Atom p -> pj p init
   | FOL_StdUnary (_, f) -> j form (fold_fol j pj init f)
   | FOL_StdBinary (f1, _, f2) -> j form (fold_fol j pj (fold_fol j pj init f1) f2)
+  | FOL_StdNary (_,l) -> j form (List.fold_left (fold_fol j pj) init l)
   | Forall (_, f) | Exists (_, f) | ExistsPrev (_,f) -> j form (fold_fol j pj init f)
 
 (** [map_fol_ty m f] replaces every quantifer [Exists (l,e)] and [Forall (l,e)]
@@ -56,12 +74,16 @@ let rec map_fol_ty m = map_fol (map_fol_ty m) m
 
 (** [map_fol_atom m f] replaces every atom [x] of [f] by [m x]
 *)
-let rec map_fol_pred m =
+let rec map_fol_pred (m : 'a -> 'b) : ('a predicate, 'c) fol -> ('b predicate, 'c) fol =
   map_fol
     (function
-      | { value = FOL_Atom x; label = loc } -> { value = FOL_Atom (m x); label = loc }
+      | { value = FOL_Atom Atom x; label = loc } -> 
+          { value = FOL_Atom (Atom (m x)); label = loc }
+      | { value = FOL_Atom Predicate x; label = loc } -> 
+          let args = List.map m x.args in
+          { value = FOL_Atom (Predicate {x with args}); label = loc }
       | e -> map_fol_pred m e)
-    Fun.id
+    (Fun.id) (* do nothing for quantifiers *)
 
 (** {2 Helpers to build locatable formulas} *)
 
