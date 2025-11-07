@@ -3,24 +3,22 @@ open HardyFrontEnd
 open MiddleParser
 module PSyn = HardyFrontEnd.Syntax
 open ProgramSyntax
+open SyntaxCommon
 open HardyMisc.Utils
 open LTLSyntax
-open NcSyntax
 module SSyn = Syntax.Shared
 module Hist = Syntax.Instant
 
-module Atom = Atom.Imperative ()
-module B = Nc2ba.Make (Atom)
-
-(** {1 Build Buchi Automaton from string formula} *)
-
-module Triples = Triples.M(BAAtom)(B)(Atom)
-
-module M :
+module M(BAAtom : BAAtomSig)
+         (Tool : Sig.ToolSig with type input = string ltl)
+        (B: BuchiSig.S with type E.label = BoolAlgebra(BAAtom).disjunction 
+                        and type init_val = Tool.output
+                        and type 'a Atoms.t = 'a)
+        :
   Sig.S
     with type triple_data = Program.triple_data_t
      and type fol_data = Hist.min_nb_instants = struct
-  type input = (string * string ltl) hoare_pair
+  type input = (string * Tool.input) hoare_pair
   type fol_data = Hist.min_nb_instants
   type triple_data = Program.triple_data_t
   type in_program = PSyn.base_program
@@ -28,11 +26,14 @@ module M :
   (* (SSyn.ty PSyn.temp_spec_t, (SSyn.ty,unit) PSyn.inst_spec_t, PSyn.variant_t, unit) program *)
   type triples =
     ( triple_data,
-      (SSyn.ty, fol_data) PSyn.inst_spec_t disjunction conjunction )
+      (SSyn.ty, fol_data) PSyn.inst_spec_t Sig.formula )
     hoare_triple
     list
 
-  type output = (string * NcSyntax.neverclaim) hoare_pair
+
+  module Triples = Triples.M(BAAtom)(B)
+
+  type output = (string * Tool.output) hoare_pair
   type automaton = Triples.BProd.t
   (* { pa_pair :  (string * B.t) P.hoare_pair; pa_prod : (string * BB.t) } *)
 
@@ -40,14 +41,14 @@ module M :
       (spec : SSyn.ty PSyn.temp_spec_t list hoare_pair) : input =
     let print_formula (name, spec) =
       if cli.verbose then
-        Format.printf "%s formula : @,%s@," name
-          (Triples.InputSpec.string_of_ltl_short spec)
+        Format.printf "%s formula: %a@." name
+          Triples.pp_ltl_short spec
     in
 
     let fjoin = fold_mjoin Fun.id and_ltl true_ltl in
     let rely = ("rely", fjoin spec.requires) in
     print_formula rely;
-    let rely_spec = pair_map (Right Triples.InputSpec.from_ltl) rely in
+    let rely_spec = pair_map (Right Triples.from_ltl) rely in
     let guarantee = ("guarantee", fjoin spec.ensures) in
     print_formula guarantee;
 
@@ -62,7 +63,7 @@ module M :
       *)
              (if cli.no_i_a_conj || snd rely = true_ltl then g
               else and_ltl (snd rely) g)
-             |> Triples.InputSpec.from_ltl))
+             |> Triples.from_ltl))
         guarantee
     in
     { requires = rely_spec; ensures = guarantee_spec }
@@ -71,13 +72,13 @@ module M :
     Filename.(concat cli.outdir (name ^ ext))
 
   let exec (cli : Cli.info) (i : input) : output =
-    let ltl2ba_nc ((name, spec) : string * Triples.InputSpec.t) :
-        string * NcSyntax.neverclaim =
-      let never_file = output_file cli name ".never" in
-      (name, Ltl2tool.ltl_to_neverclaim cli never_file spec)
+    let call_tool ((name, spec) : string * Tool.input) :
+        string * Tool.output =
+      let file = output_file cli name in
+      (name, Tool.call cli file spec)
     in
-    (* transform LTL formula to a neverclaim representation of a buchi automaton  *)
-    { requires = ltl2ba_nc i.requires; ensures = ltl2ba_nc i.ensures }
+    (* transform each LTL formula to a buchi automaton  *)
+    { requires = call_tool i.requires; ensures = call_tool i.ensures }
 
   let automaton_to_dot (type t) (module G : BuchiSig.S with type t = t) cli
       ((name, auto) : string * G.t) =

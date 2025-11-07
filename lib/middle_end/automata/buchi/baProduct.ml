@@ -1,6 +1,7 @@
 open HardyFrontEnd.Syntax.Program
 open HardyFrontEnd.Syntax.Instant
 open MiddleParser.SyntaxCommon
+open HardyMisc.Utils
 
 
 type 'a arc_data = {
@@ -16,11 +17,11 @@ type vertex_data = { v_min_nb_instants : min_nb_instants }
 
 module Make
     (BAAtom : BAAtomSig)
-    (G : BuchiSig.S with type E.label = BoolAlgebra(BAAtom).disjunct_set)
-    (Atoms : Atom.S with type 'a t = 'a) :
+    (G : BuchiSig.S with type E.label = BoolAlgebra(BAAtom).disjunction)
+    :
   BuchiSig.S
     with type init_val = G.t * G.t
-     and type E.label =  BoolAlgebra(BAAtom).disjunct_set arc_data
+     and type E.label =  BoolAlgebra(BAAtom).disjunction arc_data
      and type vdata = vertex_data = struct
   (* /!\ make sure to always create vertices with the same argument order *)
 
@@ -29,18 +30,26 @@ module Make
   module BoolA = BoolAlgebra(BAAtom)
   open BoolA
 
+  (* Atoms not needed in the product *)
+  module Atoms : Atom.S = struct 
+    type _ t = unit 
+    let get _ = ()
+    let subst _ = ()
+    let add_and_get _ = ()
+  end 
 
-  module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t =  disjunct_set arc_data = struct
-  type t =  disjunct_set arc_data
 
-  let compare = Stdlib.compare
+  module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t =  disjunction arc_data = struct
+    type t =  disjunction arc_data
 
-  let default =
-    {
-      arc_f = { requires = mk_disjunct DnfBASet.empty ; ensures = mk_disjunct DnfBASet.empty};
-      (* arc_min_nb_instants = { nb_instant = 0; is_max = false }; *)
-    }
-end
+    let compare = Stdlib.compare
+
+    let default =
+      {
+        arc_f = { requires = mk_disj DisjBoolA.empty ; ensures = mk_disj DisjBoolA.empty};
+        (* arc_min_nb_instants = { nb_instant = 0; is_max = false }; *)
+      }
+  end
 
   (* returned graph *)
   module GProd =
@@ -72,28 +81,28 @@ end
     | _, Blocking -> Blocking
     | _ -> Unknown
 
-  let string_of_vertex v =
+  let pp_vertex fmt v =
     let l1, l2 = V.label v in
-    Format.sprintf "{pre_%s @, post_%s} @. insts %s %i"
-      G.(string_of_vertex l1)
-      G.(string_of_vertex l2)
+    Format.fprintf fmt "{pre_%a @, post_%a} @. insts %s %i"
+      G.pp_vertex l1
+      G.pp_vertex l2
       (if (get_vdata v).v_min_nb_instants.is_max then "=" else "≥")
       (get_vdata v).v_min_nb_instants.nb_instant
 
   let id_of_vertex v =
     let l1, l2 = V.label v in
-    Format.sprintf "pre_%s_post_%s"
-      G.(string_of_vertex l1)
-      G.(string_of_vertex l2)
+    Format.asprintf "pre_%a_post_%a"
+      G.pp_vertex l1
+      G.pp_vertex l2
 
-  let string_of_edge (e : E.label) = 
-    let r_s = G.string_of_edge {boola_disjunct=e.arc_f.requires.boola_disjunct} 
-    and e_s = G.string_of_edge {boola_disjunct=e.arc_f.ensures.boola_disjunct} in
+  let pp_edge fmt (e : E.label) = 
     match (e.arc_f.requires, e.arc_f.ensures) with
     (* | True, True -> "Σ" (* universal edge *)
     | True, _ -> Format.sprintf "ensures: %s @," e_s
     | _, True -> Format.sprintf "requires: %s @," r_s *)
-    | _ -> Format.sprintf "requires: %s @, ensures : %s" r_s e_s
+    | _ -> Format.fprintf fmt "requires: %a @, ensures : %a" 
+        G.pp_edge e.arc_f.requires 
+        G.pp_edge e.arc_f.ensures
 
   let acceptant (v : vertex) : bool =
     let l1, l2 = V.label v in
@@ -137,7 +146,6 @@ end
       let open BuchiSig.Utils (G) in
       match (get_all_init_nodes rely_a, get_all_init_nodes guarantee_a) with
       | h1 :: [], h2 :: [] -> (h1, h2)
-      | [], _ :: [] -> failwith "bla"
       | _ -> failwith "no or more than one initial state"
     in
 

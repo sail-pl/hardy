@@ -73,7 +73,7 @@ module Functional : S = struct
     ( sub_atom_in_str
         (fun s ->
           let a = get s in
-          Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp (fun fmt (id,_) -> pp_print_string fmt id))) pp_ty) a))
+          Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) a))
       f, (cnt, m) )
 
   (* let get_and_incr : int t = fun (cnt,m) -> cnt,(cnt+1,m) *)
@@ -118,7 +118,7 @@ module Imperative () : S with type 'a t = 'a = struct
     let label = Format.sprintf "f_%i" key in
     match AtomTable.find_opt atomic_bindings key with
     | None ->
-        let short_name = "F" ^ string_of_int !cnt in
+        let short_name = string_of_int !cnt in
         AtomTable.add atomic_bindings key (short_name, atom);
         incr cnt;
         (short_name, label)

@@ -5,24 +5,25 @@ open FOLSyntax
 open LTLSyntax
 open ProgramSyntax
 open InstantSyntax
+open Format
 
 let pp_cat_ty fmt = function
-  | Input -> Format.fprintf fmt "inputs"
-  | Output -> Format.fprintf fmt "outputs"
-  | State -> Format.fprintf fmt "state"
-  | Local -> Format.fprintf fmt "local"
+  | Input -> fprintf fmt "inputs"
+  | Output -> fprintf fmt "outputs"
+  | State -> fprintf fmt "state"
+  | Local -> fprintf fmt "local"
 
 let pp_base_ty fmt = function
-  | Ty_Bool -> Format.fprintf fmt "bool"
-  | Ty_Int -> Format.fprintf fmt "int"
+  | Ty_Bool -> fprintf fmt "bool"
+  | Ty_Int -> fprintf fmt "int"
 
-let pp_ty fmt (c, t) = Format.fprintf fmt "%a.%a" pp_cat_ty c pp_base_ty t
+let pp_ty fmt (c, t) = fprintf fmt "%a.%a" pp_cat_ty c pp_base_ty t
 
 let pp_unop fmt (op : standard_logic_uop) =
-  match op with LNot -> Format.fprintf fmt "!"
+  match op with LNot -> fprintf fmt "!"
 
 let pp_expr_binop fmt (op : expr_binop) =
-  Format.fprintf fmt
+  fprintf fmt
     (match op with
     | Add -> "+"
     | Sub -> "-"
@@ -38,7 +39,7 @@ let pp_expr_binop fmt (op : expr_binop) =
     | EAnd -> "&&")
 
 let pp_common_logic_binary fmt (op: standard_logic_bop) : unit = 
-  Format.fprintf fmt (match op with
+  fprintf fmt (match op with
   | Equiv -> "<->"
   | Arrow -> "->"
   | LOr ->  "||"
@@ -47,34 +48,34 @@ let pp_common_logic_binary fmt (op: standard_logic_bop) : unit =
 
 let pp_hist fmt (v, h) =
   match h with
-  | Some (Previous 0) | None -> Format.pp_print_string fmt v
-  | Some (Previous n) -> Format.fprintf fmt "prev %i %s" n v
-  | Some (At n) -> Format.fprintf fmt "%s at %i" v n
+  | Some (Previous 0) | None -> pp_print_string fmt v
+  | Some (Previous n) -> fprintf fmt "prev %i %s" n v
+  | Some (At n) -> fprintf fmt "%s at %i" v n
 
-(* let pp_nohist fmt (id,_) = Format.pp_print_string fmt id *)
+(* let pp_nohist fmt (id,_) = pp_print_string fmt id *)
 
 let pp_paren_exp fmt f e =
-  match e.value with BinOp _ -> Format.fprintf fmt "(%a)" f e | _ -> f fmt e
+  match e.value with BinOp _ -> fprintf fmt "(%a)" f e | _ -> f fmt e
 
 let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
   let pp_exp fmt = pp_paren_exp fmt (pp_exp print_var) in
   match e.value with
-  | Int n -> Format.fprintf fmt "%i" n
-  | True -> Format.fprintf fmt "true"
-  | False -> Format.fprintf fmt "false"
+  | Int n -> fprintf fmt "%i" n
+  | True -> fprintf fmt "true"
+  | False -> fprintf fmt "false"
   | Var (s, i) -> print_var fmt (s, i)
-  | UnOp (ENot,e) -> Format.fprintf fmt "!%a" pp_exp e
+  | UnOp (ENot,e) -> fprintf fmt "!%a" pp_exp e
   | BinOp v ->
-      Format.fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp v.right
+      fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp v.right
 
 let pp_paren_fol pp_fol pp_atom fmt (p : _ fol) =
   match p.value with
-  | FOL_StdBinary _ -> Format.fprintf fmt "(%a)" pp_fol p
+  | FOL_StdBinary _ -> fprintf fmt "(%a)" pp_fol p
   | FOL_Atom e -> pp_atom fmt e
   | _ -> pp_fol fmt p
   
 
-let rec pp_fol : 'a. (Format.formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -> _ =
+let rec pp_fol : 'a. (formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -> _ =
     fun pp_atom pp_ty fmt f ->
   let open Format in
   let pp_id_ty =
@@ -112,31 +113,55 @@ let rec pp_fol : 'a. (Format.formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") (fun fmt arg -> pp_atom fmt arg))
           args
 
-let string_of_ltl_binop : ltl_binary -> string = function
+let pp_ltl_binop fmt ( op: ltl_binary) : unit = 
+  let op = match op with  
   | Until -> "U"
   | Release -> "R"
   | WeakUntil | StrongRelease -> failwith "unspported binop"
-  | LTL_StdBinary op -> Format.asprintf "%a" pp_common_logic_binary op
+  | LTL_StdBinary op -> asprintf "%a" pp_common_logic_binary op
+  in pp_print_string fmt op 
 
-let string_of_ltl_unop : ltl_unary -> string = function
+let pp_ltl_unop fmt  ( op: ltl_unary) : unit =
+    let op = match op with  
   | Next -> "X"
   | Always -> "G"
   | Eventually -> "F"
-  | LTL_StdUnary op -> Format.asprintf "%a" pp_unop op
+  | LTL_StdUnary op -> asprintf "%a" pp_unop op
+  in pp_print_string fmt op 
 
-let string_of_ltl (string_of_atom : 'a -> string)
-    (string_of_ltl_binop : ltl_binary -> string)
-    (string_of_ltl_unop : ltl_unary -> string) : 'a ltl -> string = 
-    let rec aux f = 
+
+let pp_ltl_binop_spin fmt ( op: ltl_binary) : unit =
+  let op = match op with  
+  | Until -> "U"
+  | Release -> "V"
+  | LTL_StdBinary Arrow -> "->"
+  | LTL_StdBinary LOr -> "||"
+  | LTL_StdBinary LAnd -> "&&"
+  | LTL_StdBinary Equiv -> "<->"
+  | _ -> failwith "unsupported bop"
+  in pp_print_string fmt op 
+
+let pp_ltl_unnop_spin fmt ( op: ltl_unary) : unit =
+  let op = match op with  
+  | Next -> "X"
+  | Always -> "[]"
+  | Eventually -> "<>"
+  | LTL_StdUnary LNot -> "!"
+  in pp_print_string fmt op 
+
+
+
+
+let pp_ltl (pp_atom : formatter -> 'a -> unit)
+    (pp_ltl_binop : formatter -> ltl_binary -> unit)
+    (pp_ltl_unop : formatter -> ltl_unary -> unit) : formatter -> 'a ltl -> unit = 
+    let rec aux fmt f = 
     match f.value with
-      | LTL_True -> "true"
-      | LTL_False -> "false"
-      | LTL_Atom p -> string_of_atom p
+      | LTL_True -> pp_print_string fmt "true"
+      | LTL_False -> pp_print_string fmt "false"
+      | LTL_Atom p -> pp_atom fmt p
       | LTL_Binary (f1, op, f2) ->
-          let f1 = aux f1 in
-          let f2 = aux f2 in
-          Format.sprintf "(%s) %s (%s)" f1 (string_of_ltl_binop op) f2
+          fprintf fmt "(%a) %a (%a)" aux f1 pp_ltl_binop op aux f2
       | LTL_Unary (op, f) ->
-          let f = aux f in
-          Format.sprintf "%s(%s)" (string_of_ltl_unop op) f
-      in aux
+          fprintf fmt "%a(%a)" pp_ltl_unop op aux f
+      in aux 
