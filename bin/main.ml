@@ -20,6 +20,14 @@ let main (type triple_data) (type fol_data)
   |> Back.write_program output_file
 
 let () =
+  let open HardyMiddleEnd in
+  let open MiddleParser.HoaSyntax in
+  let open Automata in
+  let open Buchi in
+  let open Hoa2ba in
+  let module Atom = Atom.Imperative () in
+  let module B = Make(Atom) in
+  let module G = Generation.M(BAAtom)(SpinHoaOutput)(B) in
   main
-    (module HardyMiddleEnd.Automata.Buchi.Generation_hoa.M)
+    (module G)
     (module HardyBackEnd.Why3Gen.M)

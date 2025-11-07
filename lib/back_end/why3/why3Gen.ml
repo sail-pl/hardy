@@ -270,7 +270,7 @@ struct
 
   type in_fun =
     ( triple_data,
-      (Shared.ty, fol_data) inst_spec_t U.disjunction U.conjunction )
+      (Shared.ty, fol_data) inst_spec_t HardyMiddleEnd.Sig.formula )
     hoare_triple
 
   type in_spec = in_fun

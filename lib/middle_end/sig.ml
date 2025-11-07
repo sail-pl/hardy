@@ -5,6 +5,19 @@ open HardyFrontEnd.Syntax.Program
 open FrontParser.Program
 open HardyMisc.Utils
 
+
+(* Tool for generating the automata *)
+module type ToolSig = sig
+  type input
+  type output
+
+  val call : Cli.info -> (string -> string) ->  input -> output
+  
+end
+
+(* triples are in cnf *)
+type 'f formula = 'f list disjunction list conjunction
+
 (** The middle-end requires :
 
     + translation of the specification to a format understandable by the
@@ -34,7 +47,7 @@ module type S = sig
 
   type triples =
     ( triple_data,
-      (Shared.ty, fol_data) inst_spec_t disjunction conjunction )
+      (Shared.ty, fol_data) inst_spec_t formula )
     hoare_triple
     list
 

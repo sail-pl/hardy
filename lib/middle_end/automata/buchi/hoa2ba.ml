@@ -1,6 +1,6 @@
 open HardyFrontEnd.Syntax
 open MiddleParser.HoaSyntax
-
+open HardyMisc.Utils
 
 let boola_of_label_expr (f_string: string -> BAAtom.t) (f_int: int ->BAAtom.t) : label_expr -> BoolA.t =
   let rec aux : label_expr -> BoolA.t =
@@ -29,18 +29,23 @@ module Vertex : Graph.Sig.COMPARABLE with type t = string * hoa_vdata
   let equal s1 s2 = String.equal (fst s1) (fst s2)
 end
 
-module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t = BoolA.disjunct_set = struct
-  type t =   BoolA.disjunct_set
+module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t = BoolA.disjunction = struct
+  type t =   BoolA.disjunction
 
   let compare = Stdlib.compare
-  let default : BoolA.disjunct_set =  BoolA.(mk_disjunct (DnfBASet.empty))
+  let default : t =  BoolA.(mk_disj (DisjBoolA.empty))
 end
 
 
 module Make (Atoms : Atom.S with type 'a t = 'a) :
-  BuchiSig.S with type E.label = BoolA.disjunct_set and type init_val = hoa =
+  BuchiSig.S with type E.label = BoolA.disjunction 
+              and type init_val = hoa 
+              and type 'a Atoms.t = 'a
+  =
 struct
   include Graph.Imperative.Digraph.ConcreteLabeled (Vertex) (Arc)
+
+  module Atoms = Atoms
 
   type init_val = hoa
   type vdata = hoa_vdata
@@ -67,7 +72,7 @@ struct
       (fun (state,edges) ->
         List.iter (fun edge ->
           let src = V.create  (string_of_int state.state_number, {start=state.state_number = start; acceptant=state.state_acc_sets <> []}) 
-          and label = BoolA.(edge.edge_label |> Option.get |> boola_of_label_expr (fun _ -> failwith "got labeled name") get_edge_label |> nnf_of_boola |> dnf_of_boola  |> mk_disjunct)
+          and label = BoolA.(edge.edge_label |> Option.get |> boola_of_label_expr (fun _ -> failwith "got labeled name") get_edge_label |> nnf_of_boola |> dnf_of_boola)
           and dst = 
             let state = 
               (* fixme: once a vertex is added, it cannot be updated (-> use the vdata properly with the lib).
@@ -88,9 +93,9 @@ struct
       hoa.body;
     g
 
-  let string_of_vertex = fst
+  let pp_vertex fmt s = Format.pp_print_string fmt (fst s)
 
-  let id_of_vertex = string_of_vertex
+  let id_of_vertex = Format.asprintf "%a" pp_vertex
   (* let rec string_of_edge (f : label_expr) = match f with
   | BoolLabel b -> string_of_bool b
   | IntLabel i -> string_of_int i
@@ -99,14 +104,49 @@ struct
   | DisjLabel (e1, e2) -> Printf.sprintf "%s & %s" (string_of_edge e1) (string_of_edge e2)
   | NotLabel e -> "~" ^ string_of_edge e *)
   
-  let string_of_edge (f : E.label) = Format.asprintf "%a"  (BoolA.pp_dnf_boola (fun fmt s -> Format.pp_print_string fmt (Atoms.get s |> fst))) f.boola_disjunct
+
+  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) fmt (Atoms.get s |> snd) 
+  let pp_atom_short = fun fmt s -> Format.pp_print_string fmt (Atoms.get s |> fst)
+
+  let pp_edge fmt (f : E.label) = 
+    let conjs = BoolA.DisjBoolA.to_seq f.disjunct in 
+
+    let nb_lit = Seq.fold_left (fun acc x -> Int.add acc @@ BoolA.AtomicBASet.cardinal x.conjunct) 0 conjs in
+    (* serves as a hint to decide if atoms should be printed in short or full form *)
+    let pp_atom = (if nb_lit > 6 then pp_atom_short else pp_atom_full) in
+
+    Format.fprintf fmt "%a" (BoolA.pp_dnf_boola pp_atom) f
 
   let get_vdata = snd
 
   let get_edge_type (e : E.label) =
     let open BuchiSig in
-    match  BoolA.DnfBASet.cardinal e.boola_disjunct with 
+    match  BoolA.DisjBoolA.cardinal e.disjunct with 
     | 0 -> Universal 
-    | 1 when  BoolA.(AtomicBASet.exists (function False -> true | _ -> false) (DnfBASet.choose e.boola_disjunct)) -> Blocking 
+    | 1 when  BoolA.(AtomicBASet.exists (function False -> true | _ -> false) (DisjBoolA.choose e.disjunct).conjunct) -> Blocking 
     | _ -> Unknown
+end
+
+module SpinHoaOutput : Sig.ToolSig with 
+        type input = string HardyFrontEnd.Syntax.Ltl.ltl and
+        type output = hoa
+= struct
+  open HardyFrontEnd
+  type input = string HardyFrontEnd.Syntax.Ltl.ltl
+  type output = hoa
+
+    let call (i : Cli.info) (hoa_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
+      let open Format in
+      let hoa_file = hoa_file ".hoa" in
+    let to_spin = Printer.(pp_ltl pp_print_string pp_ltl_binop_spin pp_ltl_unnop_spin) in
+    let cmd =
+      Filename.quote_command "ltl2tgba"
+        [ "-B"; asprintf "%a" to_spin f]
+        ~stdout:hoa_file ~stderr:(hoa_file ^ ".err")
+    in
+    if i.verbose then printf "ltl2tgba command line : %s@." cmd;
+    let ret = Sys.command cmd in
+    if ret <> 0 then
+      failwith (sprintf "non-0 exit-code (%i) from ltl2tgba@." ret)
+    else MiddleParser.HoaParsing.parse_automaton hoa_file
 end

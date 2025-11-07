@@ -9,11 +9,14 @@ module type S = sig
   val create : init_val -> t
   val is_start_node : V.t -> bool
   val acceptant : V.t -> bool
-  val string_of_vertex : V.t -> string
+  val pp_vertex : Format.formatter -> V.t -> unit
   val id_of_vertex : V.t -> string
-  val string_of_edge : E.label -> string
+  val pp_edge : Format.formatter -> E.label -> unit
   val get_edge_type : E.label -> edge_type
   val get_vdata : V.t -> vdata
+
+  module Atoms : Atom.S
+
 end
 
 (** Buchi-specific graph utilities *)
@@ -52,12 +55,12 @@ functor
       let default_edge_attributes _ = [ `Fontsize 10 ]
       let get_subgraph _ = None
       let graph_attributes _g = []
-      let vertex_name (v : vertex) = "\"" ^ string_of_vertex v ^ "\""
+      let vertex_name (v : vertex) = Format.asprintf "\"%a\"" pp_vertex v
 
       let edge_attributes e =
         let l = E.label e in
         [
-          `Label (string_of_edge l);
+          `Label (Format.asprintf "%a" pp_edge l);
           `Color
             (match get_edge_type l with
             | Universal -> 16762880

@@ -11,10 +11,15 @@ let mk_labeled label value = { label; value }
 let dummy_pos : loc = (Lexing.dummy_pos, Lexing.dummy_pos)
 let mk_dummy_loc value = { value; label = None }
 
-type 'f disjunction = { disjunct : 'f list }
+type 'f disjunction = { disjunct : 'f }
+
+let mk_disj disjunct = { disjunct }
+
 (** type alias for list of disjunctive and conjunctive formulas *)
 
-type 'f conjunction = { conjunct : 'f list }
+type 'f conjunction = { conjunct : 'f }
+let mk_conj conjunct = { conjunct }
+
 
 (** [fold_mjoin f j init l] returns [init] if [l = nil], [f x] if [l] = [x] and
     otherwise, behaves like [List.fold_left] where the current value is applied

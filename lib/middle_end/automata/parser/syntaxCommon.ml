@@ -1,6 +1,6 @@
-open HardyFrontEnd.Syntax.Fol
+open HardyFrontEnd
+open Syntax.Fol
 open HardyMisc.Utils
-
 
 module type BAAtomSig = sig
   type t
@@ -19,7 +19,6 @@ module BoolAlgebra(A : BAAtomSig) = struct
     | And of t * t
     | Or of t *t
     | Not of t
-
 
   type atomic_boola = 
   | True
@@ -49,56 +48,33 @@ module BoolAlgebra(A : BAAtomSig) = struct
   | Or (f1,f2) -> Or (nnf_of_boola f1,nnf_of_boola f2)
 
 
-
-
   module AtomicBASet = Set.Make (struct
     type t = atomic_boola
 
     let compare = Stdlib.compare
   end)
 
-  module DnfBASet = Set.Make (struct
-    type t = AtomicBASet.t
+  module ConjBoolA = AtomicBASet
+  type nonrec conjunction = ConjBoolA.t conjunction
+
+  (** [disjunct_set] is the disjunctive normal form obtained from a [bool_algebra] formula *)
+
+  module DisjBoolA = Set.Make (struct
+    type t = conjunction
 
     let compare = Stdlib.compare
   end)
 
-
-  (** [disjunct_set] is the disjunctive normal form obtained from a [bool_algebra] formula *)
-
-  (* an empty conjunct_set is the same as the singleton {true} *)
-  type conjunct_set = { boola_conjunct : AtomicBASet.t }
-
-  (* an empty disjunct_set is the same as the singleton {false}*)
-  type disjunct_set = { boola_disjunct : DnfBASet.t }
-
-  let mk_conjunct boola_conjunct = {boola_conjunct}
-  let mk_disjunct boola_disjunct = {boola_disjunct}
+  type nonrec disjunction = DisjBoolA.t disjunction
 
 
-
-  let rec dnf_of_boola (f:nnf_boola) : DnfBASet.t = (match f with
-  | Atom a -> a |> AtomicBASet.singleton |> DnfBASet.singleton
+  let rec dnf_of_boola (f:nnf_boola) : disjunction = mk_disj 
+  (match f with
+  | Atom a -> a |> ConjBoolA.singleton |> mk_conj |> DisjBoolA.singleton
   | And (f1, f2) -> 
     let f1 = dnf_of_boola f1 and f2 = dnf_of_boola f2 in 
-    DnfBASet.(fold (fun conj1 disj -> union disj (map (AtomicBASet.union conj1) f2)) f1 empty)
-  | Or (f1, f2) -> DnfBASet.union (dnf_of_boola f1) (dnf_of_boola f2))
-
-
-
-  (* let ( <-> ) f1 f2 = And (Or (Not f1, f2), Or (Not f2, f1))
-  let ( --> ) f1 f2 = Or (Not f1, f2) *)
-
-  (* let rec map_bform_atom : type a b. (a -> b) -> a bool_algebra -> b bool_algebra =
-  fun m -> function
-    | Atom a -> Atom (m a)
-    | And (b1, b2) -> And (map_bform_atom m b1, map_bform_atom m b2)
-    | Or (b1, b2) -> Or (map_bform_atom m b1, map_bform_atom m b2)
-    | Not b -> Not (map_bform_atom m b)
-    | (True | False) as x -> x *)
-
-  (* let paren_bform f b = match b with  And _ | Or _  -> Format.sprintf "(%s)" (f b) | _ -> f b *)
-
+    DisjBoolA.(fold (fun conj1 disj -> union disj (map (fun conj2 -> ConjBoolA.union conj1.conjunct conj2.conjunct |> mk_conj) f2.disjunct)) f1.disjunct empty) 
+  | Or (f1, f2) -> DisjBoolA.union (dnf_of_boola f1).disjunct (dnf_of_boola f2).disjunct) 
 
   let pp_atomic_boola (pp_atom : Format.formatter -> string -> unit) fmt : atomic_boola -> unit = 
     let open Format in   
@@ -115,21 +91,25 @@ module BoolAlgebra(A : BAAtomSig) = struct
       (pp_atomic_boola pp_atom)
       fmt
       (AtomicBASet.to_seq s)
+      
+  let pp_paren_atomic_boola f fmt (e : AtomicBASet.t) =
+    let open Format in   
+    match AtomicBASet.cardinal e with 0 -> pp_print_string fmt "true" | 1 -> f fmt e | _ -> fprintf fmt "(%a)" f e
 
-  let pp_dnf_boola (pp_atom : Format.formatter -> string -> unit) fmt (s:DnfBASet.t) : unit =
+  let pp_dnf_boola (pp_atom : Format.formatter -> string -> unit) fmt (s: disjunction) : unit =
     let open Format in
     pp_print_seq 
     ~pp_sep:(fun fmt () -> fprintf fmt " | ")
-    (fun fmt -> fprintf fmt "(%a)" (pp_atomic_boola_set pp_atom))
+    (fun fmt {conjunct} -> pp_paren_atomic_boola (pp_atomic_boola_set pp_atom) fmt conjunct)
     fmt
-    (DnfBASet.to_seq s)
+    (DisjBoolA.to_seq s.disjunct)
 
       
-  let fol_of_dnf_boola (convert_atom : A.t -> ('a, 'b) fol) (f: disjunct_set) : ('a, 'b) fol =
+  let fol_of_dnf_boola (convert_atom : A.t -> ('a, 'b) fol) (f: disjunction) : ('a, 'b) fol =
     let disj = Seq.(
-      DnfBASet.to_seq f.boola_disjunct 
-      |> map (fun conj ->
-          let fol_conj = AtomicBASet.to_seq conj
+      DisjBoolA.to_seq f.disjunct 
+      |> map (fun {conjunct} ->
+          let fol_conj = AtomicBASet.to_seq conjunct
             |> map (
               function
               | True -> mk_dummy_loc FOL_True
