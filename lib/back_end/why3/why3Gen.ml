@@ -445,7 +445,7 @@ struct
     in
 
     let sp_pre =
-      (* in the precondition, "naked" variables except inputs are always equal 
+      (* in the precondition, "naked" state variables are always equal 
         to the head of the history
       *)
       let curr cat =
@@ -456,7 +456,7 @@ struct
         |> term
       in
 
-      curr State :: curr Output
+      curr State
       :: List.map
            (fun disj ->
              fold_mjoin (convert length_assert) why3_or (term Ttrue)
