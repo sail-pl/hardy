@@ -1,6 +1,6 @@
 input on off : bool;
 output light : bool;
-var x : bool;
+var curr_light : bool;
 
 
 relies on  G (! {on} || ! {off})
@@ -9,16 +9,20 @@ guarantees {on}  R ({on} || ! {light})
 guarantees G ({on} -> {off} R ({off} || {light}))
 guarantees G ({off} -> {on} R ({on} || ! {light}))
 
+guarantees G {curr_light = light}
+
 setup : 
-	ensures { light = false }
-	emit false to light;
+	ensures { !curr_light  }
+	curr_light := false;
 
 loop:
 	if on then 
-		emit true to light;
+		curr_light := true;
 	else 
 		if off then 
-			emit false to light;
+			curr_light := false;
 		end
 	end
+	emit curr_light to light;
+
 	

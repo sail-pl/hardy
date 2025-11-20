@@ -2,6 +2,9 @@ output
     accent : bool 
     beat : int
 ;
+var curr_beat : int;
+
+guarantees G {curr_beat = beat}
 
 guarantees G {beat > 0}
 
@@ -11,17 +14,16 @@ guarantees G ( {beat = 1} -> X {beat = 2} && X X {beat = 3} && X X X {beat = 1} 
 
 
 setup : 
-	ensures { beat = 1 && accent }
-    
-	emit 1 to beat;
-    emit true to accent;
+	ensures { curr_beat = 1}
+    curr_beat := 1;
 
 
 loop:
-    if beat = 3 then 
-	    emit 1 to beat;
+    if curr_beat = 3 then
+        curr_beat := 1;
         emit true to accent;
     else 
-        emit beat+1 to beat;
+        curr_beat := curr_beat + 1;
         emit false to accent;
     end
+    emit curr_beat to beat;
