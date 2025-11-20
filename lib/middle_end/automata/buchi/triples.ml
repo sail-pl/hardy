@@ -51,8 +51,6 @@ module M(BAAtom : BAAtomSig)
   end)
 
   let previous_instant_spec (env: (cat_ty * base_ty) env) in_e init_post : (ty, min_nb_instants) inst_spec_t Sig.formula =
-    (* let inputs = List.map (pair_map (Right (fun t -> (Input, t)))) env.env_input in
-    let outputs = List.map (pair_map (Right (fun t -> (Output, t)))) env.env_output in *)
     let replace_i (e : _ expr) =
       match e.value with
       | Var (v, inst) as var ->
@@ -83,7 +81,7 @@ module M(BAAtom : BAAtomSig)
       | _ -> e
     in
     (* get the possible states to be in from the previous transition second component *)
-    let requires : BoolA.disjunction info list =
+    let disjunctions : BoolA.disjunction info list disjunction =
       let l =
         List.map
           (fun e ->
@@ -100,26 +98,24 @@ module M(BAAtom : BAAtomSig)
                 Indeed, if we prove the new state is independent of the current state,
                 there is no need to check for others.
             *)
-      (* if List.exists (fun (f,_) -> BoolA.(DnfBASet.exists (fun a -> a= AtomicBASet.singleton True) f.disjunct)) l then [] else l *)
-      l
+      (* if List.exists (fun (f,_) -> BoolA.(DnfBASet.exists (fun a -> a= AtomicBASet.singleton True) f.disjuncts)) l then [] else l *)
+      l |> mk_disj
     in
-    (* todo: use env to type variables *)
-    let requires :  (ty, min_nb_instants) inst_spec_t Sig.formula =
-      {
-        conjunct =
-          List.map ( fun f -> 
+    let disjunctions = 
+     List.map ( fun f -> 
             let to_fol : BoolA.disjunction -> ty fol_t = fol_of_dnf_boola (map_fol_pred (map_expr replace_i))  in 
-            [to_fol f.v,f.i] |> mk_disj
-          )
-          requires;
-      }
-          in
-    (* if this is an init_node, add the setup postcondition to the current triple precondition *)
-    Option.fold init_post ~none:requires ~some:(fun cond ->
-        {
-          conjunct =
-            ([cond, { nb_instant = 0; is_max = true }] |> mk_disj):: requires.conjunct;
-        })
+            (to_fol f.v,f.i)
+          ) disjunctions.disjuncts |> mk_disj
+     in
+
+    (* if the current node is an init_node, add the setup postcondition to the disjunction *)
+    let requires = Option.fold init_post 
+      ~none:disjunctions 
+      ~some:(fun cond -> ([cond, { nb_instant = 0; is_max = true }])@disjunctions.disjuncts |> mk_disj) in
+
+    (* todo: use env to type variables *)
+    (* let requires :  (ty, min_nb_instants) inst_spec_t Sig.formula = *)
+      mk_conj [requires]
 
   (** [generate_spec inputs in_e out_e init_post] builds the list of hoare pairs
       for a node of the product graph
@@ -173,11 +169,10 @@ module M(BAAtom : BAAtomSig)
       List.fold_left
         (fun m e ->
           let l = BProd.E.label e in
-          let prev_nb_instants = BProd.(get_vdata (E.src e)).v_min_nb_instants in
           M.add_to_list
-            {v=l.arc_f.requires; i=prev_nb_instants}
+            {v=l.arc_f.requires; i=v.v_min_nb_instants}
             (* 'ensures' exit arcs are over the start of the next instant  *)
-            {v=l.arc_f.ensures; i=Instant.add_nb_instant 1 prev_nb_instants}
+            {v=l.arc_f.ensures; i=Instant.add_nb_instant 1 v.v_min_nb_instants}
             m)
         M.empty out_e
     in
@@ -198,15 +193,16 @@ module M(BAAtom : BAAtomSig)
           (* remove any trivial precondition *)
             (* (List.filter
               (function
-                | { conjunct = [ (f, _) ] } -> f.value <> FOL_True
-                | { conjunct = [] } -> false
+                | { conjuncts = [ (f, _) ] } -> f.value <> FOL_True
+                | { conjuncts = [] } -> false
                 | _ -> true)
               [ previous_ens; current_req ]) *)
-              (previous_ens.conjunct@current_req.conjunct) |> mk_conj
+               
+              (previous_ens.conjuncts@current_req.conjuncts) |> mk_conj
 
         and ensures : (ty, min_nb_instants) inst_spec_t Sig.formula =
           (* disjunction of output properties sharing the same input property *)
-          (*let disjunct =
+          (*let disjuncts =
              if List.exists (fun (f, _) -> f = True) ens then
               (* if one of them is true, nothing to ensure *)
               []
@@ -214,7 +210,7 @@ module M(BAAtom : BAAtomSig)
           in *)
           [fol_of_dnf_boola_replace ens |> mk_disj] |> mk_conj
         in
-        (* if List.for_all (fun d -> List.is_empty d.disjunct) ensures.conjunct then
+        (* if List.for_all (fun d -> List.is_empty d.disjuncts) ensures.conjuncts then
           (* discard when postcondition is true *) s
         else { requires; ensures } :: s *)
         { requires; ensures } :: s)

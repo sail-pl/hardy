@@ -430,18 +430,14 @@ struct
         in
         generate_function d spec bdy)
 
-  let length_assert (n : min_nb_instants) : P.term option =
+  let length_assert (n : min_nb_instants) : P.term =
     let open P in
     let open PH in
-    if not n.is_max then
-      (* for now, we assume knowing the minimal history length isn't helpful *)
-      None
-    else
       Tinnfix
         ( history_length,
           Ident.op_infix (if n.is_max then "=" else ">=") |> ident,
           tconst n.nb_instant )
-      |> term |> Option.some
+      |> term
 
   (** generates WhyML logical expression to represent specification *)
   let generate_spec ((_d, spec) : in_spec) : out_spec =
@@ -453,22 +449,27 @@ struct
 
     let sp_pre =
       (* in the precondition, "naked" state variables are always equal 
-        to the head of the history
+        to the head of the history, except if we just received our first input, that is, history size is 0
       *)
       let curr cat =
-        Tinnfix
+        let eq = Tinnfix
           ( tapp (qualid [nth_h cat]) [ tconst 0; Tquant (Dterm.DTlambda, one_binder "x", [], tvar @@ qualid ["x"]) |> term ],
             Ident.op_infix "=" |> ident,
             tvar (qualid [ get_pp_string pp_cat_ty cat ]) )
         |> term
       in
+      P.Tbinnop
+        ( length_assert {is_max=false; nb_instant=1},
+          DTimplies,
+          eq) |> term
+    in
 
       curr State
       :: List.map
            (fun disj ->
-             fold_mjoin (convert length_assert) why3_or (term Ttrue)
-               disj.disjunct)
-           spec.requires.conjunct
+             fold_mjoin (fun (f,data) -> why3_and (pterm_of_fol f) (length_assert data)) why3_or (term Ttrue)
+               disj.disjuncts)
+           spec.requires.conjuncts
     in
     let post =
       List.map
@@ -476,8 +477,8 @@ struct
           ( pat Pwild,
             fold_mjoin
               (convert (fun _ -> None))
-              why3_or (term Ttrue) disj.disjunct ))
-        spec.ensures.conjunct
+              why3_or (term Ttrue) disj.disjuncts ))
+        spec.ensures.conjuncts
     in
     { empty_spec with sp_pre; sp_post = [ (Loc.dummy_position, post) ] }
 

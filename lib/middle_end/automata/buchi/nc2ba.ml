@@ -75,9 +75,9 @@ struct
   let pp_atom_short = fun fmt s -> Format.pp_print_string fmt (Atoms.get s |> fst)
 
   let pp_edge fmt (f : E.label) =
-    let disjs = BoolA.DisjBoolA.to_seq f.disjunct in 
+    let disjs = BoolA.DisjBoolA.to_seq f.disjuncts in 
 
-    let nb_lit = Seq.fold_left (fun acc x -> Int.add acc @@ BoolA.AtomicBASet.cardinal x.conjunct) 0 disjs in
+    let nb_lit = Seq.fold_left (fun acc x -> Int.add acc @@ BoolA.AtomicBASet.cardinal x.conjuncts) 0 disjs in
     (* serves as a hint to decide if atoms should be printed in short or full form *)
     let pp_atom = (if nb_lit > 6 then pp_atom_short else pp_atom_full) in
 
@@ -87,9 +87,9 @@ struct
 
   let get_edge_type (e : E.label) =
     let open BuchiSig in
-    match  BoolA.DisjBoolA.cardinal e.disjunct with 
+    match  BoolA.DisjBoolA.cardinal e.disjuncts with 
     | 0 -> Universal 
-    | 1 when  BoolA.(AtomicBASet.exists (function False -> true | _ -> false) (DisjBoolA.choose e.disjunct).conjunct) -> Blocking 
+    | 1 when  BoolA.(AtomicBASet.exists (function False -> true | _ -> false) (DisjBoolA.choose e.disjuncts).conjuncts) -> Blocking 
     | _ -> Unknown
 end
 

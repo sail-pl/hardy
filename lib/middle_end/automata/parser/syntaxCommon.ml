@@ -73,8 +73,8 @@ module BoolAlgebra(A : BAAtomSig) = struct
   | Atom a -> a |> ConjBoolA.singleton |> mk_conj |> DisjBoolA.singleton
   | And (f1, f2) -> 
     let f1 = dnf_of_boola f1 and f2 = dnf_of_boola f2 in 
-    DisjBoolA.(fold (fun conj1 disj -> union disj (map (fun conj2 -> ConjBoolA.union conj1.conjunct conj2.conjunct |> mk_conj) f2.disjunct)) f1.disjunct empty) 
-  | Or (f1, f2) -> DisjBoolA.union (dnf_of_boola f1).disjunct (dnf_of_boola f2).disjunct) 
+    DisjBoolA.(fold (fun conj1 disj -> union disj (map (fun conj2 -> ConjBoolA.union conj1.conjuncts conj2.conjuncts |> mk_conj) f2.disjuncts)) f1.disjuncts empty) 
+  | Or (f1, f2) -> DisjBoolA.union (dnf_of_boola f1).disjuncts (dnf_of_boola f2).disjuncts) 
 
   let pp_atomic_boola (pp_atom : Format.formatter -> string -> unit) fmt : atomic_boola -> unit = 
     let open Format in   
@@ -100,16 +100,16 @@ module BoolAlgebra(A : BAAtomSig) = struct
     let open Format in
     pp_print_seq 
     ~pp_sep:(fun fmt () -> fprintf fmt " | ")
-    (fun fmt {conjunct} -> pp_paren_atomic_boola (pp_atomic_boola_set pp_atom) fmt conjunct)
+    (fun fmt {conjuncts} -> pp_paren_atomic_boola (pp_atomic_boola_set pp_atom) fmt conjuncts)
     fmt
-    (DisjBoolA.to_seq s.disjunct)
+    (DisjBoolA.to_seq s.disjuncts)
 
       
   let fol_of_dnf_boola (convert_atom : A.t -> ('a, 'b) fol) (f: disjunction) : ('a, 'b) fol =
     let disj = Seq.(
-      DisjBoolA.to_seq f.disjunct 
-      |> map (fun {conjunct} ->
-          let fol_conj = AtomicBASet.to_seq conjunct
+      DisjBoolA.to_seq f.disjuncts 
+      |> map (fun {conjuncts} ->
+          let fol_conj = AtomicBASet.to_seq conjuncts
             |> map (
               function
               | True -> mk_dummy_loc FOL_True
