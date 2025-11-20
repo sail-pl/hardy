@@ -49,20 +49,26 @@ module M(BAAtom : BAAtomSig)
       String.compare (asprintf "%a" (BoolA.pp_dnf_boola pp_print_string) e1.v) (asprintf "%a" (BoolA.pp_dnf_boola pp_print_string) e2.v)
   end)
 
-  let previous_instant_spec inputs in_e init_post : (ty, min_nb_instants) inst_spec_t Sig.formula =
-    let inputs = List.map (pair_map (Right (fun t -> (Input, t)))) inputs in
+  let previous_instant_spec (env: (cat_ty * base_ty) env) in_e init_post : (ty, min_nb_instants) inst_spec_t Sig.formula =
+    (* let inputs = List.map (pair_map (Right (fun t -> (Input, t)))) env.env_input in
+    let outputs = List.map (pair_map (Right (fun t -> (Output, t)))) env.env_output in *)
     let replace_i (e : _ expr) =
       match e.value with
       | Var (v, inst) as var ->
           let value =
             match inst with
-            | None when List.mem_assoc v inputs ->
+            | None -> begin 
+              match Bindings.find v env.env_variables |> fst with
+              | Input -> 
                 (* input is not the current instant input but the previous one*)
                 Var (v, Some (Previous 1))
-            | None ->
-                (* state and output variables are for the current instant *)
+              | Output -> failwith "what to do for outputs?"
+              | State ->
+                (* state variables are for the current instant *)
                 var
-            | Some inst ->
+              | Local -> failwith "no local variable in spec"
+              end                
+              | Some inst ->
                 let inst =
                   match inst with
                   | Previous n ->
@@ -124,7 +130,7 @@ module M(BAAtom : BAAtomSig)
       For each input formula occuring in exit arcs, computes \{(g_1 \/ ... \/ g_n)
       /\ <init_post> /\ f\} \{ g_1' \/ ... \/ g_m'\} where (., g_i') are in in_e
       and (f,g_i) are in out_e and init is there if defined. *)
-  let generate_spec (inputs : (string * base_ty) list)
+  let generate_spec (env : (cat_ty * base_ty) env)
       ((in_e, v, out_e) : BProd.edge list * BProd.vdata * BProd.edge list)
       (init_post : ty fol_t option) :
       (ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair list =
@@ -132,8 +138,8 @@ module M(BAAtom : BAAtomSig)
 
     (* assert ((not (List.is_empty in_e)) || Option.is_some init_post); *)
 
-    (* get the previous node ensures and adapt it to the current instant *)
-    let previous_ens = previous_instant_spec inputs in_e init_post in
+    (* get previous ensures and adapt them to the current instant *)
+    let previous_ens = previous_instant_spec env in_e init_post in
 
     (* if a variable from the current node precondition or postcondition refers to the instant n and we know we are at this instant, 
       remove the temporal quantification
@@ -218,6 +224,9 @@ module M(BAAtom : BAAtomSig)
         (ty, min_nb_instants) inst_spec_t Sig.formula )
       hoare_triple
       list =
+
+
+
     let aux v =
       (* provide init post-condition for first node *)
       let extra_req : ty fol_t option =
@@ -238,7 +247,7 @@ module M(BAAtom : BAAtomSig)
       let vdata = BProd.get_vdata v in
 
       let specs =
-        generate_spec p.prog_decls.env_input (in_e, vdata, out_e) extra_req
+        generate_spec p.prog_decls (in_e, vdata, out_e) extra_req
       in
 
       (* if two or more transition share the same input, but with different outputs,

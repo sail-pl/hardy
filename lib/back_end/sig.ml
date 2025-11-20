@@ -35,7 +35,7 @@ module type S = sig
   type out_setup
   type out_fun
 
-  val generate_declarations : base_ty env -> out_decl list
+  val generate_declarations : (cat_ty*base_ty) env -> out_decl list
   val generate_setup : in_setup option -> out_setup option
   val generate_body : in_body -> out_body
   val generate_spec : in_spec -> out_spec

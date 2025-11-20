@@ -23,5 +23,11 @@ type triple_data_t = { triple_id : string }
 
 (** extra information appended to generated hoare triples *)
 
+type parsed_program =
+  (Shared.ty temp_spec_t, Shared.ty fol_t, unit, Program.parsed_env) Program.program
+
+
 type base_program =
-  (Shared.ty temp_spec_t, Shared.ty fol_t, unit) Program.program
+  (Shared.ty temp_spec_t, Shared.ty fol_t, unit, Shared.(cat_ty * base_ty) Program.env) Program.program
+
+

@@ -8,7 +8,7 @@
 %}
 
 
-%start <Program.base_program> program
+%start <Program.parsed_program> program
 
 %%
 

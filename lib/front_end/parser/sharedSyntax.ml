@@ -6,6 +6,11 @@ type base_ty = Ty_Int | Ty_Bool
 type cat_ty = State | Input | Output | Local
 type ty = cat_ty * base_ty
 
+let is_state (c,_ : ty) : bool = c = State
+let is_input (c,_ : ty) : bool = c = Input
+let is_output (c,_ : ty) : bool = c = Output
+
+
 (** Standard Logic Operators *)
 
 type standard_logic_bop =  Equiv | Arrow | LAnd | LOr 

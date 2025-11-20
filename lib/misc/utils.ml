@@ -55,3 +55,5 @@ let pair_map (type i1 i2 o1 o2) (f : (i1, i2, o1, o2) pair_app)
 
 let add_opt_to_list (x : 'a option) (l : 'a list) : 'a list =
   Option.fold ~none:l ~some:(fun x -> x :: l) x
+
+module Bindings = Map.Make(String)

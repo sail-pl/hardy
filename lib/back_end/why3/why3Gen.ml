@@ -283,7 +283,7 @@ struct
 
   let reset () = Hashtbl.clear bindings
 
-  let generate_declarations (env : base_ty env) : out_decl list =
+  let generate_declarations (env : (cat_ty*base_ty) env) : out_decl list =
     let open P in
     let open PH in
     let mk_decl pty =
@@ -325,9 +325,16 @@ struct
             RKnone,
             mk_decl (get_pty (get_pp_string pp_cat_ty t |> ty_suffix) ) ))
     in
-    let input_t, i = create_record Input env.env_input
-    and output_t, o = create_record Output env.env_output
-    and state_t, s = create_record State env.env_variables in
+    let inputs,outputs,vars = Bindings.fold (fun id (ct,bt) (i,o,s) -> match ct with
+      | Input -> (id,bt)::i,o,s
+      | Output -> i,(id,bt)::o,s
+      | State -> i,o,(id,bt)::s
+      | Local -> failwith "no local here"
+    )
+    env.env_variables ([],[],[]) in
+    let input_t, i = create_record Input inputs
+    and output_t, o = create_record Output outputs
+    and state_t, s = create_record State vars in
 
     let instant_t =
       let td_def =

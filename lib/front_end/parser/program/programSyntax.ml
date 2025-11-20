@@ -76,15 +76,21 @@ type ('inv, 't) main = {
 }
 (** main function signature *)
 
-type 'ty env = {
-  env_input : 'ty var_decls;
-  env_output : 'ty var_decls;
-  env_variables : 'ty var_decls;
-}
-(** program memory environment *)
 
-type ('temp_spec, 'inv, 't) program = {
-  prog_decls : base_ty env;
+(** program memory environment, after parsing but before typechecking *)
+type parsed_env = {
+  env_input : base_ty var_decls;
+  env_output : base_ty var_decls;
+  env_variables : base_ty var_decls;
+}
+
+(** program memory environment, after typechecking *)
+type 'ty env = {
+  env_variables : 'ty Bindings.t;
+}
+    
+type ('temp_spec, 'inv, 't, 'decls) program = {
+  prog_decls : 'decls;
   prog_spec : 'temp_spec list hoare_pair;
   prog_setup : ('inv, 't) setup option;
   prog_main : ('inv, 't) main;
