@@ -37,7 +37,8 @@ module M(BAAtom : BAAtomSig)
   type 'a info = { v : 'a ; i : min_nb_instants }
 
 
-  let fol_of_dnf_boola (m:ty fol_t -> ty fol_t) : BoolA.disjunction -> ty fol_t = BoolA.fol_of_dnf_boola (fun a -> (m (B.Atoms.get (BAAtom.to_string a) |> snd)))
+  let fol_of_dnf_boola (m:ty fol_t -> ty fol_t) : BoolA.disjunction -> ty fol_t = 
+    BoolA.fol_of_dnf_boola (fun a -> (m (B.Atoms.get (BAAtom.to_string a) |> snd)))
 
 
   (* create a map binding the exit-arc rely formula to all its guarantee ones *)
@@ -58,13 +59,13 @@ module M(BAAtom : BAAtomSig)
           let value =
             match inst with
             | None -> begin 
+              (* no past *)
               match Bindings.find v env.env_variables |> fst with
-              | Input -> 
-                (* input is not the current instant input but the previous one*)
+              | Input | Output  -> 
+                (* input/output is not the current instant input/output but the previous one*)
                 Var (v, Some (Previous 1))
-              | Output -> failwith "what to do for outputs?"
               | State ->
-                (* state variables are for the current instant *)
+                (* state variables are for the current instant as they are not modified in-between instants  *)
                 var
               | Local -> failwith "no local variable in spec"
               end                
