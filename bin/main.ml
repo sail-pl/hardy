@@ -21,13 +21,15 @@ let main (type triple_data) (type fol_data)
 
 let () =
   let open HardyMiddleEnd in
-  let open MiddleParser.HoaSyntax in
+  let open MiddleParser.SyntaxCommon in
   let open Automata in
   let open Buchi in
   let open Hoa2ba in
-  let module Atom = Atom.Imperative () in
-  let module B = Make(Atom) in
-  let module G = Generation.M(BAAtom)(SpinHoaOutput)(B) in
+  let module TAtom = TAtom() in
+  let module Atom = Atom.Imperative (struct type t = HardyFrontEnd.Syntax.Instant.min_nb_instants end) in
+  let module B = Make(TAtom)(Atom) in
+  let module G = Generation.M(TAtom)(SpinHoaOutput)(B) in
   main
     (module G)
     (module HardyBackEnd.Why3Gen.M)
+  

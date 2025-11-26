@@ -16,7 +16,7 @@ module type ToolSig = sig
 end
 
 (* triples are in cnf *)
-type 'f formula = 'f list disjunction list conjunction
+type 'f formula = 'f cnf
 
 (** The middle-end requires :
 

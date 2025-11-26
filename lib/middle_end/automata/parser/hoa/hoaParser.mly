@@ -1,4 +1,5 @@
 %{
+    open SyntaxCommon
     open HoaSyntax
 %}
 
@@ -58,10 +59,13 @@ let label_expr :=
     | ~=BOOL ; <BoolLabel>
     | ~=INT ; <IntLabel>
     | ~=ANAME ; <NameLabel>
-    | BANG ; ~=label_expr ; <NotLabel>
-    | LPAR ; ~=label_expr ; RPAR ; <>
-    | e1=label_expr ; AMPER ; e2=label_expr ; {ConjLabel (e1,e2)}
-    | e1=label_expr ; BAR ; e2=label_expr ; {DisjLabel (e1,e2)}
+
+let eba :=     
+    | ~ = label_expr ; <Atom>
+    | BANG ; ~=eba ; <Not>
+    | LPAR ; ~=eba ; RPAR ; <>
+    | e1=eba ; AMPER ; e2=eba ; {And (e1,e2)}
+    | e1=eba ; BAR ; e2=eba ; {Or (e1,e2)}
 
 let acceptance_cond :=
     | ACCEPT_FIN ; LPAR ; complement=boption(BANG) ; set_number=INT ; RPAR ; { SetCond {fin_occur=true; set_number; complement } }
@@ -79,4 +83,4 @@ let acc_sig := LBRACE ; ~=INT* ; RBRACE ; <>
 
 let edge := edge_label=label? ; edge_dst=state_conj ; edge_acc_sets=loption(acc_sig) ; { {edge_dst; edge_label; edge_acc_sets} } 
 
-let label := LSQBRACE ; ~=label_expr ; RSQBRACE ; <>
+let label := LSQBRACE ; ~=eba ; RSQBRACE ; <>

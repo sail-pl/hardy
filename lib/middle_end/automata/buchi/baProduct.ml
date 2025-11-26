@@ -1,7 +1,7 @@
 open HardyFrontEnd.Syntax.Program
 open HardyFrontEnd.Syntax.Instant
 open MiddleParser.SyntaxCommon
-open HardyMisc.Utils
+(* open HardyMisc.Utils *)
 
 
 type 'a arc_data = {
@@ -15,38 +15,48 @@ type 'a arc_data = {
 
 type vertex_data = { v_min_nb_instants : min_nb_instants }
 
-module Make
-    (BAAtom : BAAtomSig)
-    (G : BuchiSig.S with type E.label = BoolAlgebra(BAAtom).disjunction)
+module Make(G : BuchiSig.S)
     :
   BuchiSig.S
     with type init_val = G.t * G.t
-     and type E.label =  BoolAlgebra(BAAtom).disjunction arc_data
+     and type E.label =  G.E.label arc_data
      and type vdata = vertex_data = struct
   (* /!\ make sure to always create vertices with the same argument order *)
 
 
 
-  module BoolA = BoolAlgebra(BAAtom)
-  open BoolA
 
   (* Atoms not needed in the product *)
-  module Atoms : Atom.S = struct 
+  module FAtom : Atom.S = struct 
     type _ t = unit 
-    let get _ = ()
+    type _ data = unit 
     let subst _ = ()
     let add_and_get _ = ()
+    let get_atom _ = ()
+    let set_data _  _ = ()
+    let get_data _ = ()
   end 
+  module TAtom : TseitinAtomSig = struct 
+    type t = unit 
+    let neg _ = ()
+    let create _ = ()
+    let pp _ _ = () 
+    let fresh () = ()
+    let get_atom_id _ = ""
+    let is_neg _ = false
+    let is_generated _ = false
+  end 
+  
+  module BA = BoolAlgebra(TAtom)
 
-
-  module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t =  disjunction arc_data = struct
-    type t =  disjunction arc_data
+ module Transition : Graph.Sig.ORDERED_TYPE_DFT with type t =  G.E.label arc_data = struct
+    type t =  G.E.label arc_data
 
     let compare = Stdlib.compare
 
-    let default =
+    let default : t =
       {
-        arc_f = { requires = mk_disj DisjBoolA.empty ; ensures = mk_disj DisjBoolA.empty};
+        arc_f = { requires = G.Transition.default ; ensures = G.Transition.default};
         (* arc_min_nb_instants = { nb_instant = 0; is_max = false }; *)
       }
   end
@@ -54,7 +64,7 @@ module Make
   (* returned graph *)
   module GProd =
     Graph.Imperative.Digraph.ConcreteLabeled
-      (Graph.Util.CMPProduct (G.V) (G.V)) (Arc)
+      (Graph.Util.CMPProduct (G.V) (G.V)) (Transition)
 
   include GProd
   module U = Nc2ba.Utils (GProd)
@@ -129,7 +139,8 @@ module Make
       the labels and remember their origin as it is crucial for our purposes
 
       fixme: correctly implement to support liveness (see my notes) *)
-  let create (rely_a, guarantee_a) : t =
+  let create (rely_a, guarantee_a) : t =  
+
     let product_g =
       create ~size:G.(nb_vertex rely_a + nb_vertex guarantee_a) ()
     in

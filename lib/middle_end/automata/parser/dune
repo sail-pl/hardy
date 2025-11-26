@@ -23,4 +23,4 @@
 (library
  (name middleParser)
  (public_name hardy.middleParser)
- (libraries hardyFrontEnd menhirLib))
+ (libraries hardyFrontEnd menhirLib msat.sat msat.tseitin))

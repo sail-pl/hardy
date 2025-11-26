@@ -2,127 +2,103 @@ open HardyFrontEnd
 open Syntax.Fol
 open HardyMisc.Utils
 
-module type BAAtomSig = sig
-  type t
-
-  val to_string : t -> string
-end
-
-
-module BoolAlgebra(A : BAAtomSig) = struct
-(** [bool_algebra] is the generic labeling of edges and/or vertices *)
-
-  type t =
-    | True
-    | False
-    | Atom of A.t
-    | And of t * t
-    | Or of t *t
-    | Not of t
-
-  type atomic_boola = 
+type 'a eba =
   | True
   | False
-  | Atom of A.t
-  | NegAtom of A.t
+  | Atom of 'a
+  | And of 'a eba * 'a eba
+  | Or of 'a eba * 'a eba
+  | Not of 'a eba
 
-  type nnf_boola = 
-  | And of nnf_boola * nnf_boola
-  | Or of nnf_boola * nnf_boola
-  | Atom of atomic_boola
+let rec map_eba fa = function
+| True -> True
+| False -> False
+| Atom x -> Atom (fa x)
+| And (f1,f2) -> And (map_eba fa f1,map_eba fa f2)
+| Or (f1,f2) -> Or (map_eba fa f1,map_eba fa f2)
+| Not f -> Not (map_eba fa f) 
 
-
-  let rec nnf_of_boola : t -> nnf_boola = function
-  | True -> Atom True
-  | False -> Atom False
-  | Atom a -> Atom (Atom a)
-  | Not f -> (match f with
-    | True -> Atom False
-    | False -> Atom True
-    | Not f' -> nnf_of_boola f'
-    | Atom a -> Atom (NegAtom a)
-    | And (f1,f2) -> Or (nnf_of_boola (Not f1), nnf_of_boola (Not f2))
-    | Or (f1,f2) -> And (nnf_of_boola (Not f1), nnf_of_boola (Not f2))
-  )
-  | And (f1,f2) -> And (nnf_of_boola f1,nnf_of_boola f2)
-  | Or (f1,f2) -> Or (nnf_of_boola f1,nnf_of_boola f2)
-
-
-  module AtomicBASet = Set.Make (struct
-    type t = atomic_boola
-
-    let compare = Stdlib.compare
-  end)
-
-  module ConjBoolA = AtomicBASet
-  type nonrec conjunction = ConjBoolA.t conjunction
-
-  (** [disjunct_set] is the disjunctive normal form obtained from a [bool_algebra] formula *)
-
-  module DisjBoolA = Set.Make (struct
-    type t = conjunction
-
-    let compare = Stdlib.compare
-  end)
-
-  type nonrec disjunction = DisjBoolA.t disjunction
-
-
-  let rec dnf_of_boola (f:nnf_boola) : disjunction = mk_disj 
-  (match f with
-  | Atom a -> a |> ConjBoolA.singleton |> mk_conj |> DisjBoolA.singleton
-  | And (f1, f2) -> 
-    let f1 = dnf_of_boola f1 and f2 = dnf_of_boola f2 in 
-    DisjBoolA.(fold (fun conj1 disj -> union disj (map (fun conj2 -> ConjBoolA.union conj1.conjuncts conj2.conjuncts |> mk_conj) f2.disjuncts)) f1.disjuncts empty) 
-  | Or (f1, f2) -> DisjBoolA.union (dnf_of_boola f1).disjuncts (dnf_of_boola f2).disjuncts) 
-
-  let pp_atomic_boola (pp_atom : Format.formatter -> string -> unit) fmt : atomic_boola -> unit = 
-    let open Format in   
+let rec pp_boola (pp_atom : Format.formatter -> 'a -> unit) fmt : 'a eba -> unit =
+    let open Format in 
     function
     | True -> pp_print_string fmt "true"
     | False -> pp_print_string fmt "false"
-    | Atom a -> fprintf fmt "%a" pp_atom (A.to_string a)
-    | NegAtom a -> fprintf fmt "~%a" pp_atom (A.to_string a)
+    | Atom a -> pp_atom fmt a
+    | And (f1,f2) -> fprintf fmt "(%a & %a)" (pp_boola pp_atom) f1 (pp_boola pp_atom) f2
+    | Or (f1,f2) -> fprintf fmt "(%a || %a)" (pp_boola pp_atom) f1 (pp_boola pp_atom) f2
+    | Not f -> fprintf fmt "~(%a)" (pp_boola pp_atom) f
 
-  let pp_atomic_boola_set (pp_atom : Format.formatter -> string -> unit) fmt (s:AtomicBASet.t) : unit = 
-    let open Format in   
-    pp_print_seq 
-      ~pp_sep:(fun fmt () -> fprintf fmt " & ")
-      (pp_atomic_boola pp_atom)
-      fmt
-      (AtomicBASet.to_seq s)
-      
-  let pp_paren_atomic_boola f fmt (e : AtomicBASet.t) =
-    let open Format in   
-    match AtomicBASet.cardinal e with 0 -> pp_print_string fmt "true" | 1 -> f fmt e | _ -> fprintf fmt "(%a)" f e
 
-  let pp_dnf_boola (pp_atom : Format.formatter -> string -> unit) fmt (s: disjunction) : unit =
+module type TseitinAtomSig = sig
+  include Msat_tseitin.Arg
+
+  val create : string -> t
+  val get_atom_id : t -> string
+
+  val is_neg : t -> bool
+  val is_generated : t -> bool
+end
+
+
+module BoolAlgebra(A : TseitinAtomSig) = struct
+(** [bool_algebra] is the generic labeling of edges and/or vertices *)
+
+  type t = A.t eba 
+  
+  module Tseintin = Msat_tseitin.Make (A)
+
+  let to_cnf (f : t) : A.t cnf  = 
+    let rec to_tseitin : t -> Tseintin.t = 
+      let open Tseintin in function
+      | True -> f_true
+      | False -> f_false
+      | And (f1,f2) -> make_and [to_tseitin f1; to_tseitin f2]
+      | Or (f1,f2) -> make_or [to_tseitin f1; to_tseitin f2]
+      | Atom a -> make_atom a
+      | Not f -> make_not (to_tseitin f)
+    in 
+    (Tseintin.make_cnf (to_tseitin f) |> List.map mk_disj) |> mk_conj
+
+
+    let pp_paren_atomic_boola f fmt  = 
+    let open Format in   
+    function [] -> pp_print_string fmt "" | [x] -> f fmt [x] | l -> fprintf fmt "(%a)" f l
+
+    let pp_cnf_boola f fmt (s: A.t cnf)  : unit =
     let open Format in
-    pp_print_seq 
-    ~pp_sep:(fun fmt () -> fprintf fmt " | ")
-    (fun fmt {conjuncts} -> pp_paren_atomic_boola (pp_atomic_boola_set pp_atom) fmt conjuncts)
-    fmt
-    (DisjBoolA.to_seq s.disjuncts)
+      pp_print_list
+      ~pp_sep:(fun fmt () -> fprintf fmt " ∧ ")
+      (fun fmt {disjuncts} -> 
+        pp_paren_atomic_boola 
+        (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ∨ ") (fun fmt a -> f fmt a) )
+         fmt disjuncts)
+      fmt
+      s.conjuncts
 
-      
-  let fol_of_dnf_boola (convert_atom : A.t -> ('a, 'b) fol) (f: disjunction) : ('a, 'b) fol =
-    let disj = Seq.(
-      DisjBoolA.to_seq f.disjuncts 
-      |> map (fun {conjuncts} ->
-          let fol_conj = AtomicBASet.to_seq conjuncts
-            |> map (
-              function
-              | True -> mk_dummy_loc FOL_True
-              | False -> mk_dummy_loc FOL_False
-              | Atom s -> convert_atom s
-              | NegAtom s -> mk_dummy_loc @@ FOL_StdUnary (LNot, (convert_atom s))
-            )
-            |> List.of_seq in
-            mk_dummy_loc @@ FOL_StdNary (LAnd, fol_conj)
-            )
-        )
-      |> List.of_seq
-    in
-    mk_dummy_loc (FOL_StdNary (LOr, disj))
 
+  let fol_of_cnf (convert_atom : A.t -> ('a, 'b) fol) (f: A.t cnf) : ('a, 'b) fol cnf =
+      List.map (fun {disjuncts} ->
+          List.map convert_atom disjuncts |> mk_disj
+        ) f.conjuncts |> mk_conj
+end
+
+
+type tseitin_atom_t = {fol_id:string; generated:bool; is_neg:bool}
+
+module TAtom() : TseitinAtomSig with type t = tseitin_atom_t = struct
+  type t = tseitin_atom_t
+  let pp fmt a = Format.(fprintf fmt "%s%s" 
+      (if a.is_neg then "~" else "") a.fol_id)
+
+  let gen = ref (-1)
+  let fresh () = 
+    gen := !gen + 1;
+    Format.printf "called fresh! got %i@." !gen;
+    {fol_id=(string_of_int !gen); generated=true; is_neg=false}
+  let neg a = {a with is_neg=not a.is_neg}
+  let get_atom_id a = a.fol_id
+  let is_neg a = a.is_neg
+  let is_generated a = a.generated
+
+  let create fol_id = {fol_id; generated=false; is_neg=false}
 end

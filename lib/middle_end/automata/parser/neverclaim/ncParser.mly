@@ -1,6 +1,6 @@
 %{
     open NcSyntax
-    open BoolA
+    open SyntaxCommon
 %}
 
 %token<string> ATOM 

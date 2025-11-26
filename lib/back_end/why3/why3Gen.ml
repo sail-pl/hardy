@@ -402,8 +402,9 @@ struct
     and oproj = create_hist_proj Output 
     and sproj = create_hist_proj State  in
 
-    [ input_t; output_t; state_t; instant_t; i; o; s; hist; iproj; oproj; sproj ]
-
+    (* let props = List.init 30 (fun i -> {ld_loc=Loc.dummy_position; ld_ident=ident ("p" ^ string_of_int i); ld_params = []; ld_type = None; ld_def = None}) in  *)
+    [ input_t; output_t; state_t; instant_t; i; o; s; hist; iproj; oproj; sproj ; (* Dlogic props *)]
+    
   let generate_body (b : in_body) : out_body = expr_of_statements pterm_of_inv b
 
   let generate_function (d : triple_data_t) spec body =
@@ -442,10 +443,10 @@ struct
   (** generates WhyML logical expression to represent specification *)
   let generate_spec ((_d, spec) : in_spec) : out_spec =
     let open PH in
-    let convert conv_data (f, d) =
+    (* let convert conv_data (f, d) =
       let f = pterm_of_fol f in
       Option.fold (conv_data d) ~none:f ~some:(fun l -> why3_and l f)
-    in
+    in *)
 
     let sp_pre =
       (* in the precondition, "naked" state variables are always equal 
@@ -465,22 +466,43 @@ struct
     in
 
       curr State
-      :: List.map
-           (fun disj ->
-             fold_mjoin (fun (f,data) -> why3_and (pterm_of_fol f) (length_assert data)) why3_or (term Ttrue)
-               disj.disjuncts)
+      :: List.fold_left
+           (fun acc -> function
+           | {disjuncts=[((f: _ cnf),data)]} -> 
+              length_assert data :: List.map (fun disj -> 
+                fold_mjoin pterm_of_fol why3_or (term Tfalse) disj.disjuncts
+                ) f.conjuncts |> fun conj -> conj @ acc
+           | d ->
+              let f = fold_mjoin (fun ((f: _ cnf),data) -> 
+                  let f = (fold_mjoin 
+                    (fun disj -> fold_mjoin pterm_of_fol why3_or (term Tfalse) disj.disjuncts) why3_and (term Ttrue) f.conjuncts
+                  ) in
+                  why3_and f (length_assert data) 
+              ) why3_or (term Ttrue) d.disjuncts
+              in f::acc
+            ) []
            spec.requires.conjuncts
     in
-    let post =
-      List.map
-        (fun disj ->
-          ( pat Pwild,
-            fold_mjoin
-              (convert (fun _ -> None))
-              why3_or (term Ttrue) disj.disjuncts ))
-        spec.ensures.conjuncts
+    let sp_post =
+      List.fold_left
+        (fun l disj -> match disj with 
+        | ({disjuncts=[(f,_)]} : (ty, fol_data) inst_spec_t list disjunction) -> 
+           List.map (fun disj -> 
+                let f = fold_mjoin pterm_of_fol why3_or (term Tfalse) disj.disjuncts in
+                 (Loc.dummy_position,[pat Pwild ,f]) 
+            ) f.conjuncts @ l
+        | d ->  
+            let f = fold_mjoin (fun ((f: _ cnf),_) ->
+             fold_mjoin (fun disj ->  fold_mjoin pterm_of_fol why3_or (term Tfalse) disj.disjuncts) 
+              why3_and (term Ttrue) f.conjuncts
+            ) why3_or (term Ttrue) d.disjuncts
+            in 
+             (Loc.dummy_position,[pat Pwild ,f]) :: l 
+          )
+           []
+        spec.ensures.conjuncts          
     in
-    { empty_spec with sp_pre; sp_post = [ (Loc.dummy_position, post) ] }
+    { empty_spec with sp_pre; sp_post }
 
   (** generates WhyML program expression to represent the setup procedure *)
   let generate_program decls setup funs =

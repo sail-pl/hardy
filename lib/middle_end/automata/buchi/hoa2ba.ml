@@ -1,51 +1,46 @@
 open HardyFrontEnd.Syntax
+open MiddleParser.SyntaxCommon
 open MiddleParser.HoaSyntax
-open HardyMisc.Utils
-
-let boola_of_label_expr (f_string: string -> BAAtom.t) (f_int: int ->BAAtom.t) : label_expr -> BoolA.t =
-  let rec aux : label_expr -> BoolA.t =
-  function
-  | BoolLabel true -> True
-  | BoolLabel false -> False 
-  | IntLabel  n -> Atom (f_int n)
-  | NameLabel s -> Atom (f_string s)
-  | ConjLabel (l1,l2) -> And (aux l1,aux l2)
-  | DisjLabel (l1,l2) -> Or (aux l1, aux l2)
-  | NotLabel l -> Not (aux l)
-  in aux
+(* open HardyMisc.Utils *)
 
 
+module Make(TAtom: TseitinAtomSig)(FAtom : Atom.S with type 'a t = 'a and type _ data = Instant.min_nb_instants) :
+  BuchiSig.S  
+    with type init_val = hoa  
+    and type E.label = BoolAlgebra(TAtom).t
+    and type TAtom.t = TAtom.t
+    and type 'a FAtom.t = 'a 
+    and type _ FAtom.data = Instant.min_nb_instants
+
+  =
+struct
+  module FAtom = FAtom
+  module TAtom = TAtom
+  module BA = BoolAlgebra(TAtom)
 
   type hoa_vdata = {acceptant: bool; start:bool}
 
+  module State = struct
 
-module Vertex : Graph.Sig.COMPARABLE with type t = string * hoa_vdata
- = struct
-  (* states are just labels and whether they are acceptant *)
-  type t = string * hoa_vdata
-
-  let compare s1 s2 = String.compare (fst s1) (fst s2)
-  let hash s = String.hash (fst s)
-  let equal s1 s2 = String.equal (fst s1) (fst s2)
-end
-
-module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t = BoolA.disjunction = struct
-  type t =   BoolA.disjunction
-
-  let compare = Stdlib.compare
-  let default : t =  BoolA.(mk_disj (DisjBoolA.empty))
-end
+    (* states are just labels and whether they are acceptant *)
+    type t = string * hoa_vdata
 
 
-module Make (Atoms : Atom.S with type 'a t = 'a) :
-  BuchiSig.S with type E.label = BoolA.disjunction 
-              and type init_val = hoa 
-              and type 'a Atoms.t = 'a
-  =
-struct
-  include Graph.Imperative.Digraph.ConcreteLabeled (Vertex) (Arc)
 
-  module Atoms = Atoms
+    let compare s1 s2 = String.compare (fst s1) (fst s2)
+    let hash s = String.hash (fst s)
+    let equal s1 s2 = String.equal (fst s1) (fst s2)
+  end
+
+
+
+  module Transition = struct
+      type t =  BA.t
+      let compare = Stdlib.compare
+      let default : t = True
+  end
+
+  include Graph.Imperative.Digraph.ConcreteLabeled (State) (Transition)
 
   type init_val = hoa
   type vdata = hoa_vdata
@@ -57,22 +52,31 @@ struct
     let start = List.find_map (function Start [x] -> Some x | _ -> None ) hoa.header.items |> Option.get in
 
     let ap_labels= List.find_map (function Atomic (_,l) -> Some l | _ -> None ) hoa.header.items |> Option.get |> List.mapi (fun i x -> (i,x)) in
-    let get_edge_label n = 
+
+      let true_atom = FAtom.add_and_get Fol.true_fol |> snd |> TAtom.create in
+      let false_atom = FAtom.add_and_get Fol.false_fol |> snd |> TAtom.create in
+
+    let get_edge_label n : TAtom.t = 
       (* Format.printf "[%a]@." (Format.pp_print_list (fun fmt (i,s) -> Format.fprintf fmt "(%i,%s)" i s)) ap_labels; *)
-      match List.assoc_opt n ap_labels with
-      | Some x -> x
-      |None -> 
-          (* no label, make the atom map to true *)
-          (* Format.printf "no label for atom: %i\n" n; *)
-          Atoms.add_and_get Fol.true_fol |> snd
       
+      match List.assoc_opt n ap_labels with
+      | Some id -> TAtom.create id
+      | None -> 
+          (* no label, make the atom map to true *)
+          Format.printf "no label for atom: %i, mapping to 'true'\n" n;
+          true_atom
     in
     let g = create ~size:(List.find_map (function States n -> Some n | _ -> None) hoa.header.items |> Option.get) () in
     List.iter
       (fun (state,edges) ->
         List.iter (fun edge ->
           let src = V.create  (string_of_int state.state_number, {start=state.state_number = start; acceptant=state.state_acc_sets <> []}) 
-          and label = BoolA.(edge.edge_label |> Option.get |> boola_of_label_expr (fun _ -> failwith "got labeled name") get_edge_label |> nnf_of_boola |> dnf_of_boola)
+          and label = edge.edge_label |> Option.get |> map_eba (function 
+            | BoolLabel true -> true_atom
+            | BoolLabel false -> false_atom
+            | IntLabel i ->  get_edge_label i
+            | NameLabel _ -> failwith "got labeled name"
+          ) 
           and dst = 
             let state = 
               (* fixme: once a vertex is added, it cannot be updated (-> use the vdata properly with the lib).
@@ -105,26 +109,18 @@ struct
   | NotLabel e -> "~" ^ string_of_edge e *)
   
 
-  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) fmt (Atoms.get s |> snd) 
-  let pp_atom_short = fun fmt s -> Format.pp_print_string fmt (Atoms.get s |> fst)
+  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) fmt (s |> TAtom.get_atom_id |> FAtom.get_atom |> snd) 
+  let pp_atom_short = fun fmt s -> Format.pp_print_string fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> fst) 
 
   let pp_edge fmt (f : E.label) = 
-    let conjs = BoolA.DisjBoolA.to_seq f.disjuncts in 
-
-    let nb_lit = Seq.fold_left (fun acc x -> Int.add acc @@ BoolA.AtomicBASet.cardinal x.conjuncts) 0 conjs in
+    let cnf = BA.to_cnf f in 
+    let nb_lit = List.fold_left (fun acc (x : _ U.disjunction) -> Int.add acc @@ List.length x.disjuncts) 0 cnf.conjuncts in
     (* serves as a hint to decide if atoms should be printed in short or full form *)
     let pp_atom = (if nb_lit > 6 then pp_atom_short else pp_atom_full) in
-
-    Format.fprintf fmt "%a" (BoolA.pp_dnf_boola pp_atom) f
-
+    Format.(fprintf fmt "%a" (BA.pp_cnf_boola pp_atom) cnf)
   let get_vdata = snd
 
-  let get_edge_type (e : E.label) =
-    let open BuchiSig in
-    match  BoolA.DisjBoolA.cardinal e.disjuncts with 
-    | 0 -> Universal 
-    | 1 when  BoolA.(AtomicBASet.exists (function False -> true | _ -> false) (DisjBoolA.choose e.disjuncts).conjuncts) -> Blocking 
-    | _ -> Unknown
+  let get_edge_type (_ : E.label) = BuchiSig.Unknown
 end
 
 module SpinHoaOutput : Sig.ToolSig with 

@@ -7,50 +7,59 @@ open Syntax.Instant
 open HardyMisc.Utils
 open MiddleParser.SyntaxCommon
 
-module M(BAAtom : BAAtomSig)
-        (B:  BuchiSig.S with type E.label = BoolAlgebra(BAAtom).disjunction
-                        and type 'a Atoms.t = 'a
+module M(TAtom: TseitinAtomSig)(B:  BuchiSig.S 
+        with type 'a FAtom.t = 'a 
+        and type _ FAtom.data = min_nb_instants
+        and type TAtom.t = TAtom.t
+        and type E.label = TAtom.t eba
         )
         = struct
   module DotB = BuchiSig.Dot (B)
-  module BProd = BaProduct.Make (BAAtom)(B)
+  module BProd = BaProduct.Make(B)
   module BProdU = BuchiSig.Utils (BProd)
   module DotBProd = BuchiSig.Dot (BProd)
 
 
-  module BoolA = BoolAlgebra(BAAtom)
+  type 'a info = { v : 'a ; i : min_nb_instants }
 
 
   let pp_ltl_full =
     Printer.(pp_ltl
-      (fun fmt p -> Format.pp_print_string fmt (B.Atoms.add_and_get p |> snd))
+      (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p |> snd))
       pp_ltl_binop pp_ltl_unop)
 
   let pp_ltl_short =
     Printer.(pp_ltl
-      (fun fmt p -> Format.pp_print_string fmt (B.Atoms.add_and_get p |> fst))
+      (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p |> fst))
       pp_ltl_binop pp_ltl_unop)
 
   let from_ltl : _ Ltl.ltl -> string Ltl.ltl =
-    Ltl.map_ltl_pred (fun p -> B.Atoms.add_and_get p |> snd)
-
-  type 'a info = { v : 'a ; i : min_nb_instants }
+    Ltl.map_ltl_pred (fun p -> B.FAtom.add_and_get p |> snd)
 
 
-  let fol_of_dnf_boola (m:ty fol_t -> ty fol_t) : BoolA.disjunction -> ty fol_t = 
-    BoolA.fol_of_dnf_boola (fun a -> (m (B.Atoms.get (BAAtom.to_string a) |> snd)))
-
-
+let cnf_fol_of_cnf_boola (m:ty fol_t -> ty fol_t) : B.TAtom.t cnf -> ty fol_t cnf = 
+    B.BA.fol_of_cnf (fun a -> 
+      let atom = if B.TAtom.is_generated a then 
+        let name = Format.asprintf "p%s" (B.TAtom.get_atom_id a) in 
+        mk_dummy_loc (FOL_Atom (Predicate {name;args=[]})) 
+      else 
+        B.TAtom.get_atom_id a |> B.FAtom.get_atom |> snd 
+      in
+      let atom = if B.TAtom.is_neg a then mk_dummy_loc (FOL_StdUnary (LNot,atom)) else atom in
+      m atom
+    
+    )
+    
   (* create a map binding the exit-arc rely formula to all its guarantee ones *)
   module M = Map.Make (struct
-    type t = BoolA.disjunction info
+    type t = B.BA.t info
 
     let compare (e1 : t) (e2 : t) =
-      let open Format in 
-      String.compare (asprintf "%a" (BoolA.pp_dnf_boola pp_print_string) e1.v) (asprintf "%a" (BoolA.pp_dnf_boola pp_print_string) e2.v)
+      (* let open Format in  *)
+      Stdlib.compare e1 e2
   end)
 
-  let previous_instant_spec (env: (cat_ty * base_ty) env) in_e init_post : (ty, min_nb_instants) inst_spec_t Sig.formula =
+  let previous_instant_spec (env: (cat_ty * base_ty) env) (in_e: BProd.edge list disjunction) (init_post : ty fol_t option) : (ty, min_nb_instants) inst_spec_t Sig.formula =
     let replace_i (e : _ expr) =
       match e.value with
       | Var (v, inst) as var ->
@@ -81,17 +90,18 @@ module M(BAAtom : BAAtomSig)
       | _ -> e
     in
     (* get the possible states to be in from the previous transition second component *)
-    let disjunctions : BoolA.disjunction info list disjunction =
+    let disjunctions :  B.E.label info list disjunction =
       let l =
         List.map
           (fun e ->
             let l = BProd.E.label e in
-            (* 'ensures' here are over history length + 1*)
+            (* 'ensures' here are over history length + 1: 
+            annotate the formula to get the correct history quantification when converting back to fol *)
             let nb_instant =
               add_nb_instant 1 BProd.(get_vdata (E.src e)).v_min_nb_instants
             in
             {v=l.arc_f.ensures; i=nb_instant})
-          in_e
+          in_e.disjuncts
       in
       (* if an input led to no restriction on the state, then there is no need
                 to put the other possible states.
@@ -103,19 +113,23 @@ module M(BAAtom : BAAtomSig)
     in
     let disjunctions = 
      List.map ( fun f -> 
-            let to_fol : BoolA.disjunction -> ty fol_t = fol_of_dnf_boola (map_fol_pred (map_expr replace_i))  in 
+            let to_fol (f : B.E.label ) : ty fol_t cnf = 
+              f |> B.BA.to_cnf |> cnf_fol_of_cnf_boola (map_fol_pred (map_expr replace_i))  in 
             (to_fol f.v,f.i)
           ) disjunctions.disjuncts |> mk_disj
      in
 
     (* if the current node is an init_node, add the setup postcondition to the disjunction *)
-    let requires = Option.fold init_post 
+    let disjunctions = 
+    Option.fold init_post 
       ~none:disjunctions 
-      ~some:(fun cond -> ([cond, { nb_instant = 0; is_max = true }])@disjunctions.disjuncts |> mk_disj) in
+      ~some:(fun cond -> ([[[cond] |> mk_disj] |> mk_conj, { nb_instant = 0; is_max = true }])@disjunctions.disjuncts |> mk_disj) 
+
+    in mk_conj [disjunctions]
+
 
     (* todo: use env to type variables *)
     (* let requires :  (ty, min_nb_instants) inst_spec_t Sig.formula = *)
-      mk_conj [requires]
 
   (** [generate_spec inputs in_e out_e init_post] builds the list of hoare pairs
       for a node of the product graph
@@ -128,10 +142,10 @@ module M(BAAtom : BAAtomSig)
       /\ <init_post> /\ f\} \{ g_1' \/ ... \/ g_m'\} where (., g_i') are in in_e
       and (f,g_i) are in out_e and init is there if defined. *)
   let generate_spec (env : (cat_ty * base_ty) env)
-      ((in_e, v, out_e) : BProd.edge list * BProd.vdata * BProd.edge list)
+      ((in_e, v, out_e) : BProd.edge list disjunction * BProd.vdata * BProd.edge list disjunction)
       (init_post : ty fol_t option) :
       (ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair list =
-    assert (not (List.is_empty out_e));
+    assert (not (List.is_empty out_e.disjuncts));
 
     (* assert ((not (List.is_empty in_e)) || Option.is_some init_post); *)
 
@@ -145,7 +159,7 @@ module M(BAAtom : BAAtomSig)
       *)
     let at_current_instant_replace : ty fol_t -> ty fol_t =
       if v.v_min_nb_instants.is_max = true then
-        map_fol_pred
+        map_fol_pred 
           (map_expr (fun e ->
               (* if a variable refers to the current instant, remove the instant quantification *)
               match e.value with
@@ -156,14 +170,15 @@ module M(BAAtom : BAAtomSig)
       else Fun.id
     in
 
-    let fol_of_dnf_boola_replace : BoolA.disjunction info list -> (ty, min_nb_instants) inst_spec_t list =
-      List.map ( fun f -> 
-        (fol_of_dnf_boola at_current_instant_replace f.v, f.i)
-      )
+    let fol_of_boola_replace_cnf :  B.BA.t info list -> (ty, min_nb_instants) inst_spec_t list disjunction =
+      fun f -> List.map ( fun f -> 
+        (cnf_fol_of_cnf_boola at_current_instant_replace ( B.BA.to_cnf f.v), f.i)
+      ) f |> mk_disj
     in
+
     
 
-    let m : BoolA.disjunction info list M.t =
+    let m : B.BA.t info list M.t =
       (* Factorize exit arcs by common first component by buildin a map from
         first components to matching second components *)
       List.fold_left
@@ -174,12 +189,12 @@ module M(BAAtom : BAAtomSig)
             (* 'ensures' exit arcs are over the start of the next instant  *)
             {v=l.arc_f.ensures; i=Instant.add_nb_instant 1 v.v_min_nb_instants}
             m)
-        M.empty out_e
+        M.empty out_e.disjuncts
     in
     (* construct the spec for each first component *)
     M.fold
-      (fun (req : BoolA.disjunction info)
-          (ens : (BoolA.disjunction info) list)
+      (fun (req : B.BA.t info)
+          (ens : (B.BA.t info) list)
           (s :
             (ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair
             list) ->
@@ -188,7 +203,7 @@ module M(BAAtom : BAAtomSig)
               every input and output variables refer to the begining and the end of the previous instant, respectively.    
           *)
           let current_req : (ty, min_nb_instants) inst_spec_t Sig.formula = 
-            [fol_of_dnf_boola_replace [req] |> mk_disj]|> mk_conj in
+            [fol_of_boola_replace_cnf [req]]|> mk_conj in
 
           (* remove any trivial precondition *)
             (* (List.filter
@@ -208,7 +223,7 @@ module M(BAAtom : BAAtomSig)
               []
             else fol_of_dnf_boola_replace ens
           in *)
-          [fol_of_dnf_boola_replace ens |> mk_disj] |> mk_conj
+          [fol_of_boola_replace_cnf ens ] |> mk_conj
         in
         (* if List.for_all (fun d -> List.is_empty d.disjuncts) ensures.conjuncts then
           (* discard when postcondition is true *) s
@@ -238,8 +253,8 @@ module M(BAAtom : BAAtomSig)
         else None
       in
 
-      let in_e = BProd.pred_e a v in
-      let out_e = BProd.succ_e a v in
+      let in_e = BProd.pred_e a v |> mk_disj in
+      let out_e = BProd.succ_e a v |> mk_disj in
 
       let vdata = BProd.get_vdata v in
 

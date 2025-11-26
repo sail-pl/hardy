@@ -21,6 +21,9 @@ type 'f conjunction = { conjuncts : 'f }
 let mk_conj conjuncts = { conjuncts }
 
 
+type 'a cnf = 'a list disjunction list conjunction
+
+
 (** [fold_mjoin f j init l] returns [init] if [l = nil], [f x] if [l] = [x] and
     otherwise, behaves like [List.fold_left] where the current value is applied
     to [f] before being applied with the accumulator to [j]. In the latter case,

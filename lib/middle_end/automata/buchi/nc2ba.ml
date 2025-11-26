@@ -1,23 +1,6 @@
-(* open MiddleParser.SyntaxCommon *)
+open HardyFrontEnd.Syntax
+open MiddleParser.SyntaxCommon
 open MiddleParser.NcSyntax
-open HardyMisc.Utils
-
-module Vertex : Graph.Sig.COMPARABLE with type t = string = struct
-  (* states are just labels *)
-  type t = string
-
-  let compare = String.compare
-  let hash = String.hash
-  let equal = String.equal
-end
-
-(* output of ltl2ba with formula for each arc *)
-module Arc : Graph.Sig.ORDERED_TYPE_DFT with type t = BoolA.disjunction = struct
-  type t =   BoolA.disjunction
-
-  let compare = Stdlib.compare
-  let default : t =  BoolA.(mk_disj (DisjBoolA.empty))
-end
 
 module Utils (G : Graph.Sig.I) = struct
   (* no vertex find function ??
@@ -33,15 +16,36 @@ module Utils (G : Graph.Sig.I) = struct
     with Found v -> Some v
 end
 
-module Make (Atoms : Atom.S with type 'a t = 'a) :
-  BuchiSig.S with type E.label = BoolA.disjunction 
-              and type init_val = neverclaim 
-              and type 'a Atoms.t = 'a
-=
-struct
-  include Graph.Imperative.Digraph.ConcreteLabeled (Vertex) (Arc)
+module Make(TAtom: TseitinAtomSig)(FAtom : Atom.S with type 'a t = 'a and type _ data = Instant.min_nb_instants) :
+  BuchiSig.S with type init_val = neverclaim  and type E.label = BoolAlgebra(TAtom).t
+      and type TAtom.t = TAtom.t
 
-  module Atoms = Atoms
+        and type 'a FAtom.t = 'a and type _ FAtom.data = Instant.min_nb_instants
+  =
+struct
+  module FAtom = FAtom
+  module TAtom = TAtom
+  module BA = BoolAlgebra(TAtom)
+
+  module State = struct
+  (* states are just labels *)
+    type t = string
+
+    let compare = String.compare
+    let hash = String.hash
+    let equal = String.equal
+  end
+
+
+  (* output of ltl2ba with formula for each arc *)
+  module Transition = struct
+    type t =   BA.t
+
+    let compare = Stdlib.compare
+    let default : t =  True
+  end
+
+  include Graph.Imperative.Digraph.ConcreteLabeled (State) (Transition)
 
   type init_val = neverclaim
   type vdata = unit
@@ -56,7 +60,7 @@ struct
         let e =
           E.create
             (V.create tr.pml_src.pml_state)
-             BoolA.(tr.pml_form |> nnf_of_boola |> dnf_of_boola)
+            (map_eba TAtom.create tr.pml_form)
             (V.create tr.pml_dst.pml_state)
         in
         add_edge_e g e)
@@ -71,26 +75,19 @@ struct
 
   let id_of_vertex = Format.asprintf "%a" pp_vertex
 
-  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) fmt (Atoms.get s |> snd) 
-  let pp_atom_short = fun fmt s -> Format.pp_print_string fmt (Atoms.get s |> fst)
+  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> snd) 
+  let pp_atom_short = fun fmt s -> Format.pp_print_string fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> fst) 
 
-  let pp_edge fmt (f : E.label) =
-    let disjs = BoolA.DisjBoolA.to_seq f.disjuncts in 
 
-    let nb_lit = Seq.fold_left (fun acc x -> Int.add acc @@ BoolA.AtomicBASet.cardinal x.conjuncts) 0 disjs in
+  let pp_edge fmt (f : E.label) = 
+    let cnf = BA.to_cnf f in 
+    let nb_lit = List.fold_left (fun acc (x : _ U.disjunction) -> Int.add acc @@ List.length x.disjuncts) 0 cnf.conjuncts in
     (* serves as a hint to decide if atoms should be printed in short or full form *)
     let pp_atom = (if nb_lit > 6 then pp_atom_short else pp_atom_full) in
+    Format.(fprintf fmt "%a" (BA.pp_cnf_boola pp_atom) cnf)
+  let get_vdata _ = ()
 
-    Format.fprintf fmt "%a" (BoolA.pp_dnf_boola pp_atom) f
-    
-    let get_vdata _ = ()
-
-  let get_edge_type (e : E.label) =
-    let open BuchiSig in
-    match  BoolA.DisjBoolA.cardinal e.disjuncts with 
-    | 0 -> Universal 
-    | 1 when  BoolA.(AtomicBASet.exists (function False -> true | _ -> false) (DisjBoolA.choose e.disjuncts).conjuncts) -> Blocking 
-    | _ -> Unknown
+  let get_edge_type (_ : E.label) = BuchiSig.Unknown
 end
 
 module SpinNcOutput : Sig.ToolSig with 

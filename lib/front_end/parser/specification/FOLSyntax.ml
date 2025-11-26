@@ -74,16 +74,17 @@ let rec map_fol_ty m = map_fol (map_fol_ty m) m
 
 (** [map_fol_atom m f] replaces every atom [x] of [f] by [m x]
 *)
-let rec map_fol_pred (m : 'a -> 'b) : ('a predicate, 'c) fol -> ('b predicate, 'c) fol =
-  map_fol
-    (function
-      | { value = FOL_Atom Atom x; label = loc } -> 
-          { value = FOL_Atom (Atom (m x)); label = loc }
-      | { value = FOL_Atom Predicate x; label = loc } -> 
+let map_fol_pred (m : 'a -> 'b) (f: ('a predicate, 'c) fol) : ('b predicate, 'c) fol =
+  let rec map f = match f.value with
+      | FOL_Atom Atom x -> 
+          {f with value = FOL_Atom (Atom (m x))}
+      | FOL_Atom Predicate x -> 
           let args = List.map m x.args in
-          { value = FOL_Atom (Predicate {x with args}); label = loc }
-      | e -> map_fol_pred m e)
-    (Fun.id) (* do nothing for quantifiers *)
+          {f with value = FOL_Atom (Predicate {x with args})}
+      | FOL_True | FOL_False -> f
+      | _ -> map_fol map (Fun.id) f
+    in
+    map_fol map (Fun.id) f (* do nothing for quantifiers *)
 
 (** {2 Helpers to build locatable formulas} *)
 

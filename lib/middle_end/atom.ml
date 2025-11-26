@@ -1,5 +1,5 @@
 open HardyFrontEnd.Syntax
-open HardyFrontEnd.Printer
+(* open HardyFrontEnd.Printer *)
 open Program
 open Shared
 open HardyMisc.Utils
@@ -9,8 +9,10 @@ open HardyMisc.Utils
 module type S = sig
   type 'a t
 
-  val get : string -> (string * ty fol_t) t
-  (** [get i] returns the atom corresponding to the identifier [i] *)
+  type 'b data 
+
+  val get_atom : string -> (string * ty fol_t) t
+  (** [get_atom i] returns the short name and the atom corresponding to the identifier [i] *)
 
   val subst : string t -> string t
   (** [subst f ty_to_str] replaces each atoms in formula [f] by a
@@ -20,6 +22,9 @@ module type S = sig
   val add_and_get : ty fol_t -> (string * string) t
   (** [add_and_get a] returns the short and long identifier corresponding to the
       atom [a], creating a fresh one if it does not exist *)
+
+  val get_data : string -> 'b data t
+  val set_data : string -> 'b data -> unit t
 end
 
 (** [sub_atom_in_str subst s] matches all atoms inside string [s]. Each atom [a]
@@ -46,6 +51,7 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
   in
   mk_dummy_loc value
 
+(*
 module Functional : S = struct
   module M = Map.Make (Int)
 
@@ -89,38 +95,50 @@ module Functional : S = struct
           ((short_name, label), (cnt + 1, m'))
       | Some (sn, _) -> ((sn, label), (cnt, m))
 end
-
-module Imperative () : S with type 'a t = 'a = struct
+*)
+module Imperative (Data: sig type t end) : S with type 'a t = 'a and type _ data = Data.t  = struct
   exception Atom_not_found of string
 
   open HardyFrontEnd.Printer
 
   type 'a t = 'a
 
+
+  type _ data = Data.t (* forced to use a functor to know the type statically because of the value restriction *)
+
+  type value = {short_id:string; fol:ty fol_t; other: Data.t option}
+
   (* we need to hash the key ourselves as we use them in the output *)
   module AtomTable = Hashtbl.Make(struct include Int let hash = Fun.id end)
 
   (* key is a hash of fol, value is a short name for fol + fol itself*)
-  let atomic_bindings : (string * ty fol_t) AtomTable.t = AtomTable.create 100
+  let atomic_bindings : value AtomTable.t = AtomTable.create 100
   let cnt = ref 0
 
-  let get (s : string) : (string * ty fol_t) t =
-    try AtomTable.find atomic_bindings (atom_of_atom_id s)    
-    with Not_found -> raise (Atom_not_found s)
+  let get k : value =
+    try AtomTable.find atomic_bindings (atom_of_atom_id k)
+    with Not_found -> raise (Atom_not_found k)
+
+  let get_atom (k : string) : (string * ty fol_t) t = let a = get k in (a.short_id, a.fol)
+
+  let get_data k : Data.t t = (get k).other |> Option.get
+
+  let set_data k (d:Data.t) = 
+    let k = atom_of_atom_id k in 
+    let a = AtomTable.find atomic_bindings k in AtomTable.replace atomic_bindings k {a with other=Some d}
 
   let subst =
     sub_atom_in_str (fun s ->
-        let _, inv = get s in
-        Format.asprintf "%a" (pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) inv)
+        Format.asprintf "%a" (pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) (get s).fol)
 
   let add_and_get (atom : ty fol_t) =
     let key = Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) atom) |> String.hash in
     let label = Format.sprintf "f_%i" key in
     match AtomTable.find_opt atomic_bindings key with
     | None ->
-        let short_name = string_of_int !cnt in
-        AtomTable.add atomic_bindings key (short_name, atom);
+        let short_id = string_of_int !cnt in
+        AtomTable.add atomic_bindings key {short_id; fol=atom; other=None};
         incr cnt;
-        (short_name, label)
-    | Some (sn, _) -> (sn, label)
+        (short_id, label)
+    | Some a -> (a.short_id, label)
 end

@@ -9,11 +9,13 @@ open LTLSyntax
 module SSyn = Syntax.Shared
 module Hist = Syntax.Instant
 
-module M(BAAtom : BAAtomSig)
+module M(TAtom: TseitinAtomSig)
          (Tool : Sig.ToolSig with type input = string ltl)
-        (B: BuchiSig.S with type E.label = BoolAlgebra(BAAtom).disjunction 
-                        and type init_val = Tool.output
-                        and type 'a Atoms.t = 'a)
+          (B: BuchiSig.S 
+                    with type init_val = Tool.output
+                    and type E.label = TAtom.t eba
+                    and type TAtom.t = TAtom.t
+                    and type 'a FAtom.t = 'a and type _ FAtom.data = Hist.min_nb_instants)
         :
   Sig.S
     with type triple_data = Program.triple_data_t
@@ -31,7 +33,7 @@ module M(BAAtom : BAAtomSig)
     list
 
 
-  module Triples = Triples.M(BAAtom)(B)
+  module Triples = Triples.M(TAtom)(B)
 
   type output = (string * Tool.output) hoare_pair
   type automaton = Triples.BProd.t

@@ -1,7 +1,16 @@
 type edge_type = Blocking | Universal | Unknown
 
 module type S = sig
+  module FAtom : Atom.S
+
+  module TAtom : MiddleParser.SyntaxCommon.TseitinAtomSig
+
+  module BA : module type of MiddleParser.SyntaxCommon.BoolAlgebra(TAtom)
+
   include Graph.Sig.G
+
+
+  module Transition : Graph.Sig.ORDERED_TYPE_DFT with type t := E.label
 
   type init_val
   type vdata
@@ -14,9 +23,6 @@ module type S = sig
   val pp_edge : Format.formatter -> E.label -> unit
   val get_edge_type : E.label -> edge_type
   val get_vdata : V.t -> vdata
-
-  module Atoms : Atom.S
-
 end
 
 (** Buchi-specific graph utilities *)
