@@ -1,13 +1,15 @@
 %token <int> INT
 %token <string> ID
+%token<string> STRING
 
-%token TY_INT TY_BOOL
+
+%token TY_INT TY_BOOL TY_STRING TY_ARRAY
 
 // EXP & LOGIC
 %token SYMB_AT DOLLAR EMARK SHARP //HAT QMARK
 %token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" 
 %token EQ "=" NEQ "<>" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
-// %token LSQBRACE "[" RSQBRACE "]"
+%token LSQBRACE "[" RSQBRACE "]"
 
 // LOGIC
 %token FORALL EXISTS EXISTS_PREV ARROW DARROW AND OR TRUE FALSE
@@ -18,7 +20,7 @@
 %token ELSE "else" WHILE "while" DO "do" DONE "done" END "end" ASSIGN ":="
 
 // REACTIVE
-%token EMIT TO VAR INPUT OUTPUT LAST FIRST START PREV AT // ALL ANY 
+%token CLEAR EMIT NOTHING TO VAR INPUT OUTPUT LAST FIRST START PREV AT // ALL ANY 
 
 
 // AUTOMATON
@@ -34,7 +36,7 @@
 // %token SINCE
 
 // MISC
-%token SEMI ";" COLON ":" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" COMMA "," // DOT "."   SEP "|" TILDE "~"
+%token SEMI ";" COLON ":" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" COMMA "," SEP "|" // DOT "."  TILDE "~"
 
 
 // ASSOC
