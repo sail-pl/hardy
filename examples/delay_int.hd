@@ -5,10 +5,14 @@ var x : int;
 guarantees G {x = i}
 guarantees X G {o = last i}
 
-setup :
+START :
     ensures { x = 0 }
-    x := 0;
+{
+        x := 0;
+}
 
-loop :
+LOOP :
+{
     emit x to o ;
     x := i ;
+}

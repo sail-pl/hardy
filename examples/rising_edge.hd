@@ -4,11 +4,14 @@ var prev_i : bool;
 guarantees X G {o <-> (!(prev i)) && i}
 guarantees G {i = prev_i}
 
-setup :
+SETUP :
     ensures { prev_i = false }
-    prev_i := false;
+{
+  prev_i := false;
+}  
 
-loop :
+START :
+{
     emit (i && !prev_i) to o;
     prev_i := i;
-
+}

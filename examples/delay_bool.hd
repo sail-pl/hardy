@@ -7,10 +7,14 @@ guarantees G {x = i}
 guarantees G ({i} -> X {o})
 guarantees G (!{i} -> X !{o})
 
-setup:
+SETUP:
     ensures { x = false }
+{
     x := false;
+}
 
-loop:
+START:
+{
     emit x to o;
     x := i;
+}
