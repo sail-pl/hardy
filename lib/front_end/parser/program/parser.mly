@@ -2,6 +2,7 @@
     open HardyMisc.Utils
     open SharedSyntax
     open ProgramSyntax
+    open InstantSyntax 
 
     (* https://github.com/ocaml/dune/issues/2450 *)
     module FrontParser = struct end
@@ -50,13 +51,14 @@ let state :=
     node_id=STATE ; ":" ; 
     node_variables = loption(vdecl(LOCAL));
     node_spec = midrule(requires=state_requires* ; ensures=state_ensures* ; {{requires;ensures}} ) ;
-    node_body = braced(stmt*) ; 
+    node_preamble = stmt_block ;
     node_transitions = transition* ;
-    { {node_id; node_variables; node_spec; node_body; node_transitions} }
+    { {node_id; node_variables; node_spec; node_preamble; node_transitions} }
 
+let transition := 
+| SEP ; ~ = midrule(~ = option(basic_expr); <> 
+| UNDERSCORE ; {None}) ; ~ = stmt_block ; ~ = preceded(ARROW,STATE)?  ; <>
 
-
-let transition ==  ~ = preceded(WHEN, basic_expr)? ;  GOTO ; ~ = STATE ; <>
 
 %public
 let braced(x) == delimited("{", x, "}")
@@ -80,46 +82,62 @@ let typed_state_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,(Sta
 
 %public
 let ty :=
+    | TY_UNIT ; {Ty_Prod []}
     | TY_BOOL ; {Ty_Bool}
     | TY_INT ; {Ty_Int}
     | TY_STRING ; {Ty_String}
+    | l = ty ; "*"; r = ty ; {Ty_Prod [l;r]}
     | TY_ARRAY ; LT ; ~ = ty ; ";" ; ~ = INT ; GT ; <Ty_Array>
 
 let stmt := located (
-    | CLEAR; ~ = basic_expr ; ";" ; <Clear> 
-    | EMIT ; ~ = midrule(NOTHING ; {None} | ~ = basic_expr ; <Some>)  ; TO ; ~ = ID ; ";" ; <Emit>
-    | IF ; ~ = basic_expr ; THEN ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; END ; <If>
-    | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
-    | e1 = basic_expr ; ":=" ; e2 = basic_expr ; ";" ; {Assign (e1,e2)}
+    | CLEAR; ~ = basic_expr ; <Clear> 
+    | EMIT ; id = ID  ; {Emit ({label=None;value=Prod []}, id) }
+    | EMIT ; ~ = basic_expr  ; TO ; ~ = ID ; <Emit>
+    | WHEN ; ~ = ID ; DO ; ~ = seq_stmt ; ~ = midrule(ELSE ; seq_stmt)? ; DONE ; <When>
+    | IF ; ~ = basic_expr ; THEN ; ~ = seq_stmt ; ~ = midrule(ELSE ; seq_stmt)? ; END ; <If>
+    | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = seq_stmt ; DONE ; <While>
+    | e1 = basic_expr ; ":=" ; e2 = basic_expr ; {Assign (e1,e2)}
 )
 
+let seq_stmt := 
+    | x = stmt ; {[x]}
+    | x = stmt ; ";" ; {[x]}
+    | hd = stmt ; ";" ; tl = seq_stmt ; {hd::tl}
+
+let stmt_block := loption(braced(seq_stmt))
 
 let simpl_expr(var_e) :=
 | located (
     | LTRUE ; {True}
     | LFALSE ; {False}
     | ~ = INT ; <Int>
-    | "[" ; "|" ; ~ = separated_list(";", expr(var_e)) ; "|" ; "]" ; <Array>
-    | ~ = simpl_expr(var_e) ; "[" ; ~ = expr(var_e) ; "]" ; <ArrayCell>
     | ~ = STRING ; <String>
     | (id,x) = var_e ; {Var (id,x)}
 )
 
 (*         | name = ID ; args=loption(delimited("(",separated_list(COMMA, atom),")"))  {FOL_Atom (Predicate {name;args=[]}) } *)
 
-let expr(var_e) := 
-    | located (
-        | EMARK ;  e = expr(var_e) ; %prec UNARY {UnOp (ENot,e)}
-        | left = expr(var_e) ; op = binExpOp ; right = expr(var_e) ; {BinOp {left;op;right}}
-        )
-    | ~ = delimited("(",expr(var_e),")") ; <>
-    | simpl_expr(var_e)
 
+let expr(var_e) := 
+    | simpl_expr(var_e)
+    | located (
+        | array = simpl_expr(var_e) ; "[" ; idx = expr(var_e) ; "]" ; {ArrayCell {idx;array}}
+        | EMARK ;  e = expr(var_e) ; %prec UNARY {UnOp (ENot,e)}
+        | "[" ; "|" ; ~ = separated_nonempty_list(";", expr(var_e)) ; "|" ; "]" ; <Array>
+        | left = expr(var_e) ; op = binExpOp ; right = expr(var_e) ; {BinOp {left;op;right}}
+        | ~ = tuple(var_e) ; %prec below_COMMA <Prod>
+        )
+
+let reversed_tuple_body(var_e) :=
+    | t = reversed_tuple_body(var_e) ; "," ; e = expr(var_e) ; { e::t }
+    | e1 = expr(var_e) ; "," ; e2 = expr(var_e) ; { [e2;e1] }
+
+let tuple(var_e) == rev(reversed_tuple_body(var_e))
 
 let basic_expr == expr(id = ID ; {id,()})
 
 
-let tq_expr == expr(
+let tq_expr := expr(
     | id = ID ; {id,None}
     | id = ID ; endrule(AT|SYMB_AT) ; n = INT ; {id,Some (At n)}
     | endrule(PREV | LAST) ; n = endrule(n = option(INT); {Option.value ~default:1 n}) ; id = ID ;  {id,Some (Previous n)}
