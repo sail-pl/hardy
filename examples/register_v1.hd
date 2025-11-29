@@ -44,17 +44,20 @@ guarantees G ({set} -> !{set} R (!{set} || X {o = prev value}))
 // NOT POSSIBLE TO STATE CURRENTLY 
 
 
-SETUP :
-    ensures { x = 0 }
-{
-   x := 0;
-}
-
 START :
-{
-    emit x to o;
+    ensures { x = 0 }
+    
+    | _ {
+        x := 0;
+        emit x to o;
+    } => LOOP
 
-    if set then
+LOOP :
+    {
+        emit x to o;
+    }
+
+    | set {
         x := value;
-    end
-}
+    }
+

@@ -7,13 +7,12 @@ guarantees G {x = i}
 guarantees G ({i} -> X {o})
 guarantees G (!{i} -> X !{o})
 
-SETUP:
-    ensures { x = false }
-{
-    x := false;
-}
-
 START:
+| _ {
+    x := i;
+} => LOOP
+
+LOOP:
 {
     emit x to o;
     x := i;
