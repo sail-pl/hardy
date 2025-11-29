@@ -1,4 +1,4 @@
-input i : int;
+input i : int * int;
 output o : int;
 var x : int;
 

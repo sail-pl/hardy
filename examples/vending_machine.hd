@@ -1,0 +1,84 @@
+input 
+    choice: int
+    money : int
+;
+
+output 
+    message : string 
+
+    // operate the item spring
+    drop_item : int
+;
+
+var 
+    timer : int // used to detect inactivity  
+    timeout : int
+    money_received : int
+    item : int
+    items_price : array<int;5>
+;
+
+START: 
+   | _ {
+        clear item;
+        money_received := 0;
+        items_price := [|2;4;3;2;5|];
+        timer := 0;
+        timeout := 5;
+    }  => ITEM_SELECTION
+
+
+ITEM_SELECTION:
+    |  choice && choice >= 1 && choice <= 5 {
+        item := choice;
+        emit "Confirm the selection (enter the same input)" to message;
+    } => CONFIRM
+
+    | choice {
+        emit "incorrect selection" to message;
+    }
+   
+    | _ {
+        emit "please select an item (1-5)" to message;
+    }
+
+
+// user must press the same item number or a different one to cancel
+CONFIRM:
+    | timer > timeout || (choice && choice <> item) {
+        clear item;
+        emit "canceling..." to message;
+        timer := 0;
+    } => ITEM_SELECTION
+
+    | choice = item {
+        emit "Selection confirmed, please proceed to the payment" to message; 
+        timer := 0;
+    } => ASK_MONEY
+
+    | _ {
+        timer := timer + 1;
+    }
+
+// some statements can be executed before the transitions but must not modify the current state
+// -> can use local variables
+ASK_MONEY:
+    {
+        when money do
+            money_received := money_received + money;
+        done    
+    }
+    
+    | money_received >= items_price[item - 1] {
+        emit "Please collect your item" to message;
+        emit item to drop_item;
+    } => ITEM_SELECTION
+
+    | money {             
+        // reset timer when money is introduced
+        timer := 0; 
+    }
+
+    | _ {
+        timer := timer + 1;
+    }

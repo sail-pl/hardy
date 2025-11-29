@@ -5,13 +5,12 @@ var x : int;
 guarantees G {x = i}
 guarantees X G {o = last i}
 
-START :
-    ensures { x = 0 }
-{
-        x := 0;
-}
+START:
+| _ {
+    x := i;
+} => LOOP
 
-LOOP :
+LOOP:
 {
     emit x to o ;
     x := i ;

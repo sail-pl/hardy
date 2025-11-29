@@ -1,0 +1,27 @@
+input 
+    v : int
+;
+
+output 
+    max: int
+;
+
+var 
+    max_v: int
+;
+
+
+START: 
+    {
+        max_v := v;
+        emit max_v to max;
+    }    
+    GOTO LOOP
+
+LOOP:
+    {
+       if max_v < v then
+            max_v := v;
+        end
+        emit max_v to max;
+    }
