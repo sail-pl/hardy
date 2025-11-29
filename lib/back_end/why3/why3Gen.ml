@@ -25,6 +25,8 @@ let rec get_pty  = function
 | Ty_Int
 | Ty_Real as ty -> Ptree.(PTtyapp (Ptree_helpers.qualid [ get_pp_string pp_base_ty ty ], []))
 | Ty_Array (ty',_) -> Ptree.(PTtyapp (Ptree_helpers.qualid [ "array" ], [get_pty ty']))
+| Ty_Prod l -> PTtuple (List.map get_pty l)
+
 
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
@@ -131,6 +133,7 @@ let rec translate_rexpr (e: ty expr) : P.expr =
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
   | Int n -> econst n ~loc
+  | Prod l -> let l = List.map translate_rexpr l in expr ~loc (Etuple l)
   | Var (s, (cat_ty,_)) ->
     begin
     match cat_ty with
@@ -150,36 +153,12 @@ let rec translate_rexpr (e: ty expr) : P.expr =
             (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
             v.op e1 e2)
 
-  | ArrayCell (s,n) -> 
-    let e = translate_rexpr s in
-        eapp ~loc (qualid [Ident.op_get ""]) [e ; translate_rexpr n]
+  | ArrayCell v ->
+      let e = translate_rexpr v.idx in
+      eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr v.array ]
   | String s -> P.(Econst (Constant.string_const s)) |> expr ~loc
   | Array a -> make_earray (Iarray.map translate_rexpr a)
   | Real r -> P.(Econst (Constant.real_const_from_string ~neg:false ~radix:r.radix ~int:r.num ~frac:r.frac ~exp:r.exp)) |> expr ~loc
-
-
-let translate_lexpr (e : ty expr) : P.expr * string option =
-  let open PH in
-  let loc = get_loc e.label in
-  match e.value with
-  | Var (id, (cty,_)) ->
-    begin
-      match cty with
-        | State ->
-            ([ get_cat_ty State ] |> qualid |> evar ~loc, Some id)
-        | Local -> ([] |> qualid |> evar ~loc, Some id)
-        | Input | Output as cat ->
-            failwith
-            @@ Format.sprintf
-                 "can't assign expression to stream variable '%s' (%s)" id
-                 (get_pp_string pp_cat_ty cat)
-        end
-  | ArrayCell (s,n) -> 
-    let e = translate_rexpr s in
-    (* let x = Ident.sn_decode (Ident.op_update "") in *)
-    eapp ~loc (qualid [Ident.op_set ""]) [e; e ; translate_rexpr n], None   
-
-  | Int _ | Real _ | True | False | UnOp (_, _) | BinOp _ | Array _ | String _ -> failwith "not an l-value"
 
 
 let rec translate_term (e : (instant option * ty) expr) : P.term =
@@ -227,9 +206,10 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
           v.op t1 t2)
   | Array _ -> failwith "array literals are not supported within Why3 terms"
   | String s -> P.(Tconst (Constant.string_const s)) |> term ~loc
-  | ArrayCell (s,n) ->
-    tapp ~loc (qualid [Ident.op_get ""]) [translate_term s ; translate_term n]
-  
+  | ArrayCell a ->
+    tapp ~loc (qualid [Ident.op_get ""]) [translate_term a.array ; translate_term a.idx]
+  | Prod l -> let l  = List.map translate_term l in term ~loc (Ttuple l)
+
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
@@ -252,10 +232,32 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     let loc = get_loc stmt.label in
     match stmt.value with
     | Assign (e1, e2) ->
-        let e1, id = translate_lexpr e1 in
-        let e2 = translate_rexpr e2 in
-        Eassign [ (e1, Option.map (fun id -> qualid [ id ]) id, e2) ]
-        |> expr ~loc
+        let e2' = translate_rexpr e2 in
+        begin
+        match e1.value with
+        | Var (id, (cty,_)) ->
+          let e1',id =
+           begin
+            match cty with
+            | State ->
+                ([ get_cat_ty State ] |> qualid |> evar ~loc, id)
+            | Local -> ([] |> qualid |> evar ~loc, id)
+            | Input | Output as cat ->
+                failwith
+                @@ Format.sprintf
+                    "can't assign expression to stream variable '%s' (%s)" id
+                    (get_pp_string pp_cat_ty cat)
+            end in
+             Eassign [ (e1', Some (qualid [ id ]) , e2') ] |> expr ~loc
+
+        | ArrayCell a -> 
+          let array = translate_rexpr a.array
+          and idx = translate_rexpr a.idx in
+          eapp (qualid [Ident.op_set ""]) [array; idx; e2'] ~loc
+
+        | Int _ | Real _ | True | False | UnOp (_, _) | BinOp _ | Array _ | String _ | Prod _ ->
+             failwith "not an assignable expression"
+        end 
     | Emit (e, id) ->
         get_binding_type id (fun (cat, _) ->
             let e1, field =

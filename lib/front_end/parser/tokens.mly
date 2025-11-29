@@ -3,10 +3,10 @@
 %token <string> ID
 %token <string> STRING
 
-%token TY_INT TY_REAL TY_BOOL TY_STRING TY_ARRAY
+%token TY_INT TY_REAL TY_BOOL TY_STRING TY_ARRAY TY_UNIT
 
 // EXP & LOGIC
-%token SYMB_AT DOLLAR EMARK SHARP //HAT QMARK
+%token SYMB_AT DOLLAR EMARK SHARP //UNDERSCORE HAT QMARK 
 %token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" 
 %token EQ "=" NEQ "<>" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
 %token LSQBRACE "[" RSQBRACE "]"
@@ -35,9 +35,11 @@
 
 
 // ASSOC
+%nonassoc below_COMMA
+%left COMMA
 %right ARROW DARROW
-%left OR
-%left AND
+%right OR
+%right AND
 %right EQ NEQ GT LT GTE LTE 
 %left PLUS MINUS
 %left TIMES DIVIDE
@@ -46,6 +48,5 @@
 // %right EVENTUALLY ALWAYS
 // %right NEXT
 
-%nonassoc UNARY
-%nonassoc COMMA
+%nonassoc UNARY //LPAREN
 %%

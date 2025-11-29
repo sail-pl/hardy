@@ -39,6 +39,7 @@ let newline = '\r' | '\n' | "\r\n"
 rule tokenize = parse
   | [' ' '\t']              { tokenize lexbuf }  (* Skip whitespaces *)
   | "//"                    { read_comment lexbuf } (* single-line comment *)
+  | "unit"                  { TY_UNIT }
   | "bool"                  { TY_BOOL }
   | "int"                   { TY_INT } 
   | "real"                  { TY_REAL }
@@ -121,7 +122,7 @@ rule tokenize = parse
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }
   | "||"                    { OR }
-  | '"'      { read_string (Buffer.create 17) lexbuf }
+  | '"'                     { read_string (Buffer.create 17) lexbuf }
   | digit+ as lxm           { INT (int_of_string lxm) }
   
   (* from https://gitlab.inria.fr/why3/why3/-/blob/master/src/parser/lexer.mll#L98 *)

@@ -20,9 +20,11 @@ let main (type triple_data fol_data out_pgrm)
            HardyMisc.Utils.conjunction, triple_data )
          FrontParser.ProgramSyntax.hoare_triple) =
   let module Cli = Cli () in
+  let module Front = HardyFrontEnd in
   let module I = TUI.F (Interactive) in
   let module Back = HardyBackEnd.Sig.F (Back) in
   let translate_spec = HardyMiddleEnd.Sig.translate_spec (module Middle) in
+
   let info = Cli.get_info in
   if not Sys.(file_exists info.outdir) then Sys.mkdir info.outdir 0o755;
   let output_file = Filename.(concat info.outdir @@ basename info.file) in
@@ -30,7 +32,7 @@ let main (type triple_data fol_data out_pgrm)
   Format.printf "Parsing program and spec...@.";
   Parser.parse_file info.file |> fun p -> 
   Format.printf "Typing program and spec...@.";
-  HardyFrontEnd.Typing.type_pgrm p |> fun t_pgrm ->
+  Front.Typing.type_pgrm p |> fun t_pgrm ->
   Format.printf "Translating spec...@.";
   translate_spec info t_pgrm |> fun triples ->
   Format.printf "Translating program...@.";

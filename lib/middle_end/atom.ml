@@ -54,8 +54,12 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
         BinOp { v with left; right }
     | UnOp (ENot,e) -> UnOp (ENot,(remove_exp_loc e))
     | (Int _ | Real _ | True | False | Var (_, _)) | String _ as v -> v
-    | ArrayCell (e1,e2) -> ArrayCell (remove_exp_loc e1, remove_exp_loc e2)
+    | ArrayCell v -> 
+      let idx = remove_exp_loc v.idx 
+      and array = remove_exp_loc v.array in
+      ArrayCell {idx;array}
     | Array l -> Array (Iarray.map remove_exp_loc l)
+    | Prod l -> Prod (List.map remove_exp_loc l)
     in
   mk_dummy_loc value
 

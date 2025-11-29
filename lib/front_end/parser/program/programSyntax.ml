@@ -19,9 +19,10 @@ and 't expression_ =
   | Var of string * 't
   | UnOp of expr_uop * 't expr
   | BinOp of {left: 't expr ; op: expr_binop ; right : 't expr}
-  | ArrayCell of 't expr * 't expr
+  | ArrayCell of {array: 't expr; idx: 't expr}
   | Array of 't expr iarray
   | String of string
+  | Prod of 't expr list
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
@@ -37,8 +38,9 @@ let rec fold_expr : type a. (a -> 't expr -> a) -> a ->'t expr -> a =
   | Int _ | Real _ | True | False | Var _ | String _  -> j init e
   | UnOp (_,e1) -> j (fold_expr j init e1 ) e
   | BinOp x -> j (fold_expr j (fold_expr j init x.right) x.left) e 
-  | ArrayCell (e1,e2) -> j (fold_expr j (fold_expr j init e2) e1) e 
+  | ArrayCell v -> j (fold_expr j (fold_expr j init v.idx) v.array) e 
   | Array arr -> Iarray.fold_left (fold_expr j) init arr
+  | Prod arr -> List.fold_left (fold_expr j) init arr
 
 
 let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * t2) -> t1 expr -> t2 expr =
@@ -49,8 +51,9 @@ let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * 
   | UnOp (op,e1) -> m { e with value = UnOp (op,map_expr m var_map e1)}
   | BinOp x ->
       m { e with value = BinOp { x with left=map_expr m var_map x.left; right=map_expr m var_map x.right} }
-  | ArrayCell (id,e') -> m { e with value = ArrayCell (map_expr m var_map id,map_expr m var_map e') }
+  | ArrayCell v -> let idx = map_expr m var_map v.idx and array = map_expr m var_map v.array in  m { e with value = ArrayCell {idx;array} }
   | Array arr -> m { e with value = Array (Iarray.map (map_expr m var_map) arr) }
+  | Prod l -> m { e with value = Prod (List.map (map_expr m var_map) l) }
 
   
 let [@warning "-4"] expr_vars : (string * 't) list -> 't expr -> (string * 't) list = fun x -> 
