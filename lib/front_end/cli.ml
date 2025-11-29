@@ -5,6 +5,7 @@ type info = {
   verbose : bool;
   outdir : string;
   no_i_a_conj : bool;
+  eval: bool;
 }
 (** parameters provided by the cli *)
 
@@ -29,12 +30,15 @@ functor
     let no_i_a_conj = ref false
     let cwd = Sys.getcwd ()
 
+    let eval = ref false
+
     let speclist =
       [
         ("-v", Set verbose, "debug output");
         ( "-noiaconj",
           Set no_i_a_conj,
           "do not add the rely the formula to the guarantee one" );
+        ("-run", Set eval, "evaluate the program");
       ]
 
     let get_input_file f =
@@ -56,5 +60,6 @@ functor
         verbose = !verbose;
         outdir = output_path;
         no_i_a_conj = !no_i_a_conj;
+        eval = !eval
       }
   end

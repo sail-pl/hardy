@@ -43,8 +43,8 @@ rule tokenize = parse
   | "do"                    { DO  }
   | "end"                   { END }
   | "done"                  { DONE }
-  | "setup"                 { SETUP }
-  | "loop"                  { LOOP }
+  | "WHEN"                  { WHEN }
+  | "GOTO"                  { GOTO }
   | "var"                   { VAR }
   | "input"                 { INPUT }
   | "output"                { OUTPUT }
@@ -111,6 +111,7 @@ rule tokenize = parse
   | "||"                    { OR }
   | digit+ as lxm           { INT (int_of_string lxm) }
   | id as lxm               { ID (lxm) }
+  | uppercase+ as state_id     { STATE state_id }
   | newline                 { next_line lexbuf; tokenize lexbuf }
   | eof                     { EOF }
   | _ as char               { raise (Lexical_error (pos_range lexbuf, Format.sprintf "Unexpected character '%s'" (Char.escaped char))) }
