@@ -151,3 +151,14 @@ module Imperative (Data: sig type t end) : S with type 'a t = 'a and type _ data
         (short_id, label)
     | Some a -> (a.short_id, label)
 end
+
+
+module Empty : S  = struct
+  type _ t = unit 
+  type _ data = unit 
+  let subst _ = ()
+  let add_and_get _ = ()
+  let get_atom _ = ()
+  let set_data _  _ = ()
+  let get_data _ = ()
+end 

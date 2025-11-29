@@ -10,12 +10,17 @@ let main (type triple_data) (type fol_data)
        and type fol_data = Middle.fol_data) =
   let module Cli = Cli () in
   let module Front = HardyFrontEnd in
-
+  let module P2Ba = HardyMiddleEnd.Automata.Buchi.Pg2ba.M in
+  let module P2BaDot = HardyMiddleEnd.Automata.Buchi.BuchiSig.Dot (P2Ba) in
+  
   let info = Cli.get_info in
   if not Sys.(file_exists info.outdir) then Sys.mkdir info.outdir 0o755;
   let output_file = Filename.(concat info.outdir @@ basename info.file) in
 
   Parser.parse_file info.file |> Front.Typing.type_pgrm |> fun p ->
+  if not Sys.(file_exists info.outdir) then Sys.mkdir info.outdir 0o755;
+  Out_channel.with_open_text Filename.(concat info.outdir info.file ^ ".dot")
+  (fun o -> P2Ba.create p.prog_nodes |> P2BaDot.output_graph o);
   if info.eval then 
     Front.Interpreter.(eval_pgrm p (module ConsoleBridge)) 
   ;

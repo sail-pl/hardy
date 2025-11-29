@@ -27,26 +27,8 @@ module Make(G : BuchiSig.S)
 
 
   (* Atoms not needed in the product *)
-  module FAtom : Atom.S = struct 
-    type _ t = unit 
-    type _ data = unit 
-    let subst _ = ()
-    let add_and_get _ = ()
-    let get_atom _ = ()
-    let set_data _  _ = ()
-    let get_data _ = ()
-  end 
-  module TAtom : TseitinAtomSig = struct 
-    type t = unit 
-    let neg _ = ()
-    let create _ = ()
-    let pp _ _ = () 
-    let fresh () = ()
-    let get_atom_id _ = ""
-    let is_neg _ = false
-    let is_generated _ = false
-  end 
-  
+  module FAtom = Atom.Empty
+  module TAtom = EmptyTAtom
   module BA = BoolAlgebra(TAtom)
 
  module Transition : Graph.Sig.ORDERED_TYPE_DFT with type t =  G.E.label arc_data = struct
