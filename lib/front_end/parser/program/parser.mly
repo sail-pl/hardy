@@ -80,14 +80,17 @@ let typed_state_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,(Sta
 
 %public
 let ty :=
-    | TY_BOOL ; { Ty_Bool }
-    | TY_INT ; { Ty_Int }
+    | TY_BOOL ; {Ty_Bool}
+    | TY_INT ; {Ty_Int}
+    | TY_STRING ; {Ty_String}
+    | TY_ARRAY ; LT ; ~ = ty ; ";" ; ~ = INT ; GT ; <Ty_Array>
 
 let stmt := located (
-    | e1 = basic_expr ; ":=" ; e2 = basic_expr ; ";" ; {Assign (e1,e2)}
-    | EMIT ; ~ = basic_expr  ; TO ; ~ = ID ; ";" ; <Emit>
+    | CLEAR; ~ = basic_expr ; ";" ; <Clear> 
+    | EMIT ; ~ = midrule(NOTHING ; {None} | ~ = basic_expr ; <Some>)  ; TO ; ~ = ID ; ";" ; <Emit>
     | IF ; ~ = basic_expr ; THEN ; ~ = stmt* ; ~ = midrule(ELSE ; stmt*)? ; END ; <If>
     | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = stmt* ; DONE ; <While>
+    | e1 = basic_expr ; ":=" ; e2 = basic_expr ; ";" ; {Assign (e1,e2)}
 )
 
 
@@ -96,6 +99,9 @@ let simpl_expr(var_e) :=
     | LTRUE ; {True}
     | LFALSE ; {False}
     | ~ = INT ; <Int>
+    | "[" ; "|" ; ~ = separated_list(";", expr(var_e)) ; "|" ; "]" ; <Array>
+    | ~ = simpl_expr(var_e) ; "[" ; ~ = expr(var_e) ; "]" ; <ArrayCell>
+    | ~ = STRING ; <String>
     | (id,x) = var_e ; {Var (id,x)}
 )
 
