@@ -15,13 +15,17 @@ guarantees X G {o = first i}
 guarantees {o = i}
 
 
-setup :
+SETUP :
     ensures { init = true }
+{
     init := true;
+}   
 
-loop :
+START :
+{
     if init then
         x := i;
         init := false;
     end
     emit x to o;
+}

@@ -11,11 +11,14 @@ guarantees G ({off} -> {on} R ({on} || ! {light}))
 
 guarantees G {curr_light = light}
 
-setup : 
+START : 
 	ensures { !curr_light  }
+{
 	curr_light := false;
+}
 
-loop:
+LOOP:
+{
 	if on then 
 		curr_light := true;
 	else 
@@ -24,5 +27,5 @@ loop:
 		end
 	end
 	emit curr_light to light;
-
+}
 	

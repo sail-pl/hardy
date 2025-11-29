@@ -10,6 +10,6 @@ guarantees G {o = !i}
 guarantees X G {o=!prev o}
 
 
-loop :
-    emit !i to o;
+START :
+{    emit !i to o; }
 
