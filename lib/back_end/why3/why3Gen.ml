@@ -265,8 +265,6 @@ struct
   (* type in_spec = ((in_ty,fol_data) inst_spec_t list) hoare_pair *)
 
   type in_pgrm = base_program
-  type in_setup = (Shared.ty fol_t, unit) setup
-  type in_body = (Shared.ty fol_t, unit) stmt list
 
   type in_fun =
     ( triple_data,
@@ -405,14 +403,19 @@ struct
     (* let props = List.init 1251 (fun i -> {ld_loc=Loc.dummy_position; ld_ident=ident ("p" ^ string_of_int i); ld_params = []; ld_type = None; ld_def = None}) in  *)
     [ input_t; output_t; state_t; instant_t; i; o; s; hist; iproj; oproj; sproj ;  (* Dlogic props *) ]
     
-  let generate_body (b : in_body) : out_body = expr_of_statements pterm_of_inv b
+  let generate_body (p : in_pgrm) (d : triple_data): out_body = 
+    let node = find_node d.triple_node_id p.prog_nodes in
+    expr_of_statements pterm_of_inv node.node_body
 
-  let generate_function (d : triple_data_t) spec body =
+
+  let generate_function  (_p : in_pgrm) (d : triple_data_t) spec body =
+
     let open P in
     let open PH in
     Efun ([], None, pat Pwild, Ity.MaskVisible, spec, body) |> expr |> fun m ->
     Dlet (ident d.triple_id, false, Expr.RKnone, m)
 
+  (*
   let generate_setup : in_setup option -> out_setup option =
     let open PH in
     let d = { triple_id = "setup" } in
@@ -429,7 +432,7 @@ struct
               sp_post = [ (Loc.dummy_position, [ (pat Pwild, f) ]) ];
             }
         in
-        generate_function d spec bdy)
+        generate_function d spec bdy) *)
 
   let length_assert (n : min_nb_instants) : P.term =
     let open P in
@@ -494,7 +497,7 @@ struct
     { empty_spec with sp_pre; sp_post }
 
   (** generates WhyML program expression to represent the setup procedure *)
-  let generate_program decls setup funs =
+  let generate_program decls funs =
     let uses =
       [
         [ "int"; "Int" ];
@@ -512,7 +515,7 @@ struct
       ( PH.ident "Program",
         uses
         @ PH.use ~import:false [ "ProgramHelper" ]
-          :: add_opt_to_list setup funs )
+          :: funs )
     in
     let pgrm = P.Modules [ helper_m; triples_m ] in
     let () =

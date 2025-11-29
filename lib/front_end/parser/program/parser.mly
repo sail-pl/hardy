@@ -22,7 +22,9 @@ let prog_requires == RELY ; ~ =  ltl_spec ;  <>
 
 let prog_ensures == GUARANTEE ; ~ =  ltl_spec ;<>
 
-let setup_ensures == ENSURES ;  ~ = braced(inst_spec) ;  <>
+let state_requires == REQUIRES ;  ~ = braced(inst_spec) ;  <>
+
+let state_ensures == ENSURES ;  ~ = braced(inst_spec) ;  <>
 
 let invariant == preceded(INVARIANT, braced(inst_spec)) 
 
@@ -34,19 +36,27 @@ let program :=
     prog_decls = declaration ; 
     requires = prog_requires* ; 
     ensures = prog_ensures* ; 
-    prog_setup = midrule(
-            SETUP ; ":" ; setup_ensures= setup_ensures* ; setup_body=stmt* ; 
-            {{setup_ensures;setup_body}}
-    )? ;
-    LOOP ; ":" ; main_loop_inv = invariant? ; main_body = stmt* ; EOF ;
+    prog_nodes = state+;
+    EOF;
     {
         {
             prog_decls;
             prog_spec={requires;ensures};
-            prog_setup; 
-            prog_main = {main_loop_inv ; main_body}
+            prog_nodes
         }
     }
+
+let state := 
+    node_id=STATE ; ":" ; 
+    node_variables = loption(vdecl(LOCAL));
+    node_spec = midrule(requires=state_requires* ; ensures=state_ensures* ; {{requires;ensures}} ) ;
+    node_body = braced(stmt*) ; 
+    node_transitions = transition* ;
+    { {node_id; node_variables; node_spec; node_body; node_transitions} }
+
+
+
+let transition ==  ~ = preceded(WHEN, basic_expr)? ;  GOTO ; ~ = STATE ; <>
 
 %public
 let braced(x) == delimited("{", x, "}")
@@ -68,6 +78,7 @@ let output == vdecl(OUTPUT)
 let typed_decl_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,t) ids}
 let typed_state_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,(State,t)) ids}
 
+%public
 let ty :=
     | TY_BOOL ; { Ty_Bool }
     | TY_INT ; { Ty_Int }
