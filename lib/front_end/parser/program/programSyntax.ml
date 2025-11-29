@@ -15,6 +15,7 @@ and 't expression_ =
   | Int of int
   | True
   | False
+  | Unit
   | Var of string * 't
   | UnOp of expr_uop * 't expr
   | BinOp of {left: 't expr ; op: expr_binop ; right : 't expr}
@@ -22,7 +23,7 @@ and 't expression_ =
   | Array of 't expr list
   | String of string
   | Prod of 't expr list
-
+  | NodeCall of {node_id : string; args : 't expr}
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
@@ -31,8 +32,8 @@ let private_var = String.cat "_"
 let rec fold_expr : type a. ('t expr -> a -> a) -> 't expr -> a -> a =
  fun j e init ->
   match e.value with
-  | Int _ | True | False | Var _ | String _ -> j e init
-  | UnOp (_,e1) -> j e (fold_expr j e1 init)
+  | Int _ | Unit | True | False | Var _ | String _ -> j e init
+  | UnOp (_,e1) | NodeCall {args=e1;_} -> j e (fold_expr j e1 init)
   | BinOp x -> j e (fold_expr j x.left (fold_expr j x.right init))
   | ArrayCell v -> j e (fold_expr j v.array init)
   | Array arr | Prod arr -> List.fold_right (fold_expr j) arr init
@@ -41,13 +42,14 @@ let rec fold_expr : type a. ('t expr -> a -> a) -> 't expr -> a -> a =
 let rec map_expr : ('t expr -> 't expr) -> 't expr -> 't expr =
  fun m e ->
   match e.value with
-  | Int _ | True | False | Var _ | String _ ->  m e
+  | Int _ | Unit | True | False | Var _ | String _ ->  m e
   | UnOp (op,e1) -> m { e with value = UnOp (op,map_expr m e1)}
   | BinOp x ->
       m { e with value = BinOp { x with left=map_expr m x.left; right=map_expr m x.right} }
   | ArrayCell v -> let array = map_expr m v.array in m { e with value = ArrayCell {v with array}}
   | Array arr -> m { e with value = Array (List.map (map_expr m) arr) }
   | Prod l -> m { e with value = Prod (List.map (map_expr m) l) }
+  | NodeCall c -> {e with value = NodeCall {c with args=map_expr m c.args}}
 
 
 let expr_vars (e : 't expr) : (string * 't) list -> (string * 't) list =
@@ -68,22 +70,27 @@ type ('inv, 't) stmt = ('inv, 't) stmt_ locatable
 (** program statements *)
 
 and ('inv, 't) stmt_ =
+  | Return of 't expr
   | Assign of 't expr * 't expr
-  | Emit of 't expr * string
-  | Clear of 't expr (* set a variable to Nil  (not for outputs) *)
   | If of 't expr * ('inv, 't) stmt list * ('inv, 't) stmt list option
   | While of 't expr * 'inv * unit expr variant * ('inv, 't) stmt list
-  | When of string * ('inv, 't) stmt list * ('inv, 't) stmt list option
 
 type 'ty var_decls = (string * 'ty) list
 
-type ('inst_spec, 't) node = {
+type ('temp_spec, 'inst_spec) node_spec_t = {
+  n_requires : 'temp_spec list;
+  n_ensures : 'temp_spec list; 
+  n_guarantees : 'inst_spec list;
+   n_assumes : 'temp_spec list;
+}
+type ('temp_spec, 'inst_spec) node = {
   node_id : string;
-  node_variables : base_ty var_decls;
+  node_rtype : base_ty;
+  node_params : base_ty var_decls;
+  node_vars : base_ty var_decls;
   node_preamble : ('inst_spec, unit) stmt list;
-  node_spec : 'inst_spec list hoare_pair;
-  node_transitions : (unit expr option * ('inst_spec, unit) stmt list * string option) list;
-
+  node_body :  ('inst_spec, unit) stmt list;
+  node_spec : ('temp_spec, 'inst_spec) node_spec_t;
 }
 
 let init_node = "START"
@@ -111,7 +118,6 @@ type 'ty env = {
 }
     
 type ('temp_spec, 'inst_spec, 't, 'decls) program = {
-  prog_decls : 'decls;
-  prog_spec : 'temp_spec list hoare_pair;
-  prog_nodes : ('inst_spec, 't) node list;
+  (* prog_decls : 'decls; *)
+  prog_nodes : ('temp_spec, 'inst_spec) node list;
 }

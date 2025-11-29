@@ -86,6 +86,7 @@ let rec translate_rexpr (e: unit expr) : P.expr =
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
   | Int n -> econst n ~loc
+  | Unit -> expr e_unit ~loc
   | Prod _l -> failwith "todo tuple"
   | Var (s, ()) ->
       get_binding_type s (fun (cat, _) ->
@@ -107,8 +108,10 @@ let rec translate_rexpr (e: unit expr) : P.expr =
   | ArrayCell v ->
       let e = translate_rexpr v.idx in
       eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr v.array ]
-    | String s -> econst (String.hash s) ~loc
-    | Array l -> List.map translate_rexpr l |> make_elist
+  | String s -> econst (String.hash s) ~loc
+  | Array l -> List.map translate_rexpr l |> make_elist
+  | NodeCall _c -> failwith "todo nodecall"
+
 
 let translate_lexpr (e : unit expr) : P.expr * string option =
   let open PH in
@@ -138,6 +141,7 @@ let rec translate_term (e : instant option expr) : P.term =
   match e.value with
   | True -> term ~loc Ttrue
   | False -> term ~loc Tfalse
+  | Unit -> term ~loc t_unit
   | Int n -> tconst ~loc n
   | Var (s, t) ->
       get_binding_type s (fun (cat, _) ->
@@ -178,6 +182,7 @@ let rec translate_term (e : instant option expr) : P.term =
         (qualid [ Ident.op_get "" ])
         [ translate_term v.idx; translate_term v.array ]
   | Prod _ -> failwith "todo prod"
+  | NodeCall _c -> failwith "todo funcall"
 
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
@@ -185,7 +190,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
   let open P in
   let open PH in
   let rec tr_seq = function
-    | [] -> expr unit_val
+    | [] -> expr e_unit
     | [ x ] -> tr_stmt x
     | s ->
         List.fold_right
@@ -195,33 +200,16 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
               ->
                 x
             | _ -> Esequence (tr_stmt x, y) |> expr)
-          s (expr unit_val)
+          s (expr e_unit)
   and tr_stmt (stmt : ('a, 'b) stmt) =
     let loc = get_loc stmt.label in
     match stmt.value with
+    | Return _ -> failwith "todo return"
     | Assign (e1, e2) ->
         let e1, id = translate_lexpr e1 in
         let e2 = translate_rexpr e2 in
         Eassign [ (e1, Option.map (fun id -> qualid [ id ]) id, e2) ]
         |> expr ~loc
-    | Clear _e -> failwith "todo"
-    | Emit (e, id) ->
-        let e = translate_rexpr e in
-        get_binding_type id (fun (cat, _) ->
-            let e1, field =
-              match cat with
-              | Local -> ([ id ] |> qualid |> evar, None)
-              | State | Output ->
-                  ( [ get_pp_string pp_cat_ty cat ] |> qualid |> evar,
-                    Some ([ id ] |> qualid) )
-              | Input -> failwith @@ Format.sprintf "can't emit to '%s'" id
-            in
-            Eassign [ (e1, field, e) ] |> expr ~loc)
-    | When (id,t,f) -> 
-      let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
-      let t = tr_seq t in 
-      Ematch ([id] |> qualid |> evar, [(pat (Papp (qualid ["Some"], [pat (Pvar (ident id))])), t); (pat Pwild,f)], []) |> expr ~loc
-
     | If (e, t, f) ->
         let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
         Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc

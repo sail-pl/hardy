@@ -9,7 +9,7 @@
  (flags --only-tokens))
 
 (menhir
- (modules tokens specification/ltl program/parser)
+ (modules tokens specification/ltl specification/pltl program/parser)
  (merge_into pgrmParser)
  (flags
   --external-tokens Tokens

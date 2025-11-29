@@ -10,6 +10,7 @@ module M = struct
   (** a value can be nil, constant or a path to a value *)
   type value = 
   | Nil : value
+  | LUnit : value
   | LInt : int -> value
   | LBool : bool -> value
   | LString : string -> value
@@ -25,6 +26,7 @@ module M = struct
 
   let rec pp_value fmt = function
     | Nil -> Format.fprintf fmt "nil"
+    | LUnit -> Format.fprintf fmt "()"
     | LInt n -> Format.fprintf fmt "%i" n
     | LBool b -> Format.fprintf fmt "%b" b
     | LString s -> Format.fprintf fmt "%s" s
@@ -55,7 +57,7 @@ module M = struct
     | LBool b -> b
     | Nil -> false
     | LInt _ | LString _ | LArray _ | LProd _ -> true
-    | Path _ as v ->
+    | Path _ | LUnit as v ->
         raise
           (TypingError (Format.asprintf "expected bool but got %a" pp_value v))
 
@@ -91,7 +93,7 @@ module M = struct
     | _ -> raise (TypingError (Format.asprintf "%a %a %a" pp_value x Printer.pp_expr_binop op pp_value y))
 
 
-  let read p id = 
+  (*let read p id = 
     let l_ex cat_ty = Bindings.exists (fun s (cat_ty', _) -> s = id && cat_ty = cat_ty') p.prog_decls.env_variables in
     if l_ex State || l_ex Input then
       Hashtbl.find env id 
@@ -111,12 +113,14 @@ module M = struct
       else 
         failwith @@ "unknown variable " ^ id
   
-  
+  *)
+
   let rec eval_rexpr p (e : _ expr) : value =
     match e.value with
     | Int x -> LInt x
     | True -> LBool true
     | False -> LBool false
+    | Unit -> LUnit
     | String s -> LString s
     | Array l -> LArray (Array.of_list (List.map (eval_rexpr p) l))
     | Var (id, _) -> read p id
@@ -131,7 +135,7 @@ module M = struct
         let e2 = eval_rexpr p v.right in
         eval_bop v.op e1 e2
     | Prod l -> LProd (List.map (eval_rexpr p) l)
-
+    | NodeCall _ ->  failwith "todo node call"
 
   and eval_lexpr p (e : _ expr) : path =
     match e.value with
@@ -164,27 +168,16 @@ module M = struct
     let eval_lexpr = eval_lexpr p in
     let rec eval_stmt (s : _ stmt) =
       match s.value with
+      | Return e ->
+        let _e = eval_rexpr e in
+        failwith "todo return"
       | Assign (e1, e2) ->
           let e1 = eval_lexpr e1 in
           let e2 = eval_rexpr e2 in
           update_path p (fun _ -> e2) e1
-      | Clear e -> update_path p (fun _ -> Nil) (eval_lexpr e)
-      | Emit (e, id) ->
-          let e = eval_rexpr e in
-          write p id (fun v -> 
-            if v <> Nil &&  Bindings.exists (fun s (cat, _) -> s = id && cat = Output) p.prog_decls.env_variables then
-              raise (TypingError (Printf.sprintf "can't emit more than once during the same instant (output '%s')" id))
-            else e
-          ) 
       | If (cond, s_true, s_false) ->
           if get_bool (eval_rexpr cond) then eval_seq s_true
           else Option.iter eval_seq s_false
-      | When (id, s_true, s_false) ->
-         if Bindings.exists (fun s (cat, _) -> s = id && cat = Input) p.prog_decls.env_variables then
-          match Hashtbl.find env id with
-          | Nil -> Option.iter eval_seq s_false
-          | _ ->  eval_seq s_true
-        else raise (TypingError (Format.sprintf "'%s' is not an input" id))
       | While (cond, _, _, s') ->
           if get_bool (eval_rexpr cond) then (
             eval_seq s';

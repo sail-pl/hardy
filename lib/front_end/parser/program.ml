@@ -1,6 +1,7 @@
 module Program = ProgramSyntax
 module Fol = FOLSyntax
 module Ltl = LTLSyntax
+module Pltl = PLTLSyntax
 module Shared = SharedSyntax
 module Instant = InstantSyntax
 module U = HardyMisc.Utils
