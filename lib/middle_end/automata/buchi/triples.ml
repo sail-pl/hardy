@@ -37,8 +37,8 @@ module M(TAtom: TseitinAtomSig)(B:  BuchiSig.S
     Ltl.map_ltl_pred (fun p -> B.FAtom.add_and_get p |> snd)
 
 
-let cnf_fol_of_cnf_boola (m:ty fol_t -> ty fol_t) : B.TAtom.t cnf -> ty fol_t cnf = 
-    B.BA.fol_of_cnf (fun a -> 
+let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t = 
+    fol_of_eba (fun a -> 
       let atom = if B.TAtom.is_generated a then 
         let name = Format.asprintf "p%s" (B.TAtom.get_atom_id a) in 
         mk_dummy_loc (FOL_Atom (Predicate {name;args=[]})) 
@@ -113,8 +113,8 @@ let cnf_fol_of_cnf_boola (m:ty fol_t -> ty fol_t) : B.TAtom.t cnf -> ty fol_t cn
     in
     let disjunctions = 
      List.map ( fun f -> 
-            let to_fol (f : B.E.label ) : ty fol_t cnf = 
-              f |> B.BA.to_cnf |> cnf_fol_of_cnf_boola (map_fol_pred (map_expr replace_i))  in 
+            let to_fol (f : B.E.label ) : ty fol_t = 
+              f |> fol_of_eba (map_fol_pred (map_expr replace_i))  in 
             (to_fol f.v,f.i)
           ) disjunctions.disjuncts |> mk_disj
      in
@@ -123,7 +123,7 @@ let cnf_fol_of_cnf_boola (m:ty fol_t -> ty fol_t) : B.TAtom.t cnf -> ty fol_t cn
     let disjunctions = 
     Option.fold init_post 
       ~none:disjunctions 
-      ~some:(fun cond -> ([[[cond] |> mk_disj] |> mk_conj, { nb_instant = 0; is_max = true }])@disjunctions.disjuncts |> mk_disj) 
+      ~some:(fun cond -> ([cond, { nb_instant = 0; is_max = true }])@disjunctions.disjuncts |> mk_disj) 
 
     in mk_conj [disjunctions]
 
@@ -170,9 +170,9 @@ let cnf_fol_of_cnf_boola (m:ty fol_t -> ty fol_t) : B.TAtom.t cnf -> ty fol_t cn
       else Fun.id
     in
 
-    let fol_of_boola_replace_cnf :  B.BA.t info list -> (ty, min_nb_instants) inst_spec_t list disjunction =
+    let fol_of_eba_replace :  B.BA.t info list -> (ty, min_nb_instants) inst_spec_t list disjunction =
       fun f -> List.map ( fun f -> 
-        (cnf_fol_of_cnf_boola at_current_instant_replace ( B.BA.to_cnf f.v), f.i)
+        (fol_of_eba at_current_instant_replace f.v, f.i)
       ) f |> mk_disj
     in
 
@@ -203,7 +203,7 @@ let cnf_fol_of_cnf_boola (m:ty fol_t -> ty fol_t) : B.TAtom.t cnf -> ty fol_t cn
               every input and output variables refer to the begining and the end of the previous instant, respectively.    
           *)
           let current_req : (ty, min_nb_instants) inst_spec_t Sig.formula = 
-            [fol_of_boola_replace_cnf [req]]|> mk_conj in
+            [fol_of_eba_replace [req]]|> mk_conj in
 
           (* remove any trivial precondition *)
             (* (List.filter
@@ -223,7 +223,7 @@ let cnf_fol_of_cnf_boola (m:ty fol_t -> ty fol_t) : B.TAtom.t cnf -> ty fol_t cn
               []
             else fol_of_dnf_boola_replace ens
           in *)
-          [fol_of_boola_replace_cnf ens ] |> mk_conj
+          [fol_of_eba_replace ens ] |> mk_conj
         in
         (* if List.for_all (fun d -> List.is_empty d.disjuncts) ensures.conjuncts then
           (* discard when postcondition is true *) s

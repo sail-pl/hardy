@@ -92,7 +92,7 @@ let true_fol : ('a, 'b) fol = mk_dummy_loc FOL_True
 let false_fol : ('a, 'b) fol = mk_dummy_loc FOL_False
 let atomic_fol (x : 'a) : ('a, 'b) fol = mk_dummy_loc (FOL_Atom x)
 
-let not_fold (f : ('a, 'b) fol) : ('a, 'b) fol =
+let not_fol (f : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (FOL_StdUnary (LNot, f))
 
 let and_fol (f1 : ('a, 'b) fol) (f2 : ('a, 'b) fol) : ('a, 'b) fol =

@@ -80,11 +80,17 @@ struct
 
 
   let pp_edge fmt (f : E.label) = 
-    let cnf = BA.to_cnf f in 
-    let nb_lit = List.fold_left (fun acc (x : _ U.disjunction) -> Int.add acc @@ List.length x.disjuncts) 0 cnf.conjuncts in
+    let nb_lit = 
+      let rec aux f = 
+        fold_eba (fun f -> match f with 
+        | And (f1,f2) | Or (f1,f2)  -> fun _ -> max (aux f1) (aux f2)
+        | _ -> Lazy.map_val ((+) 1)
+        ) (fun _ -> Lazy.map_val ((+) 1)) (Lazy.from_val 0) f 
+      in aux f |> Lazy.force_val
+    in
     (* serves as a hint to decide if atoms should be printed in short or full form *)
     let pp_atom = (if nb_lit > 6 then pp_atom_short else pp_atom_full) in
-    Format.(fprintf fmt "%a" (BA.pp_cnf_boola pp_atom) cnf)
+    Format.(fprintf fmt "%a" (pp_eba pp_atom) f)
   let get_vdata _ = ()
 
   let get_edge_type (_ : E.label) = BuchiSig.Unknown

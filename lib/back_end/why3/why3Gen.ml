@@ -402,8 +402,8 @@ struct
     and oproj = create_hist_proj Output 
     and sproj = create_hist_proj State  in
 
-    (* let props = List.init 30 (fun i -> {ld_loc=Loc.dummy_position; ld_ident=ident ("p" ^ string_of_int i); ld_params = []; ld_type = None; ld_def = None}) in  *)
-    [ input_t; output_t; state_t; instant_t; i; o; s; hist; iproj; oproj; sproj ; (* Dlogic props *)]
+    (* let props = List.init 1251 (fun i -> {ld_loc=Loc.dummy_position; ld_ident=ident ("p" ^ string_of_int i); ld_params = []; ld_type = None; ld_def = None}) in  *)
+    [ input_t; output_t; state_t; instant_t; i; o; s; hist; iproj; oproj; sproj ;  (* Dlogic props *) ]
     
   let generate_body (b : in_body) : out_body = expr_of_statements pterm_of_inv b
 
@@ -468,16 +468,10 @@ struct
       curr State
       :: List.fold_left
            (fun acc -> function
-           | {disjuncts=[((f: _ cnf),data)]} -> 
-              length_assert data :: List.map (fun disj -> 
-                fold_mjoin pterm_of_fol why3_or (term Tfalse) disj.disjuncts
-                ) f.conjuncts |> fun conj -> conj @ acc
-           | d ->
-              let f = fold_mjoin (fun ((f: _ cnf),data) -> 
-                  let f = (fold_mjoin 
-                    (fun disj -> fold_mjoin pterm_of_fol why3_or (term Tfalse) disj.disjuncts) why3_and (term Ttrue) f.conjuncts
-                  ) in
-                  why3_and f (length_assert data) 
+           | {disjuncts=[((f: _),data)]} -> 
+              length_assert data :: pterm_of_fol f :: acc
+           | d ->  let f = fold_mjoin (fun ((f: _),data : _ inst_spec_t) -> 
+                  why3_and (pterm_of_fol f) (length_assert data) 
               ) why3_or (term Ttrue) d.disjuncts
               in f::acc
             ) []
@@ -487,14 +481,9 @@ struct
       List.fold_left
         (fun l disj -> match disj with 
         | ({disjuncts=[(f,_)]} : (ty, fol_data) inst_spec_t list disjunction) -> 
-           List.map (fun disj -> 
-                let f = fold_mjoin pterm_of_fol why3_or (term Tfalse) disj.disjuncts in
-                 (Loc.dummy_position,[pat Pwild ,f]) 
-            ) f.conjuncts @ l
+                 (Loc.dummy_position,[pat Pwild , pterm_of_fol f]):: l
         | d ->  
-            let f = fold_mjoin (fun ((f: _ cnf),_) ->
-             fold_mjoin (fun disj ->  fold_mjoin pterm_of_fol why3_or (term Tfalse) disj.disjuncts) 
-              why3_and (term Ttrue) f.conjuncts
+            let f = fold_mjoin (fun ((f: _),_) -> pterm_of_fol f
             ) why3_or (term Ttrue) d.disjuncts
             in 
              (Loc.dummy_position,[pat Pwild ,f]) :: l 

@@ -18,15 +18,55 @@ let rec map_eba fa = function
 | Or (f1,f2) -> Or (map_eba fa f1,map_eba fa f2)
 | Not f -> Not (map_eba fa f) 
 
-let rec pp_boola (pp_atom : Format.formatter -> 'a -> unit) fmt : 'a eba -> unit =
+
+let rec fold_eba j pj init form = match form with
+| True | False -> j form init
+| Atom p -> pj p init
+| And (f1,f2) | Or (f1,f2) -> j form (fold_eba j pj (fold_eba j pj init f1) f2)
+| Not f -> j form (fold_eba j pj init f)
+
+
+(* todo: some lazy monad *)
+let lazy_bind (x:'a Lazy.t) (f: 'a -> 'b Lazy.t) : 'b Lazy.t = Lazy.force_val x |> f 
+
+(* overkill to use fold here but a nice example *)
+  let eba_depth f = 
+    let open Lazy in
+    let (let*) = lazy_bind in
+    let (let+) x f = lazy_bind x (fun x -> f x |> from_val) in
+    let rec aux f = 
+      fold_eba (fun f -> match f with 
+      | And (f1,f2) | Or (f1,f2) ->  
+        fun _ -> (* ignore delayed computation *)
+        let* f1 = aux f1 in
+        let+ f2 = aux f2 in 
+        1 + Int.max f1 f2 
+      | _ -> map ((+) 1)
+      ) (fun _ -> map ((+) 1)) (from_val 0) f 
+    in aux f |> force_val
+
+
+
+let fol_of_eba (convert_atom : 'a -> ('b, 'c) fol) (f: 'a eba) : ('b, 'c) fol =
+    let rec aux = function
+    | True -> true_fol
+    | False -> false_fol
+    | Atom a -> convert_atom a
+    | And (f1, f2) -> and_fol (aux f1) (aux f2) 
+    | Or (f1,f2) -> or_fol (aux f1) (aux f2)
+    | Not f -> not_fol (aux f)
+in aux f
+
+
+let rec pp_eba (pp_atom : Format.formatter -> 'a -> unit) fmt : 'a eba -> unit =
     let open Format in 
     function
     | True -> pp_print_string fmt "true"
     | False -> pp_print_string fmt "false"
     | Atom a -> pp_atom fmt a
-    | And (f1,f2) -> fprintf fmt "(%a & %a)" (pp_boola pp_atom) f1 (pp_boola pp_atom) f2
-    | Or (f1,f2) -> fprintf fmt "(%a || %a)" (pp_boola pp_atom) f1 (pp_boola pp_atom) f2
-    | Not f -> fprintf fmt "~(%a)" (pp_boola pp_atom) f
+    | And (f1,f2) -> fprintf fmt "(%a & %a)" (pp_eba pp_atom) f1 (pp_eba pp_atom) f2
+    | Or (f1,f2) -> fprintf fmt "(%a || %a)" (pp_eba pp_atom) f1 (pp_eba pp_atom) f2
+    | Not f -> fprintf fmt "~(%a)" (pp_eba pp_atom) f
 
 
 module type TseitinAtomSig = sig

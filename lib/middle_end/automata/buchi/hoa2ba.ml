@@ -109,15 +109,26 @@ struct
   | NotLabel e -> "~" ^ string_of_edge e *)
   
 
-  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) fmt (s |> TAtom.get_atom_id |> FAtom.get_atom |> snd) 
-  let pp_atom_short = fun fmt s -> Format.pp_print_string fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> fst) 
+  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(
+      let name = TAtom.get_atom_id s in
+      if TAtom.is_generated s then 
+        Format.fprintf fmt "g%s" name
+      else 
+          pp_fol (pp_pred (pp_exp pp_hist)) pp_ty fmt (name |> FAtom.get_atom |> snd) 
+  )
+  
+  
+  let pp_atom_short = fun fmt s -> 
+      let name = TAtom.get_atom_id s in
+      if TAtom.is_generated s then 
+        Format.fprintf fmt "g%s" name
+      else
+        Format.pp_print_string fmt (name |> FAtom.get_atom |> fst |> fun s -> "a" ^ s) 
+
 
   let pp_edge fmt (f : E.label) = 
-    let cnf = BA.to_cnf f in 
-    let nb_lit = List.fold_left (fun acc (x : _ U.disjunction) -> Int.add acc @@ List.length x.disjuncts) 0 cnf.conjuncts in
-    (* serves as a hint to decide if atoms should be printed in short or full form *)
-    let pp_atom = (if nb_lit > 6 then pp_atom_short else pp_atom_full) in
-    Format.(fprintf fmt "%a" (BA.pp_cnf_boola pp_atom) cnf)
+    let pp_atom = (if eba_depth f > 4 then pp_atom_short else pp_atom_full) in
+    Format.(fprintf fmt "%a" (pp_eba pp_atom) f)
   let get_vdata = snd
 
   let get_edge_type (_ : E.label) = BuchiSig.Unknown

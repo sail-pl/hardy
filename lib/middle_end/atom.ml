@@ -36,8 +36,11 @@ let sub_atom_in_str subst =
 
 (** [atom_of_atom_id a] extracts the atom from the identifier [a]*)
 let atom_of_atom_id s : int = 
-    try String.(sub s 2 (length s - 2)) |> int_of_string with 
-    | Failure _ | Invalid_argument _ -> failwith @@ Format.sprintf "couldn't extract atom '%s'" s
+    try  int_of_string s with 
+    | Failure _ -> 
+      try String.(sub s 2 (length s - 2)) |> int_of_string with 
+      | Invalid_argument err | Failure err -> failwith @@ Format.sprintf "%s (couldn't extract atom '%s')" err s
+
 
 (** [remove_exp_loc e] replaces all locations of expression [e] with None *)
 let rec remove_exp_loc (e : 't expr) : 't expr =

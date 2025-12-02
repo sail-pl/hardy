@@ -12,7 +12,7 @@ module U = HardyMisc.Utils
 
 type 'ty fol_t = (Instant.instant option Program.expr, 'ty) Fol.pred_fol
 
-type ('ty, 'data) inst_spec_t = 'ty fol_t U.cnf * 'data
+type ('ty, 'data) inst_spec_t = 'ty fol_t * 'data
 (** instantaneous specification of program expression *)
 
 type 'ty temp_spec_t = 'ty fol_t Ltl.ltl
