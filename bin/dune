@@ -1,3 +1,5 @@
+(include_subdirs unqualified)
+
 (env
  (release
   (odoc
@@ -6,4 +8,4 @@
 (executable
  (public_name hardy)
  (name main)
- (libraries hardyFrontEnd hardyBackEnd))
+ (libraries hardyFrontEnd hardyBackEnd nottui-unix nottui lwd progress))

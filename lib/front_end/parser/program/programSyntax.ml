@@ -23,25 +23,24 @@ and 't expression_ =
     declared by the user *)
 let private_var = String.cat "_"
 
-let rec fold_expr : type a. ('t expr -> a -> a) -> 't expr -> a -> a =
- fun j e init ->
+let rec fold_expr : type a. (a -> 't expr -> a) -> a ->'t expr -> a =
+ fun j init e ->
   match e.value with
-  | Int _ | True | False | Var _  -> j e init
-  | UnOp (_,e1) -> j e (fold_expr j e1 init)
-  | BinOp x -> j e (fold_expr j x.left (fold_expr j x.right init))
+  | Int _ | True | False | Var _  -> j init e
+  | UnOp (_,e1) -> j (fold_expr j init e1 ) e
+  | BinOp x -> j (fold_expr j (fold_expr j init x.right) x.left) e 
 
-let rec map_expr : ('t expr -> 't expr) -> 't expr -> 't expr =
- fun m e ->
+let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * t2) -> t1 expr -> t2 expr =
+ fun m var_map e ->
   match e.value with
-  | Int _ | True | False | Var _ ->  m e
-  | UnOp (op,e1) -> m { e with value = UnOp (op,map_expr m e1)}
+  | Int _ | True | False as value -> m {e with value}
+  | Var (id,v) -> let (id,v) = var_map (id,v) in m {e with value=Var (id,v)}
+  | UnOp (op,e1) -> m { e with value = UnOp (op,map_expr m var_map e1)}
   | BinOp x ->
-      m { e with value = BinOp { x with left=map_expr m x.left; right=map_expr m x.right} }
+      m { e with value = BinOp { x with left=map_expr m var_map x.left; right=map_expr m var_map x.right} }
 
-let expr_vars (e : 't expr) : (string * 't) list -> (string * 't) list =
-  fold_expr
-    (fun e l -> match e.value with Var (x, t) -> (x, t) :: l | _ -> l)
-    e
+let expr_vars : (string * 't) list -> 't expr -> (string * 't) list = fun x -> 
+  fold_expr (fun l e -> match e.value with Var (x, t) -> (x, t) :: l | _ -> l) x
 
 type 'spec hoare_pair = { requires : 'spec; ensures : 'spec }
 (** generic hoare requires/ensures pair *)
@@ -60,7 +59,19 @@ and ('inv, 't) stmt_ =
   | Emit of 't expr * string
   | If of
       't expr * ('inv, 't) stmt list * ('inv, 't) stmt list option
-  | While of 't expr * 'inv * unit expr variant * ('inv, 't) stmt list
+  | While of 't expr * 'inv * 't expr variant * ('inv, 't) stmt list
+
+
+let map_stmt (type e1 e2) (m_expr : e2 expr -> e2 expr) (m_var : string * e1 -> string * e2) (m_fol: 't1 -> 't2) (s : _ stmt) : _ stmt = 
+let rec aux s = match s.value with 
+| Assign (e1, e2) -> {s with value=Assign (map_expr m_expr m_var e1, map_expr m_expr m_var e2)}
+| Emit (e, id) -> {s with value=Emit (map_expr m_expr m_var e, id)}
+| If (e, s1, s2) -> {s with value=If (map_expr m_expr m_var e, List.map aux s1, Option.map (List.map aux) s2) }
+| While (e, inv, var, body) -> {s with value=While (map_expr m_expr m_var e, m_fol inv, mk_variant (map_expr m_expr m_var var.variant), List.map aux body)}
+in aux s
+
+
+
 
 type 'ty var_decls = (string * 'ty) list
 

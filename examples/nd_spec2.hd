@@ -1,7 +1,7 @@
 input i : bool;
 output o : int;
 
-guarantees X {o=1} || X {o=2} || X {o=3}.
+guarantees X {o=1} || X {o=2} || X {o=3}
 
 setup :
 

@@ -21,7 +21,8 @@ and ('a, 'qty) fol_ =
   
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
-  | ExistsPrev of string * ('a,'qty) fol (* temporal existential quantification *)
+  | ExistsPrev of
+      string * ('a, 'qty) fol (* temporal existential quantification *)
 
 
 type 'a predicate = Atom of 'a | Predicate of {name: string; args: 'a list}
@@ -58,33 +59,37 @@ let map_fol : type a b ty_a ty_b.
       { form with value }
 
 let rec fold_fol : type a b t.
-    ((a, t) fol -> b -> b) -> (a -> b -> b) -> b -> (a, t) fol -> b =
+    (b -> (a, t) fol  -> b) -> (b -> a -> b) -> b -> (a, t) fol -> b =
  fun j pj init form ->
   match form.value with
-  | FOL_True | FOL_False -> j form init
-  | FOL_Atom p -> pj p init
-  | FOL_StdUnary (_, f) -> j form (fold_fol j pj init f)
-  | FOL_StdBinary (f1, _, f2) -> j form (fold_fol j pj (fold_fol j pj init f1) f2)
-  | FOL_StdNary (_,l) -> j form (List.fold_left (fold_fol j pj) init l)
-  | Forall (_, f) | Exists (_, f) | ExistsPrev (_,f) -> j form (fold_fol j pj init f)
+  | FOL_True | FOL_False -> j init form 
+  | FOL_Atom p -> pj init p 
+  | FOL_StdUnary (_, f) -> j (fold_fol j pj init f) form
+  | FOL_StdBinary (f1, _, f2) -> j (fold_fol j pj (fold_fol j pj init f1) f2) form
+  | FOL_StdNary (_,l) -> j (List.fold_left (fold_fol j pj) init l) form
+  | Forall (_, f) | Exists (_, f) | ExistsPrev (_,f) -> j (fold_fol j pj init f) form
 
 (** [map_fol_ty m f] replaces every quantifer [Exists (l,e)] and [Forall (l,e)]
     of [f] by [X (List.map m l,e)] *)
 let rec map_fol_ty m = map_fol (map_fol_ty m) m
 
-(** [map_fol_atom m f] replaces every atom [x] of [f] by [m x]
+(** [map_fol_pred m f] replaces every atom [x] of [f] by [m x]
 *)
-let map_fol_pred (m : 'a -> 'b) (f: ('a predicate, 'c) fol) : ('b predicate, 'c) fol =
-  let rec map f = match f.value with
+let map_fol_pred_ty (type a b ty_a ty_b) 
+  (fty : ty_a -> ty_b)  (m : a -> b) (f: (a predicate, ty_a) fol) : (b predicate, ty_b) fol =
+  let rec map : (a predicate, ty_a) fol -> (b predicate, ty_b) fol = fun f -> match f.value with
       | FOL_Atom Atom x -> 
           {f with value = FOL_Atom (Atom (m x))}
       | FOL_Atom Predicate x -> 
           let args = List.map m x.args in
           {f with value = FOL_Atom (Predicate {x with args})}
-      | FOL_True | FOL_False -> f
-      | _ -> map_fol map (Fun.id) f
+      | FOL_True | FOL_False as f -> mk_dummy_loc f
+      | _ -> map_fol map (pair_map (Right fty)) f
     in
-    map_fol map (Fun.id) f (* do nothing for quantifiers *)
+    map_fol map (pair_map (Right fty)) f 
+
+
+let map_fol_pred = fun x -> map_fol_pred_ty (Fun.id) x
 
 (** {2 Helpers to build locatable formulas} *)
 

@@ -26,6 +26,9 @@ let add_user_binding (v, ty) =
   else Hashtbl.add bindings v ty
 
 let add_bindings = Hashtbl.add_seq bindings
+
+let add_local_bindings b = Seq.map (pair_map (Right (fun x -> Local,x))) b |> Hashtbl.add_seq bindings
+
 let remove_bindings = Seq.iter (Hashtbl.remove bindings)
 
 let get_binding_type v f =
@@ -48,13 +51,10 @@ let nth_h cat = "_prev" ^ instant_field cat
 let get_quant_binders vars =
   List.concat
     (List.map
-       (fun (v, (cat, ty)) ->
+       (fun (v, ty) ->
          let pty =
            get_pty
-             (
-               match (cat, ty) with
-               | Local, ty | State, ty -> get_pp_string pp_base_ty ty
-               | cat, _ -> get_pp_string pp_cat_ty cat |> ty_suffix)
+             (get_pp_string pp_base_ty ty)
          in
          PH.one_binder v ~pty)
        vars)
@@ -65,7 +65,7 @@ let translate_binop app infix op =
   | Add | Sub | Mul | Div -> fun e1 e2 -> app (P.Qident id) [ e1; e2 ]
   | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr -> infix id
 
-let rec translate_rexpr (e: unit expr) : P.expr =
+let rec translate_rexpr (e: ty expr) : P.expr =
   let open P in
   let open PH in
   let loc = get_loc e.label in
@@ -73,13 +73,14 @@ let rec translate_rexpr (e: unit expr) : P.expr =
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
   | Int n -> econst n ~loc
-  | Var (s, ()) ->
-      get_binding_type s (fun (cat, _) ->
-          match cat with
+  | Var (s, (cat_ty,_)) ->
+    begin
+    match cat_ty with
           | Local -> evar ~loc (qualid [ s ])
           | _ ->
               eapp (qualid [ s ])
-                [ [ get_pp_string pp_cat_ty cat ] |> qualid |> evar ~loc ])
+                [ [ get_pp_string pp_cat_ty cat_ty ] |> qualid |> evar ~loc ]
+    end
   | UnOp (ENot,e) -> Enot (translate_rexpr e) |> expr  ~loc
   | BinOp v -> (
       let e1 = translate_rexpr v.left and e2 = translate_rexpr v.right in
@@ -90,24 +91,26 @@ let rec translate_rexpr (e: unit expr) : P.expr =
           translate_binop (eapp ~loc)
             (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
             v.op e1 e2)
-let translate_lexpr (e : unit expr) : P.expr * string option =
+let translate_lexpr (e : ty expr) : P.expr * string option =
   let open PH in
   let loc = get_loc e.label in
   match e.value with
-  | Var (id, ()) ->
-      get_binding_type id (function
-        | State, _ ->
+  | Var (id, (cty,_)) ->
+    begin
+      match cty with
+        | State ->
             ([ get_pp_string pp_cat_ty State ] |> qualid |> evar ~loc, Some id)
-        | Local, _ -> ([] |> qualid |> evar ~loc, Some id)
-        | cat, _ ->
+        | Local -> ([] |> qualid |> evar ~loc, Some id)
+        | cat ->
             failwith
             @@ Format.sprintf
                  "can't assign expression to stream variable '%s' (%s)" id
-                 (get_pp_string pp_cat_ty cat))
+                 (get_pp_string pp_cat_ty cat)
+        end
   | _ -> failwith "not an r-value"
 
 
-let rec translate_term (e : instant option expr) : P.term =
+let rec translate_term (e : (instant option * ty) expr) : P.term =
   let open P in
   let open PH in
   let loc = get_loc e.label in
@@ -116,19 +119,19 @@ let rec translate_term (e : instant option expr) : P.term =
   | True -> term ~loc Ttrue
   | False -> term ~loc Tfalse
   | Int n -> tconst ~loc n
-  | Var (s, t) ->
-      get_binding_type s (fun (cat, _) ->
-          match cat with
+  | Var (s, (inst,(cat_t,_))) ->
+        begin
+          match cat_t with
           | Local -> tvar (qualid [ s ])
           | _ -> (
-              match t with
+              match inst with
               | Some (Previous 0) | None ->
                   tapp ~loc (qualid [ s ])
-                    [ [ get_pp_string pp_cat_ty cat ] |> qualid |> tvar ]
+                    [ [ get_pp_string pp_cat_ty cat_t ] |> qualid |> tvar ]
               | Some (Previous n) ->
                   let n = tconst (n - 1) in
                   (* last value begins at 0 *)
-                  tapp ~loc (qualid [nth_h cat]) [ n ; tvar (qualid [ s ]) ]
+                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ]
               | Some (At n) ->
                   let n =
                     Tinnfix
@@ -137,7 +140,8 @@ let rec translate_term (e : instant option expr) : P.term =
                         tconst (n + 1) )
                     |> term
                   in
-                  tapp ~loc (qualid [nth_h cat]) [ n ; tvar (qualid [ s ]) ]))
+                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ])
+                end
   | UnOp (ENot,t) -> Tnot (translate_term t) |> term  ~loc
     | BinOp v -> (
       let t1 = translate_term v.left and t2 = translate_term v.right in
@@ -203,7 +207,7 @@ let get_bop =
   | LOr -> DTor
 
 let rec pterm_of_fol
-    ({ value = f; label = loc } : (instant option expr predicate, ty) fol) : P.term =
+    ({ value = f; label = loc } : ((instant option * ty) expr predicate, base_ty) fol) : P.term =
   let open PH in
   let open P in
   let loc = get_loc loc in
@@ -222,13 +226,13 @@ let rec pterm_of_fol
     fold_mjoin pterm_of_fol (fun f1 f2 -> Tbinnop (f1,op,f2) |> term) (term ~loc Ttrue) l 
   | Forall (v, f) ->
       let locals = List.to_seq v in
-      add_bindings locals;
+      add_local_bindings locals;
       let t = Tquant (DTforall, get_quant_binders v, [], pterm_of_fol f) in
       remove_bindings (Seq.map fst locals);
       term t ~loc
   | Exists (v, f) ->
       let locals = List.to_seq v in
-      add_bindings locals;
+      add_local_bindings locals;
       let t = Tquant (DTexists, get_quant_binders v, [], pterm_of_fol f) in
       remove_bindings (Seq.map fst locals);
       term t ~loc
@@ -265,17 +269,17 @@ struct
   (* type in_spec = ((in_ty,fol_data) inst_spec_t list) hoare_pair *)
 
   type in_pgrm = base_program
-  type in_setup = (Shared.ty fol_t, unit) setup
-  type in_body = (Shared.ty fol_t, unit) stmt list
+  type in_setup = (base_spec_t, ty) setup
+  type in_body = (base_spec_t, ty) stmt list
 
   type in_fun =
     ( triple_data,
-      (Shared.ty, fol_data) inst_spec_t HardyMiddleEnd.Sig.formula )
+      (ty, base_ty, min_nb_instants) inst_spec_t HardyMiddleEnd.Sig.formula )
     hoare_triple
 
   type in_spec = in_fun
   type out_body = P.expr
-  type out_pgrm = P.mlw_file
+  type out_pgrm = w3 * P.mlw_file * Pmodule.pmodule Wstdlib.Mstr.t
   type out_decl = P.decl
   type out_fun = out_decl
   type out_setup = out_decl
@@ -480,7 +484,7 @@ struct
     let sp_post =
       List.fold_left
         (fun l disj -> match disj with 
-        | ({disjuncts=[(f,_)]} : (ty, fol_data) inst_spec_t list disjunction) -> 
+        | ({disjuncts=[(f,_)]} : (ty, base_ty, fol_data) inst_spec_t list disjunction) -> 
                  (Loc.dummy_position,[pat Pwild , pterm_of_fol f]):: l
         | d ->  
             let f = fold_mjoin (fun ((f: _),_) -> pterm_of_fol f
@@ -515,14 +519,13 @@ struct
           :: add_opt_to_list setup funs )
     in
     let pgrm = P.Modules [ helper_m; triples_m ] in
-    let () =
+    let w3 = init_why3 () in
+    let w3_modules =
       try
-        let w3 = init_why3 () in
-        let _mods = Why3.Typing.type_mlw_file w3.env [] "???" pgrm in
-        ()
+        Why3.Typing.type_mlw_file w3.env [] "???" pgrm 
       with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e
     in
-    pgrm
+    w3,pgrm,w3_modules
 
-  let write_program name p = print_program p (name ^ ".mlw")
+  let write_program name (_,p,_) = print_program p (name ^ ".mlw")
 end

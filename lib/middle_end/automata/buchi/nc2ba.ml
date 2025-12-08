@@ -16,11 +16,22 @@ module Utils (G : Graph.Sig.I) = struct
     with Found v -> Some v
 end
 
-module Make(TAtom: TseitinAtomSig)(FAtom : Atom.S with type 'a t = 'a and type _ data = Instant.min_nb_instants) :
-  BuchiSig.S with type init_val = neverclaim  and type E.label = BoolAlgebra(TAtom).t
-      and type TAtom.t = TAtom.t
-
-        and type 'a FAtom.t = 'a and type _ FAtom.data = Instant.min_nb_instants
+module Make
+  (TAtom: TseitinAtomSig)
+  (FAtom : Atom.S with 
+    type 'a t = 'a and 
+    type _ data = Instant.min_nb_instants
+    and type qty = Shared.base_ty
+    and type ty = Instant.instant option * Shared.ty
+  ) :
+  BuchiSig.S with 
+    type init_val = neverclaim  and 
+    type E.label = BoolAlgebra(TAtom).t and 
+    type TAtom.t = TAtom.t and 
+    type 'a FAtom.t = 'a and 
+    type _ FAtom.data = Instant.min_nb_instants and
+    type FAtom.ty = Instant.instant option * Shared.ty and 
+    type FAtom.qty = Shared.base_ty
   =
 struct
   module FAtom = FAtom
@@ -75,7 +86,7 @@ struct
 
   let id_of_vertex = Format.asprintf "%a" pp_vertex
 
-  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp pp_hist)) pp_ty) fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> snd) 
+  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp (fun fmt (x,(y,_)) -> pp_hist fmt (x,y)))) pp_base_ty) fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> snd) 
   let pp_atom_short = fun fmt s -> Format.pp_print_string fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> fst) 
 
 
@@ -95,6 +106,31 @@ struct
 
   let get_edge_type (_ : E.label) = BuchiSig.Unknown
 end
+
+module Ltl2baNcOutput : Sig.ToolSig with 
+        type input = string HardyFrontEnd.Syntax.Ltl.ltl and
+        type output = neverclaim
+= struct
+    open HardyFrontEnd
+    type input = string HardyFrontEnd.Syntax.Ltl.ltl
+    type output = neverclaim
+
+    let call (i : Cli.info) (never_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
+    let open Format in
+    let never_file = never_file ".never" in
+    let to_spin = Printer.(pp_ltl pp_print_string pp_ltl_binop_spin pp_ltl_unnop_spin) in
+    let cmd =
+      Filename.quote_command "ltl2ba"
+        [ "-f"; asprintf "%a" to_spin f ]
+        ~stdout:never_file ~stderr:(never_file ^ ".err")
+    in
+    if i.verbose then printf "ltl2ba command line : %s@." cmd;
+    let ret = Sys.command cmd in
+    if ret <> 0 then
+      failwith (sprintf "non-0 exit-code (%i) from ltl2ba@." ret)
+    else MiddleParser.NcParsing.parse_automaton never_file
+end
+
 
 module SpinNcOutput : Sig.ToolSig with 
         type input = string HardyFrontEnd.Syntax.Ltl.ltl and

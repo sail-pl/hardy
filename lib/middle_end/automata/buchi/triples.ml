@@ -7,37 +7,35 @@ open Syntax.Instant
 open HardyMisc.Utils
 open MiddleParser.SyntaxCommon
 
-module M(TAtom: TseitinAtomSig)(B:  BuchiSig.S 
+
+module M (TAtom: TseitinAtomSig) (B:  BuchiSig.S 
         with type 'a FAtom.t = 'a 
-        and type _ FAtom.data = min_nb_instants
         and type TAtom.t = TAtom.t
-        and type E.label = TAtom.t eba
-        )
-        = struct
-  module DotB = BuchiSig.Dot (B)
-  module BProd = BaProduct.Make(B)
-  module BProdU = BuchiSig.Utils (BProd)
-  module DotBProd = BuchiSig.Dot (BProd)
+        and type E.label = TAtom.t eba 
+        and type FAtom.ty = instant option * Shared.ty
+        and type FAtom.qty = Shared.base_ty
+        )(
+          (* requires explicit passing because BProd is effectful *)
+          BProd: BuchiSig.S
+        with type E.label = TAtom.t eba BaProduct.arc_data
+        and type vdata = BaProduct.vertex_data
+        ) : Sig.TriplesSig with 
+            type fol_ty =  Shared.ty and
+            type fol_qty = B.FAtom.qty and
+            type fol_data = Instant.min_nb_instants and
+            type automaton = BProd.t
+        
+  = struct
+  module BUtils = BuchiSig.Utils (B)
 
-
+  type automaton = BProd.t
+  type fol_ty = Shared.ty
+  type fol_qty = B.FAtom.qty
+  type fol_data = Instant.min_nb_instants
   type 'a info = { v : 'a ; i : min_nb_instants }
 
-
-  let pp_ltl_full =
-    Printer.(pp_ltl
-      (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p |> snd))
-      pp_ltl_binop pp_ltl_unop)
-
-  let pp_ltl_short =
-    Printer.(pp_ltl
-      (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p |> fst))
-      pp_ltl_binop pp_ltl_unop)
-
-  let from_ltl : _ Ltl.ltl -> string Ltl.ltl =
-    Ltl.map_ltl_pred (fun p -> B.FAtom.add_and_get p |> snd)
-
-
-let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t = 
+  
+let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t = 
     fol_of_eba (fun a -> 
       let atom = if B.TAtom.is_generated a then 
         let name = Format.asprintf "p%s" (B.TAtom.get_atom_id a) in 
@@ -59,24 +57,18 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
       Stdlib.compare e1 e2
   end)
 
-  let previous_instant_spec (env: (cat_ty * base_ty) env) (in_e: BProd.edge list disjunction) (init_post : ty fol_t option) : (ty, min_nb_instants) inst_spec_t Sig.formula =
-    let replace_i (e : _ expr) =
-      match e.value with
-      | Var (v, inst) as var ->
-          let value =
-            match inst with
-            | None -> begin 
-              (* no past *)
-              match Bindings.find v env.env_variables |> fst with
-              | Input | Output  -> 
+  let previous_instant_spec (in_e: BProd.edge list disjunction) (init_post : base_spec_t option) : (ty, base_ty, min_nb_instants) inst_spec_t Sig.formula =
+    let replace_i (v, (inst,(cty,bty))) =
+            match inst,cty with
+            (* no past *)
+            | None,Input | None,Output -> 
                 (* input/output is not the current instant input/output but the previous one*)
-                Var (v, Some (Previous 1))
-              | State ->
+                (v, (Some (Previous 1), (cty,bty)))
+            | None, State ->
                 (* state variables are for the current instant as they are not modified in-between instants  *)
-                var
-              | Local -> failwith "no local variable in spec"
-              end                
-              | Some inst ->
+                (v, (inst,(cty,bty)))
+            |None, Local -> failwith "no local variable in spec"
+            | Some inst,_ ->
                 let inst =
                   match inst with
                   | Previous n ->
@@ -84,13 +76,10 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
                       Previous (n + 1)
                   | _ -> inst
                 in
-                Var (v, Some inst)
-          in
-          { e with value }
-      | _ -> e
+                (v, (Some inst, (cty,bty)))
     in
     (* get the possible states to be in from the previous transition second component *)
-    let disjunctions :  B.E.label info list disjunction =
+    let disjunctions : B.E.label info list disjunction =
       let l =
         List.map
           (fun e ->
@@ -113,17 +102,18 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
     in
     let disjunctions = 
      List.map ( fun f -> 
-            let to_fol (f : B.E.label ) : ty fol_t = 
-              f |> fol_of_eba (map_fol_pred (map_expr replace_i))  in 
+            let to_fol (f : B.E.label ) : (instant option * ty, base_ty) fol_t = 
+              f |> fol_of_eba (map_fol_pred (map_expr Fun.id replace_i))  in 
             (to_fol f.v,f.i)
           ) disjunctions.disjuncts |> mk_disj
      in
 
     (* if the current node is an init_node, add the setup postcondition to the disjunction *)
     let disjunctions = 
-    Option.fold init_post 
+    Option.fold init_post
       ~none:disjunctions 
-      ~some:(fun cond -> ([cond, { nb_instant = 0; is_max = true }])@disjunctions.disjuncts |> mk_disj) 
+      ~some:(fun cond -> 
+        (cond, { nb_instant = 0; is_max = true })::disjunctions.disjuncts |> mk_disj) 
 
     in mk_conj [disjunctions]
 
@@ -141,40 +131,75 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
       For each input formula occuring in exit arcs, computes \{(g_1 \/ ... \/ g_n)
       /\ <init_post> /\ f\} \{ g_1' \/ ... \/ g_m'\} where (., g_i') are in in_e
       and (f,g_i) are in out_e and init is there if defined. *)
-  let generate_spec (env : (cat_ty * base_ty) env)
+  let generate_spec
       ((in_e, v, out_e) : BProd.edge list disjunction * BProd.vdata * BProd.edge list disjunction)
-      (init_post : ty fol_t option) :
-      (ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair list =
+      (init_post : base_spec_t option) :
+      (_, base_ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair list =
     assert (not (List.is_empty out_e.disjuncts));
 
     (* assert ((not (List.is_empty in_e)) || Option.is_some init_post); *)
 
     (* get previous ensures and adapt them to the current instant *)
-    let previous_ens = previous_instant_spec env in_e init_post in
+    let previous_ens = previous_instant_spec in_e init_post in
 
     (* if a variable from the current node precondition or postcondition refers to the instant n and we know we are at this instant, 
       remove the temporal quantification
       fixme: if nb_instant is >= n, should we create two new nodes, one where 
         it is reached for the first time (instant = n) and one where it is reached again (instant > n) ? 
       *)
-    let at_current_instant_replace : ty fol_t -> ty fol_t =
+
+
+    (*
+      output in the precondition refers to the previous output, not the current one
+    *)  
+    (* let _at_current_instant_replace_pre : (ty,_) fol_t -> (ty,_) fol_t =
       if v.v_min_nb_instants.is_max = true then
         map_fol_pred 
           (map_expr (fun e ->
-              (* if a variable refers to the current instant, remove the instant quantification *)
-              match e.value with
-              | Var (x, Some (At n)) when n = v.v_min_nb_instants.nb_instant ->
-                  { e with value = Var (x, None) }
-              | _ -> e))
+            match e.value with
+            | Var (x, inst) ->
+              begin
+                let inst = Option.map (
+                  function 
+                  | (At n) when n = v.v_min_nb_instants.nb_instant && v.v_min_nb_instants.is_max -> None 
+                  | x ->  Some x) inst
+                in
+                let value = 
+                  match Bindings.find x env.env_variables |> fst with
+                  | Output  -> 
+                    (* input/output is not the current instant input/output but the previous one*)
+                    Var (x, Some (Previous 1))
+                  | State | Input  ->
+                    (* state variables and inputs are *)
+                    Var (x,Option.join inst)
+                  | Local -> failwith "no local variable in spec"
+                in
+ 
+              { e with value  }
+            end
+            | _ -> e
+          ))
+              
+      else Fun.id 
+    in *)
+    let at_current_instant_replace_post : ('a,'b) fol_t -> ('a,'b) fol_t =
+      if v.v_min_nb_instants.is_max then
+        map_fol_pred 
+          (map_expr Fun.id (fun (id, (inst,t)) ->
+              match inst with
+              | Some (At n) when n = v.v_min_nb_instants.nb_instant ->
+                  (* if a variable refers to the current instant, remove the instant quantification *)
+                  (id, (None,t))
+              | _ -> (id, (inst,t))))
               
       else Fun.id
     in
 
-    let fol_of_eba_replace :  B.BA.t info list -> (ty, min_nb_instants) inst_spec_t list disjunction =
+    let fol_of_eba_replace inst_rep :  B.BA.t info list -> (_,base_ty, min_nb_instants) inst_spec_t list disjunction =
       fun f -> List.map ( fun f -> 
-        (fol_of_eba at_current_instant_replace f.v, f.i)
+        (fol_of_eba inst_rep f.v, f.i)
       ) f |> mk_disj
-    in
+      in
 
     
 
@@ -196,14 +221,14 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
       (fun (req : B.BA.t info)
           (ens : (B.BA.t info) list)
           (s :
-            (ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair
+            (_, base_ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair
             list) ->
-        let requires : (ty, min_nb_instants) inst_spec_t Sig.formula  =
+        let requires : (_,base_ty, min_nb_instants) inst_spec_t Sig.formula  =
           (*  predicate on possible states of current node, 
               every input and output variables refer to the begining and the end of the previous instant, respectively.    
           *)
-          let current_req : (ty, min_nb_instants) inst_spec_t Sig.formula = 
-            [fol_of_eba_replace [req]]|> mk_conj in
+          let current_req : (_, base_ty, min_nb_instants) inst_spec_t Sig.formula = 
+            [fol_of_eba_replace at_current_instant_replace_post [req]]|> mk_conj in
 
           (* remove any trivial precondition *)
             (* (List.filter
@@ -215,7 +240,7 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
                
               (previous_ens.conjuncts@current_req.conjuncts) |> mk_conj
 
-        and ensures : (ty, min_nb_instants) inst_spec_t Sig.formula =
+        and ensures : (_,base_ty, min_nb_instants) inst_spec_t Sig.formula =
           (* disjunction of output properties sharing the same input property *)
           (*let disjuncts =
              if List.exists (fun (f, _) -> f = True) ens then
@@ -223,7 +248,7 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
               []
             else fol_of_dnf_boola_replace ens
           in *)
-          [fol_of_eba_replace ens ] |> mk_conj
+          [fol_of_eba_replace at_current_instant_replace_post ens] |> mk_conj
         in
         (* if List.for_all (fun d -> List.is_empty d.disjuncts) ensures.conjuncts then
           (* discard when postcondition is true *) s
@@ -233,7 +258,7 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
 
   let generate_triples (p : base_program) (a : BProd.t) :
       ( triple_data_t,
-        (ty, min_nb_instants) inst_spec_t Sig.formula )
+        (_,base_ty, min_nb_instants) inst_spec_t Sig.formula )
       hoare_triple
       list =
 
@@ -241,7 +266,7 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
 
     let aux v =
       (* provide init post-condition for first node *)
-      let extra_req : ty fol_t option =
+      let extra_req : (instant option * ty,base_ty) fol_t option =
         if BProd.is_start_node v then
           Option.(
             bind p.prog_setup (fun setup ->
@@ -259,7 +284,7 @@ let fol_of_eba (m:ty fol_t -> ty fol_t) : B.TAtom.t eba -> ty fol_t =
       let vdata = BProd.get_vdata v in
 
       let specs =
-        generate_spec p.prog_decls (in_e, vdata, out_e) extra_req
+        generate_spec (in_e, vdata, out_e) extra_req
       in
 
       (* if two or more transition share the same input, but with different outputs,

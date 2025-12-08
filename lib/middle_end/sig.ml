@@ -18,6 +18,21 @@ end
 (* triples are in cnf *)
 type 'f formula = 'f cnf
 
+module type TriplesSig = sig
+  type fol_ty
+  type fol_qty
+  type fol_data
+
+  type automaton
+
+  val generate_triples : base_program -> automaton ->
+      ( triple_data_t,
+        (fol_ty, fol_qty, fol_data) inst_spec_t formula )
+      hoare_triple
+      list
+end
+
+
 (** The middle-end requires :
 
     + translation of the specification to a format understandable by the
@@ -47,17 +62,19 @@ module type S = sig
 
   type triples =
     ( triple_data,
-      (Shared.ty, fol_data) inst_spec_t formula )
+      (Shared.ty,Shared.base_ty, fol_data) inst_spec_t formula )
     hoare_triple
     list
 
-  val spec_to_input : Cli.info -> Shared.ty temp_spec_t list hoare_pair -> input
+  module Triples : TriplesSig
+
+  val spec_to_input : Cli.info -> base_temp_spec_t list hoare_pair -> input
   val exec : Cli.info -> input -> output
   val output_to_automaton : Cli.info -> output -> automaton
   val generate_triples : in_program -> automaton -> triples
 end
 
-let translate_spec (type triple_data) (type fol_data)
+let translate_spec (type triple_data fol_data)
     (module M : S
       with type triple_data = triple_data
        and type fol_data = fol_data) info (p : M.in_program) : M.triples =

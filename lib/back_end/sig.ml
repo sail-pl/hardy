@@ -19,12 +19,12 @@ module type S = sig
   (* (in_ty temp_spec_t, (in_ty,unit) inst_spec_t, variant_t, unit) program *)
   type fol_data
   type triple_data
-  type in_setup = (Shared.ty fol_t, unit) setup
-  type in_body = (Shared.ty fol_t, unit) stmt list
+  type in_setup = (base_spec_t, ty) setup
+  type in_body = (base_spec_t, ty) stmt list
 
   type in_fun =
     ( triple_data,
-      (Shared.ty, fol_data) inst_spec_t HardyMiddleEnd.Sig.formula )
+      (Shared.ty, Shared.base_ty, fol_data) inst_spec_t HardyMiddleEnd.Sig.formula )
     hoare_triple
 
   type in_spec = in_fun
@@ -34,6 +34,9 @@ module type S = sig
   type out_body
   type out_setup
   type out_fun
+
+  val reset : unit -> unit
+  (** reset the backend state (bindings etc.) *)
 
   val generate_declarations : (cat_ty*base_ty) env -> out_decl list
   val generate_setup : in_setup option -> out_setup option
@@ -49,6 +52,7 @@ end
 
 module F (B : S) = struct
   let translate_program (p : B.in_pgrm) (triples : B.in_fun list) : B.out_pgrm =
+    B.reset ();
     let decls = B.generate_declarations p.prog_decls in
     let setup = B.generate_setup p.prog_setup in
     let body = B.generate_body p.prog_main.main_body in

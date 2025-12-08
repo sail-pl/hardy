@@ -22,7 +22,7 @@ let uppercase = ['A' - 'Z']
 let letter = (lowercase | uppercase)
 let acc_label = "accept_" (letter|digit)+ 
 let nacc_label = 'T' digit+ '_' letter+ digit*
-let atom = "f_" ['1' - '9'] digit* 
+let atom = "p_" ['1' - '9'] digit* 
 let newline = '\r' | '\n' | "\r\n"
 
 

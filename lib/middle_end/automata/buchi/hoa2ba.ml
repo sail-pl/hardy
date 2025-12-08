@@ -4,12 +4,21 @@ open MiddleParser.HoaSyntax
 (* open HardyMisc.Utils *)
 
 
-module Make(TAtom: TseitinAtomSig)(FAtom : Atom.S with type 'a t = 'a and type _ data = Instant.min_nb_instants) :
+module Make
+  (TAtom: TseitinAtomSig)
+  (FAtom : Atom.S with 
+    type 'a t = 'a 
+    and type _ data = Instant.min_nb_instants
+    and type qty = Shared.base_ty
+    and type ty = Instant.instant option * Shared.ty
+  ) :
   BuchiSig.S  
     with type init_val = hoa  
     and type E.label = BoolAlgebra(TAtom).t
     and type TAtom.t = TAtom.t
     and type 'a FAtom.t = 'a 
+    and type FAtom.ty = Instant.instant option * Shared.ty
+    and type FAtom.qty = Shared.base_ty
     and type _ FAtom.data = Instant.min_nb_instants
 
   =
@@ -49,6 +58,11 @@ struct
   let is_start_node (v : V.t) = (snd v).start
 
   let create (hoa : hoa) : t =
+    let () = 
+      let props = List.filter_map (function Properties n -> Some n | _ -> None) hoa.header.items |> List.flatten in
+      if not @@ List.mem "deterministic" props then
+        failwith "non-deterministic automaton";
+    in
     let start = List.find_map (function Start [x] -> Some x | _ -> None ) hoa.header.items |> Option.get in
 
     let ap_labels= List.find_map (function Atomic (_,l) -> Some l | _ -> None ) hoa.header.items |> Option.get |> List.mapi (fun i x -> (i,x)) in
@@ -114,7 +128,7 @@ struct
       if TAtom.is_generated s then 
         Format.fprintf fmt "g%s" name
       else 
-          pp_fol (pp_pred (pp_exp pp_hist)) pp_ty fmt (name |> FAtom.get_atom |> snd) 
+          pp_fol (pp_pred (pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t)))) pp_base_ty fmt (name |> FAtom.get_atom |> snd) 
   )
   
   
@@ -148,7 +162,7 @@ module SpinHoaOutput : Sig.ToolSig with
     let to_spin = Printer.(pp_ltl pp_print_string pp_ltl_binop_spin pp_ltl_unnop_spin) in
     let cmd =
       Filename.quote_command "ltl2tgba"
-        [ "-B"; asprintf "%a" to_spin f]
+        [ "-B" ; "-D"; "-x sat-minimize" ; asprintf "%a" to_spin f]
         ~stdout:hoa_file ~stderr:(hoa_file ^ ".err")
     in
     if i.verbose then printf "ltl2tgba command line : %s@." cmd;

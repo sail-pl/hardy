@@ -1,7 +1,8 @@
-open HardyFrontEnd.Syntax.Program
-open HardyFrontEnd.Syntax.Instant
+open HardyFrontEnd
+open Syntax.Program
+(* open Syntax.Shared *)
+open Syntax.Instant
 open MiddleParser.SyntaxCommon
-(* open HardyMisc.Utils *)
 
 
 type 'a arc_data = {
@@ -15,12 +16,15 @@ type 'a arc_data = {
 
 type vertex_data = { v_min_nb_instants : min_nb_instants }
 
+(* warning: this module is statefull! *)
 module Make(G : BuchiSig.S)
     :
   BuchiSig.S
     with type init_val = G.t * G.t
      and type E.label =  G.E.label arc_data
-     and type vdata = vertex_data = struct
+     and type vdata = vertex_data 
+    = struct
+      
   (* /!\ make sure to always create vertices with the same argument order *)
 
 
@@ -29,6 +33,8 @@ module Make(G : BuchiSig.S)
   (* Atoms not needed in the product *)
   module FAtom : Atom.S = struct 
     type _ t = unit 
+    type qty = unit
+    type ty = unit
     type _ data = unit 
     let subst _ = ()
     let add_and_get _ = ()
@@ -205,15 +211,17 @@ module Make(G : BuchiSig.S)
         in
         (match get_edge_type (E.label edge) with
         | Universal ->
-            Format.printf
+            (* Format.printf
               "warning: product automaton contains a universal edge between \
                node '%s' and '%s' \n"
-              (id_of_vertex curr_node) (id_of_vertex next_node)
+              (id_of_vertex curr_node) (id_of_vertex next_node) *)
+            ()
         | Blocking ->
-            Format.printf
+            (* Format.printf
               "warning: product automaton contains a blocking edge between \
                node '%s' and '%s' \n"
-              (id_of_vertex curr_node) (id_of_vertex next_node)
+              (id_of_vertex curr_node) (id_of_vertex next_node) *)
+            ()
         | _ -> ());
         add_edge_e product_g edge
       in

@@ -22,19 +22,20 @@ let print_program p =
 
 (** alt-ergo prover *)
 let get_alt_ergo (w3 : w3) : Whyconf.config_prover * Driver.driver =
-  let alt_ergo : Whyconf.config_prover =
-    let fp = Whyconf.parse_filter_prover "Alt-Ergo" in
-    (* all provers that have the name "Alt-Ergo" *)
-    let provers = Whyconf.filter_provers w3.config fp in
-    if Whyconf.Mprover.is_empty provers then (
+  let open Whyconf in
+  let alt_ergo : config_prover =
+    (* get all provers that are the regular variant of Alt-Ergo *)
+    let fp = parse_filter_prover "Alt-Ergo,," in
+    let provers = filter_provers w3.config fp in
+    if Mprover.is_empty provers then (
       Format.eprintf "Prover Alt-Ergo not installed or not configured";
       exit 1)
     else
       (* Format.printf "Versions of Alt-Ergo found:";
-         Whyconf.(Mprover.iter (fun k _ -> Format.printf " %s" k.prover_version) provers);
+               Whyconf.(Mprover.iter (fun k _ -> Format.printf " %s-%s" k.prover_version k.prover_altern) provers);
          Format.printf "@,"; *)
-      (* returning an arbitrary one *)
-      snd (Whyconf.Mprover.max_binding provers)
+      (* return one of the versions (todo: get the most recent one) *)
+      snd (Mprover.choose provers)
   in
   let driver =
     try Driver.load_driver_for_prover w3.main w3.env alt_ergo

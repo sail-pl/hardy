@@ -29,6 +29,14 @@ and 'a ltl_ =
   | LTL_Unary of ltl_unary * 'a ltl
   | LTL_Binary of 'a ltl * ltl_binary * 'a ltl
 
+
+let rec fold_ltl j pj init form  = match form.value with
+| LTL_True | LTL_False -> j init form 
+| LTL_Atom p -> pj init p 
+| LTL_Unary (_,f') -> j (fold_ltl j pj init f') form 
+| LTL_Binary (f1,_,f2) -> j (fold_ltl j pj (fold_ltl j pj init f1) f2) form 
+
+
 (** [map_ltl_pred m f] applies [m] to every predicates making up the formula [f]*)
 let rec map_ltl_pred : type a b. (a -> b) -> a ltl -> b ltl =
  fun m form ->

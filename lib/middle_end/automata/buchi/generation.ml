@@ -5,6 +5,7 @@ module PSyn = HardyFrontEnd.Syntax
 open ProgramSyntax
 open SyntaxCommon
 open HardyMisc.Utils
+open SharedSyntax
 open LTLSyntax
 module SSyn = Syntax.Shared
 module Hist = Syntax.Instant
@@ -15,11 +16,16 @@ module M(TAtom: TseitinAtomSig)
                     with type init_val = Tool.output
                     and type E.label = TAtom.t eba
                     and type TAtom.t = TAtom.t
-                    and type 'a FAtom.t = 'a and type _ FAtom.data = Hist.min_nb_instants)
+                    and type 'a FAtom.t = 'a 
+                    and type _ FAtom.data = Hist.min_nb_instants
+                    and type FAtom.ty = Hist.instant option * SSyn.ty
+                    and type FAtom.qty = base_ty
+          )
         :
   Sig.S
     with type triple_data = Program.triple_data_t
-     and type fol_data = Hist.min_nb_instants = struct
+     and type fol_data = Hist.min_nb_instants  = 
+      struct
   type input = (string * Tool.input) hoare_pair
   type fol_data = Hist.min_nb_instants
   type triple_data = Program.triple_data_t
@@ -28,29 +34,65 @@ module M(TAtom: TseitinAtomSig)
   (* (SSyn.ty PSyn.temp_spec_t, (SSyn.ty,unit) PSyn.inst_spec_t, PSyn.variant_t, unit) program *)
   type triples =
     ( triple_data,
-      (SSyn.ty, fol_data) PSyn.inst_spec_t Sig.formula )
+      (SSyn.ty,SSyn.base_ty, fol_data) PSyn.inst_spec_t Sig.formula )
     hoare_triple
     list
 
-
-  module Triples = Triples.M(TAtom)(B)
+  module BProd = BaProduct.Make(B)
+  module Triples = Triples.M(TAtom)(B)(BProd)
 
   type output = (string * Tool.output) hoare_pair
-  type automaton = Triples.BProd.t
+  type automaton = BProd.t
   (* { pa_pair :  (string * B.t) P.hoare_pair; pa_prod : (string * BB.t) } *)
 
+  (* let pp_ltl_full =
+    Printer.(pp_ltl
+      (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p |> snd))
+      pp_ltl_binop pp_ltl_unop) *)
+
+  let pp_ltl_short =
+    Printer.(pp_ltl
+      (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p |> fst))
+      pp_ltl_binop pp_ltl_unop)
+
+  let from_ltl : _ ltl -> string ltl =
+    map_ltl_pred (fun p -> B.FAtom.add_and_get p |> snd)
+
+
   let spec_to_input (cli : Cli.info)
-      (spec : SSyn.ty PSyn.temp_spec_t list hoare_pair) : input =
+      (spec : (_,SSyn.base_ty) PSyn.temp_spec_t list hoare_pair) : input =
     let print_formula (name, spec) =
       if cli.verbose then
         Format.printf "%s formula: %a@." name
-          Triples.pp_ltl_short spec
+          pp_ltl_short spec
     in
 
     let fjoin = fold_mjoin Fun.id and_ltl true_ltl in
     let rely = ("rely", fjoin spec.requires) in
-    print_formula rely;
-    let rely_spec = pair_map (Right Triples.from_ltl) rely in
+    (* get the rely formula that do not depend on output.
+       those formula can then be added as extra guarantee hypothesis for a potential simplication of the guarantee automaton  
+    *)
+    (* let _rely_input_only = List.filter (fold_ltl (fun acc _ -> acc) 
+      (fold_fol (fun acc _ -> acc) 
+            (fun acc p -> 
+                if acc then acc 
+                else match p with 
+                  | Atom e -> fold_expr (
+                      fun acc f -> if acc then acc else 
+                        match f.value with 
+                        | Var (_,_) -> failwith "fixme: 
+                                type spec variables, and also preprocess specifications:  
+                                -> add tags to spec: input-only, safety etc.
+                                -> move this code there
+                                "
+                        | _ -> acc
+                      ) acc e
+                  | Predicate _ -> false (*fixme: look up definition*)
+            )) 
+      false) spec.requires 
+    in
+    print_formula rely; *)
+    let rely_spec = pair_map (Right from_ltl) rely in
     let guarantee = ("guarantee", fjoin spec.ensures) in
     print_formula guarantee;
 
@@ -65,7 +107,7 @@ module M(TAtom: TseitinAtomSig)
       *)
              (if cli.no_i_a_conj || snd rely = true_ltl then g
               else and_ltl (snd rely) g)
-             |> Triples.from_ltl))
+             |> from_ltl))
         guarantee
     in
     { requires = rely_spec; ensures = guarantee_spec }
@@ -96,9 +138,9 @@ module M(TAtom: TseitinAtomSig)
     automaton_to_dot (module B) cli guarantee_a;
     (* create synchronized product automaton *)
     let prod_a =
-      ("product", Triples.BProd.create (snd rely_a, snd guarantee_a))
+      ("product", BProd.create (snd rely_a, snd guarantee_a))
     in
-    automaton_to_dot (module Triples.BProd) cli prod_a;
+    automaton_to_dot (module BProd) cli prod_a;
     snd prod_a
 
   let generate_triples : in_program -> automaton -> triples =

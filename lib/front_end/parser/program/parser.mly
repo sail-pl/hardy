@@ -14,8 +14,8 @@
 
 // begin specification ------
 
-let inst_spec == fol(tq_expr_with_pred)
-let ltl_spec == ltl(braced(inst_spec))
+let inst_spec == fol(expr_with_pred)
+let ltl_spec == ltl(braced(fol(tq_expr_with_pred)))
 
 
 let prog_requires == RELY ; ~ =  ltl_spec ;  <>
@@ -66,7 +66,6 @@ let input == vdecl(INPUT)
 let output == vdecl(OUTPUT)
 
 let typed_decl_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,t) ids}
-let typed_state_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,(State,t)) ids}
 
 let ty :=
     | TY_BOOL ; { Ty_Bool }
@@ -101,6 +100,8 @@ let expr(var_e) :=
 
 let basic_expr == expr(id = ID ; {id,()})
 
+let expr_with_pred := ~= basic_expr ; <Atom>
+
 
 let tq_expr == expr(
     | id = ID ; {id,None}
@@ -124,9 +125,9 @@ let fol(atom) :=
         | ~=atom ; <FOL_Atom>
         | ~ = common_logic_unary ; ~ = fol(atom) ; %prec UNARY <FOL_StdUnary>
         | f1 = fol(atom) ; op = common_logic_binary ; f2 = fol(atom) ; {FOL_StdBinary (f1,op,f2)}
-        | FORALL ; vars = typed_state_id+ ; COMMA ; f = fol(atom) ; {Forall (List.flatten vars, f)}
+        | FORALL ; vars = typed_decl_id+ ; COMMA ; f = fol(atom) ; {Forall (List.flatten vars, f)}
         | EXISTS_PREV ; v = ID; COMMA ; f = fol(atom) ; {ExistsPrev (v, f)}
-        | EXISTS ; vars = typed_state_id+ ; COMMA ; f = fol(atom) ; {Exists (List.flatten vars , f)}
+        | EXISTS ; vars = typed_decl_id+ ; COMMA ; f = fol(atom) ; {Exists (List.flatten vars , f)}
     )
     | ~ = delimited("(",fol(atom),")") ; <> 
 
