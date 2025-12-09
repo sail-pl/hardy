@@ -15,7 +15,13 @@ module P = Ptree
 
 let get_pp_string a b = Format.asprintf "%a" a b
 
-let get_pty ty = Ptree.(PTtyapp (Ptree_helpers.qualid [ty ], []))
+let rec get_pty (to_str : 'a -> string) = function
+| Ty_Bool 
+| Ty_String  (* string are hashed and represented as integers for now *)
+| Ty_Int as ty -> Ptree.(PTtyapp (Ptree_helpers.qualid [ to_str ty ], []))
+| Ty_Array (ty,_) -> Ptree.(PTtyapp (Ptree_helpers.qualid [ "array" ], [get_pty to_str ty]))
+| Ty_Prod l -> PTtuple (List.map (get_pty to_str) l)
+
 
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
@@ -51,10 +57,11 @@ let get_quant_binders vars =
        (fun (v, (cat, ty)) ->
          let pty =
            get_pty
-             (
+             (fun ty ->
                match (cat, ty) with
                | Local, ty | State, ty -> get_pp_string pp_base_ty ty
                | cat, _ -> get_pp_string pp_cat_ty cat |> ty_suffix)
+             ty
          in
          PH.one_binder v ~pty)
        vars)
@@ -65,6 +72,12 @@ let translate_binop app infix op =
   | Add | Sub | Mul | Div -> fun e1 e2 -> app (P.Qident id) [ e1; e2 ]
   | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr -> infix id
 
+
+let rec make_elist = function [] -> PH.(evar (qualid ["Nil"])) | h::t -> PH.(eapp (qualid ["Cons"]) [h;make_elist t])
+let rec make_tlist = function [] -> PH.(tvar (qualid ["Nil"])) | h::t -> PH.(tapp (qualid ["Cons"]) [h;make_tlist t])
+
+(* fixme: instead, use array.Init.init and unroll each element of the list for each index of *)
+
 let rec translate_rexpr (e: unit expr) : P.expr =
   let open P in
   let open PH in
@@ -73,6 +86,8 @@ let rec translate_rexpr (e: unit expr) : P.expr =
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
   | Int n -> econst n ~loc
+  | Unit -> expr e_unit ~loc
+  | Prod _l -> failwith "todo tuple"
   | Var (s, ()) ->
       get_binding_type s (fun (cat, _) ->
           match cat with
@@ -89,7 +104,15 @@ let rec translate_rexpr (e: unit expr) : P.expr =
       | _ ->
           translate_binop (eapp ~loc)
             (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
-            v.op e1 e2)
+              v.op e1 e2)
+  | ArrayCell v ->
+      let e = translate_rexpr v.idx in
+      eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr v.array ]
+  | String s -> econst (String.hash s) ~loc
+  | Array l -> List.map translate_rexpr l |> make_elist
+  | NodeCall _c -> failwith "todo nodecall"
+
+
 let translate_lexpr (e : unit expr) : P.expr * string option =
   let open PH in
   let loc = get_loc e.label in
@@ -104,6 +127,9 @@ let translate_lexpr (e : unit expr) : P.expr * string option =
             @@ Format.sprintf
                  "can't assign expression to stream variable '%s' (%s)" id
                  (get_pp_string pp_cat_ty cat))
+  | ArrayCell v ->
+      let e = translate_rexpr v.idx in
+      (eapp ~loc (qualid [ Ident.op_get "" ]) [ e; translate_rexpr v.array ], None)       
   | _ -> failwith "not an r-value"
 
 
@@ -115,6 +141,7 @@ let rec translate_term (e : instant option expr) : P.term =
   match e.value with
   | True -> term ~loc Ttrue
   | False -> term ~loc Tfalse
+  | Unit -> term ~loc t_unit
   | Int n -> tconst ~loc n
   | Var (s, t) ->
       get_binding_type s (fun (cat, _) ->
@@ -148,13 +175,22 @@ let rec translate_term (e : instant option expr) : P.term =
           translate_binop (tapp ~loc)
             (fun x e1 e2 -> Tinnfix (e1, x, e2) |> term ~loc)
             v.op t1 t2)
+  | Array l -> List.map translate_term l |> make_tlist
+  | String s -> tconst ~loc (String.hash s)
+  | ArrayCell v ->
+      tapp ~loc
+        (qualid [ Ident.op_get "" ])
+        [ translate_term v.idx; translate_term v.array ]
+  | Prod _ -> failwith "todo prod"
+  | NodeCall _c -> failwith "todo funcall"
+
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
   let open P in
   let open PH in
   let rec tr_seq = function
-    | [] -> expr unit_val
+    | [] -> expr e_unit
     | [ x ] -> tr_stmt x
     | s ->
         List.fold_right
@@ -164,26 +200,16 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
               ->
                 x
             | _ -> Esequence (tr_stmt x, y) |> expr)
-          s (expr unit_val)
+          s (expr e_unit)
   and tr_stmt (stmt : ('a, 'b) stmt) =
     let loc = get_loc stmt.label in
     match stmt.value with
+    | Return _ -> failwith "todo return"
     | Assign (e1, e2) ->
         let e1, id = translate_lexpr e1 in
         let e2 = translate_rexpr e2 in
         Eassign [ (e1, Option.map (fun id -> qualid [ id ]) id, e2) ]
         |> expr ~loc
-    | Emit (e, id) ->
-        get_binding_type id (fun (cat, _) ->
-            let e1, field =
-              match cat with
-              | Local -> ([ id ] |> qualid |> evar, None)
-              | State | Output ->
-                  ( [ get_pp_string pp_cat_ty cat ] |> qualid |> evar,
-                    Some ([ id ] |> qualid) )
-              | Input -> failwith @@ Format.sprintf "can't emit to '%s'" id
-            in
-            Eassign [ (e1, field, translate_rexpr e) ] |> expr ~loc)
     | If (e, t, f) ->
         let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
         Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc
@@ -265,8 +291,6 @@ struct
   (* type in_spec = ((in_ty,fol_data) inst_spec_t list) hoare_pair *)
 
   type in_pgrm = base_program
-  type in_setup = (Shared.ty fol_t, unit) setup
-  type in_body = (Shared.ty fol_t, unit) stmt list
 
   type in_fun =
     ( triple_data,
@@ -297,7 +321,7 @@ struct
             {
               f_loc = Loc.dummy_position;
               f_ident = ident v;
-              f_pty = get_pty (get_pp_string pp_base_ty ty);
+              f_pty = get_pty (get_pp_string pp_base_ty) ty;
               (* only inputs are read-only *)
               f_mutable = t <> Input;
               f_ghost = false;
@@ -323,7 +347,9 @@ struct
           ( ident (get_pp_string pp_cat_ty t),
             false,
             RKnone,
-            mk_decl (get_pty (get_pp_string pp_cat_ty t |> ty_suffix) ) ))
+            mk_decl (get_pty (fun _ -> get_pp_string pp_cat_ty t |> ty_suffix) Ty_Bool) 
+          ) 
+      )
     in
     let inputs,outputs,vars = Bindings.fold (fun id (ct,bt) (i,o,s) -> match ct with
       | Input -> (id,bt)::i,o,s
@@ -350,7 +376,7 @@ struct
         pure (logic) functions *)
                  f_pty =
                    PTpure
-                    (get_pty (get_pp_string pp_cat_ty ty |> ty_suffix));
+                    (get_pty (fun _ -> get_pp_string pp_cat_ty ty |> ty_suffix) Ty_Bool);
                  f_mutable = false;
                  f_ghost = true;
                })
@@ -405,14 +431,20 @@ struct
     (* let props = List.init 1251 (fun i -> {ld_loc=Loc.dummy_position; ld_ident=ident ("p" ^ string_of_int i); ld_params = []; ld_type = None; ld_def = None}) in  *)
     [ input_t; output_t; state_t; instant_t; i; o; s; hist; iproj; oproj; sproj ;  (* Dlogic props *) ]
     
-  let generate_body (b : in_body) : out_body = expr_of_statements pterm_of_inv b
+  let generate_body (p : in_pgrm) (d : triple_data): out_body = 
+    let _node = find_node p.prog_nodes d.triple_node_id in
+    (* expr_of_statements pterm_of_inv node.node_body *)
+    expr_of_statements pterm_of_inv []
 
-  let generate_function (d : triple_data_t) spec body =
+
+  let generate_function  (_p : in_pgrm) (d : triple_data_t) spec body =
+
     let open P in
     let open PH in
     Efun ([], None, pat Pwild, Ity.MaskVisible, spec, body) |> expr |> fun m ->
     Dlet (ident d.triple_id, false, Expr.RKnone, m)
 
+  (*
   let generate_setup : in_setup option -> out_setup option =
     let open PH in
     let d = { triple_id = "setup" } in
@@ -429,7 +461,7 @@ struct
               sp_post = [ (Loc.dummy_position, [ (pat Pwild, f) ]) ];
             }
         in
-        generate_function d spec bdy)
+        generate_function d spec bdy) *)
 
   let length_assert (n : min_nb_instants) : P.term =
     let open P in
@@ -494,7 +526,7 @@ struct
     { empty_spec with sp_pre; sp_post }
 
   (** generates WhyML program expression to represent the setup procedure *)
-  let generate_program decls setup funs =
+  let generate_program decls funs =
     let uses =
       [
         [ "int"; "Int" ];
@@ -504,6 +536,7 @@ struct
         [ "list"; "HdTlNoOpt" ];
         [ "list"; "NthNoOpt" ];
         [ "list"; "Quant" ];
+        ["array"; "Array"]
       ]
       |> List.map (PH.use ~import:false)
     in
@@ -512,7 +545,7 @@ struct
       ( PH.ident "Program",
         uses
         @ PH.use ~import:false [ "ProgramHelper" ]
-          :: add_opt_to_list setup funs )
+          :: funs )
     in
     let pgrm = P.Modules [ helper_m; triples_m ] in
     let () =

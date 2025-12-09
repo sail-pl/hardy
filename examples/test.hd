@@ -1,0 +1,63 @@
+ensures G {{ result = x + y }}
+guarantees result = x + y
+node<Sum>(x y : int) : int  = 
+    return x + y;
+
+/*
+node<Fby>(x y : int) : int
+    var first : int {first := true} =
+    if first then
+        first := false; 
+        return x;
+    else
+        return y;
+    end
+
+node<Prev>(x: int) : int 
+    var first : bool = 
+    { first := true }
+    if first then 
+        x := n ;
+        first := false ;
+    else return n end
+*/
+
+/*
+ensures G {{result = x + Prev y }}
+node<Sum_left>(x y : int) : int
+    var m : int =
+    return x + Fby(0, Prev y );
+
+
+node<Max>(x:int) : int
+var m: int { m := x; } =
+    if x >= m then m := x; end
+    return m;
+
+
+node<Switch>(on off: bool) : bool 
+var x : bool { x := false; } =
+    if on then 
+        x := true; 
+    else 
+        if off then 
+            x := false;
+         end 
+    end 
+    return x;
+
+*/
+
+node<Test1>() : int * bool * int = 
+    return (1,Switch(false, true),3);
+
+node<Test2>() : int 
+var x : int * bool * int; = 
+    (x,y,z) := Test1 () + 2;
+    return x + z;
+
+
+node<START>() : unit 
+var x : int * bool * int; = 
+    (x,y,z) := Test1 () + 2;
+    return x + z;

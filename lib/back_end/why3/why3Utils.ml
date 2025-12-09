@@ -54,4 +54,5 @@ let get_loc loc =
 
 let why3_and l r = Ptree.Tbinnop (l, Dterm.DTand, r) |> Ptree_helpers.term
 let why3_or l r = Ptree.Tbinnop (l, Dterm.DTor, r) |> Ptree_helpers.term
-let unit_val = Why3.Ptree.Etuple []
+let e_unit = Why3.Ptree.Etuple []
+let t_unit = Why3.Ptree.Ttuple []

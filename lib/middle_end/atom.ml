@@ -50,8 +50,15 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
         let left = remove_exp_loc v.left and right = remove_exp_loc v.right in
         BinOp { v with left; right }
     | UnOp (ENot,e) -> UnOp (ENot,(remove_exp_loc e))
-    | (Int _ | True | False | Var (_, _)) as v -> v
-  in
+    | (Int _ | True | False | Var (_, _)) | String _ | Unit _ as v -> v
+    | ArrayCell v -> 
+      let idx = remove_exp_loc v.idx 
+      and array = remove_exp_loc v.array in
+      ArrayCell {idx;array}
+    | Array l -> Array (List.map remove_exp_loc l)
+    | Prod l -> Prod (List.map remove_exp_loc l)
+    | NodeCall c -> NodeCall {c with args=remove_exp_loc c.args}
+    in
   mk_dummy_loc value
 
 (*
@@ -145,3 +152,14 @@ module Imperative (Data: sig type t end) : S with type 'a t = 'a and type _ data
         (short_id, label)
     | Some a -> (a.short_id, label)
 end
+
+
+module Empty : S  = struct
+  type _ t = unit 
+  type _ data = unit 
+  let subst _ = ()
+  let add_and_get _ = ()
+  let get_atom _ = ()
+  let set_data _  _ = ()
+  let get_data _ = ()
+end 

@@ -1,49 +1,57 @@
 %token <int> INT
-%token <string> ID
+%token <string> LID
+%token <string> UID
+%token<string> STRING
 
-%token TY_INT TY_BOOL
+
+%token TY_INT TY_BOOL TY_STRING TY_ARRAY TY_UNIT
 
 // EXP & LOGIC
-%token SYMB_AT DOLLAR EMARK SHARP //HAT QMARK
+%token SYMB_AT DOLLAR EMARK SHARP // UNDERSCORE HAT QMARK 
 %token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" 
 %token EQ "=" NEQ "<>" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
-// %token LSQBRACE "[" RSQBRACE "]"
+%token LSQBRACE "[" RSQBRACE "]"
 
 // LOGIC
-%token FORALL EXISTS EXISTS_PREV ARROW DARROW AND OR TRUE FALSE
+%token FORALL EXISTS ARROW DARROW AND OR TRUE FALSE //EXISTS_PREV
 %token EOF
 
 // IMP 
 %token IF "if" THEN "then"
-%token ELSE "else" WHILE "while" DO "do" DONE "done" END "end" ASSIGN ":="
+%token ELSE "else" WHILE "while" DO "do" DONE "done" END "end" ASSIGN ":=" RETURN "ret"
 
 // REACTIVE
-%token SETUP LOOP EMIT TO VAR INPUT OUTPUT LAST FIRST START PREV AT // ALL ANY 
+%token VAR LAST FIRST START PREV AT // ALL ANY NOTHING INPUT OUTPUT
+
+%token NODE //LOCAL 
 
 // SPEC
-%token RELY GUARANTEE ENSURES INVARIANT VARIANT // REQUIRES 
+%token ASSUMES GUARANTEES ENSURES INVARIANT VARIANT REQUIRES 
 
 // (P)LTL
-// %token YESTERDAY ONCE HISTORICALLY
+%token YESTERDAY ONCE HISTORICALLY
 %token EVENTUALLY ALWAYS NEXT UNTIL WUNTIL RELEASE SRELEASE
-// %token SINCE
+%token SINCE
 
 // MISC
-%token SEMI ";" COLON ":" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" COMMA "," // DOT "."   SEP "|" TILDE "~"
+%token SEMI ";" COLON ":" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" COMMA "," SEP "|" // DOT "."  TILDE "~"
 
 
 // ASSOC
+%nonassoc below_COMMA
+%left COMMA
 %right ARROW DARROW
-%left OR
-%left AND
+%right OR
+%right AND
 %right EQ NEQ GT LT GTE LTE 
 %left PLUS MINUS
 %left TIMES DIVIDE
-%right UNTIL WUNTIL SRELEASE RELEASE
-// %right SINCE
+//%right UNTIL WUNTIL SRELEASE RELEASE
+%right SINCE
 // %right EVENTUALLY ALWAYS
 // %right NEXT
+// %right ONCE HISTORICALLY
+// %right YESTERDAY
 
-%nonassoc UNARY
-%nonassoc COMMA
+%nonassoc UNARY //LPAREN
 %%
