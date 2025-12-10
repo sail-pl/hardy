@@ -60,7 +60,10 @@ let get_quant_binders vars =
        vars)
 
 let translate_binop app infix op =
-  let id = PH.ident (Ident.op_infix (Format.asprintf "%a" pp_expr_binop op)) in
+  let id = PH.ident (
+      if op = Div then "div" else Ident.op_infix @@ Format.asprintf "%a" pp_expr_binop op  
+    
+  ) in
   match op with
   | Add | Sub | Mul | Div -> fun e1 e2 -> app (P.Qident id) [ e1; e2 ]
   | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr -> infix id
@@ -502,6 +505,7 @@ struct
     let uses =
       [
         [ "int"; "Int" ];
+        [ "int"; "EuclideanDivision" ];
         [ "ref"; "Ref" ];
         [ "list"; "List" ];
         [ "list"; "Length" ];
