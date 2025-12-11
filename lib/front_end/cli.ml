@@ -5,6 +5,8 @@ type info = {
   verbose : bool;
   outdir : string;
   no_i_a_conj : bool;
+  eval: bool;
+  verify: bool;
 }
 (** parameters provided by the cli *)
 
@@ -29,12 +31,19 @@ functor
     let no_i_a_conj = ref false
     let cwd = Sys.getcwd ()
 
+    let eval = ref false
+    let verify = ref false
+
+
     let speclist =
       [
         ("-v", Set verbose, "debug output");
         ( "-noiaconj",
           Set no_i_a_conj,
           "do not add the rely the formula to the guarantee one" );
+        ("-run", Set eval, "evaluate the program");
+        ("-check", Set verify, "verify the program (default)");
+        ("-run", Set eval, "evaluate the program (disables checking by default)");
       ]
 
     let get_input_file f =
@@ -45,6 +54,7 @@ functor
 
     let () = Arg.parse speclist get_input_file usage_msg
     let () = if !input_file = "" then failwith "one input file needed"
+    let () = if not !eval then verify := true
     let dir = Filename.(!input_file |> remove_extension |> basename) ^ "_gen"
 
     (* drop generated files in $cwd/<filename>_gen/ *)
@@ -56,5 +66,7 @@ functor
         verbose = !verbose;
         outdir = output_path;
         no_i_a_conj = !no_i_a_conj;
+        eval = !eval;
+        verify = !verify;        
       }
   end

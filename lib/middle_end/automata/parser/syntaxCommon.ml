@@ -79,6 +79,37 @@ module type TseitinAtomSig = sig
   val is_generated : t -> bool
 end
 
+module EmptyTAtom : TseitinAtomSig = struct
+  type t = unit 
+  let neg _ = ()
+  let create _ = ()
+  let pp _ _ = () 
+  let fresh () = ()
+  let get_atom_id _ = ""
+  let is_neg _ = false
+  let is_generated _ = false
+end
+
+type tseitin_atom_t = {fol_id:string; generated:bool; is_neg:bool}
+
+module TAtom() : TseitinAtomSig with type t = tseitin_atom_t = struct
+  type t = tseitin_atom_t
+  let pp fmt a = Format.(fprintf fmt "%s%s" 
+      (if a.is_neg then "~" else "") a.fol_id)
+
+  let gen = ref (-1)
+  let fresh () = 
+    gen := !gen + 1;
+    Format.printf "called fresh! got %i@." !gen;
+    {fol_id=(string_of_int !gen); generated=true; is_neg=false}
+  let neg a = {a with is_neg=not a.is_neg}
+  let get_atom_id a = a.fol_id
+  let is_neg a = a.is_neg
+  let is_generated a = a.generated
+
+  let create fol_id = {fol_id; generated=false; is_neg=false}
+end
+
 
 module BoolAlgebra(A : TseitinAtomSig) = struct
 (** [bool_algebra] is the generic labeling of edges and/or vertices *)
@@ -120,25 +151,4 @@ module BoolAlgebra(A : TseitinAtomSig) = struct
       List.map (fun {disjuncts} ->
           List.map convert_atom disjuncts |> mk_disj
         ) f.conjuncts |> mk_conj
-end
-
-
-type tseitin_atom_t = {fol_id:string; generated:bool; is_neg:bool}
-
-module TAtom() : TseitinAtomSig with type t = tseitin_atom_t = struct
-  type t = tseitin_atom_t
-  let pp fmt a = Format.(fprintf fmt "%s%s" 
-      (if a.is_neg then "~" else "") a.fol_id)
-
-  let gen = ref (-1)
-  let fresh () = 
-    gen := !gen + 1;
-    Format.printf "called fresh! got %i@." !gen;
-    {fol_id=(string_of_int !gen); generated=true; is_neg=false}
-  let neg a = {a with is_neg=not a.is_neg}
-  let get_atom_id a = a.fol_id
-  let is_neg a = a.is_neg
-  let is_generated a = a.generated
-
-  let create fol_id = {fol_id; generated=false; is_neg=false}
 end

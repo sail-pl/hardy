@@ -1,7 +1,6 @@
 %{
     open LTLSyntax
     open FOLSyntax
-    open InstantSyntax
 %}
 
 %%
