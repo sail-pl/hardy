@@ -15,6 +15,8 @@ module P = Ptree
 
 let get_pp_string a b = Format.asprintf "%a" a b
 
+let get_cat_ty = get_pp_string (pp_private pp_cat_ty) 
+
 let get_pty ty = Ptree.(PTtyapp (Ptree_helpers.qualid [ty ], []))
 
 (* variable environment *)
@@ -82,7 +84,7 @@ let rec translate_rexpr (e: ty expr) : P.expr =
           | Local -> evar ~loc (qualid [ s ])
           | _ ->
               eapp (qualid [ s ])
-                [ [ get_pp_string pp_cat_ty cat_ty ] |> qualid |> evar ~loc ]
+                [ [ get_cat_ty cat_ty ] |> qualid |> evar ~loc ]
     end
   | UnOp (ENot,e) -> Enot (translate_rexpr e) |> expr  ~loc
   | BinOp v -> (
@@ -102,7 +104,7 @@ let translate_lexpr (e : ty expr) : P.expr * string option =
     begin
       match cty with
         | State ->
-            ([ get_pp_string pp_cat_ty State ] |> qualid |> evar ~loc, Some id)
+            ([ get_cat_ty State ] |> qualid |> evar ~loc, Some id)
         | Local -> ([] |> qualid |> evar ~loc, Some id)
         | cat ->
             failwith
@@ -130,7 +132,7 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
               match inst with
               | Some (Previous 0) | None ->
                   tapp ~loc (qualid [ s ])
-                    [ [ get_pp_string pp_cat_ty cat_t ] |> qualid |> tvar ]
+                    [ [ get_cat_ty cat_t] |> qualid |> tvar ]
               | Some (Previous n) ->
                   let n = tconst (n - 1) in
                   (* last value begins at 0 *)
@@ -186,7 +188,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
               match cat with
               | Local -> ([ id ] |> qualid |> evar, None)
               | State | Output ->
-                  ( [ get_pp_string pp_cat_ty cat ] |> qualid |> evar,
+                  ( [ get_cat_ty cat ] |> qualid |> evar,
                     Some ([ id ] |> qualid) )
               | Input -> failwith @@ Format.sprintf "can't emit to '%s'" id
             in
@@ -315,7 +317,7 @@ struct
       let tdecl =
         {
           td_loc = Loc.dummy_position;
-          td_ident = ident (get_pp_string pp_cat_ty t |> ty_suffix);
+          td_ident = ident (get_cat_ty t |> ty_suffix);
           td_params = [];
           td_vis = Public;
           (* the program does not manipulate the record directly *)
@@ -327,10 +329,10 @@ struct
       in
       ( Dtype [ tdecl ],
         Dlet
-          ( ident (get_pp_string pp_cat_ty t),
+          ( ident (get_cat_ty t),
             false,
             RKnone,
-            mk_decl (get_pty (get_pp_string pp_cat_ty t |> ty_suffix) ) ))
+            mk_decl (get_pty (get_cat_ty t |> ty_suffix) ) ))
     in
     let inputs,outputs,vars = Bindings.fold (fun id (ct,bt) (i,o,s) -> match ct with
       | Input -> (id,bt)::i,o,s
@@ -357,7 +359,7 @@ struct
         pure (logic) functions *)
                  f_pty =
                    PTpure
-                    (get_pty (get_pp_string pp_cat_ty ty |> ty_suffix));
+                    (get_pty (get_cat_ty ty |> ty_suffix));
                  f_mutable = false;
                  f_ghost = true;
                })
@@ -463,7 +465,7 @@ struct
         let eq = Tinnfix
           ( tapp (qualid [nth_h cat]) [ tconst 0; Tquant (Dterm.DTlambda, one_binder "x", [], tvar @@ qualid ["x"]) |> term ],
             Ident.op_infix "=" |> ident,
-            tvar (qualid [ get_pp_string pp_cat_ty cat ]) )
+            tvar (qualid [ get_cat_ty cat ]) )
         |> term
       in
       P.Tbinnop

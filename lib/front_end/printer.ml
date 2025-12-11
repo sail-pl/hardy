@@ -6,7 +6,7 @@ open LTLSyntax
 open ProgramSyntax
 open InstantSyntax
 open Format
-
+ 
 let pp_cat_ty fmt = function
   | Input -> fprintf fmt "inputs"
   | Output -> fprintf fmt "outputs"

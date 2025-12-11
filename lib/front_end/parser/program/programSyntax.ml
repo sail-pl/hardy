@@ -21,7 +21,11 @@ and 't expression_ =
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
-let private_var = String.cat "_"
+let pp_private (f : Format.formatter -> 'a -> unit) : Format.formatter -> 'a -> unit = 
+  fun fmt -> Format.fprintf fmt "_%a" f
+
+let private_var = Format.asprintf "%a" (pp_private Format.pp_print_string)
+
 
 let rec fold_expr : type a. (a -> 't expr -> a) -> a ->'t expr -> a =
  fun j init e ->
