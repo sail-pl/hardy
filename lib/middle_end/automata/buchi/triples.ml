@@ -118,9 +118,6 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
     in mk_conj [disjunctions]
 
 
-    (* todo: use env to type variables *)
-    (* let requires :  (ty, min_nb_instants) inst_spec_t Sig.formula = *)
-
   (** [generate_spec inputs in_e out_e init_post] builds the list of hoare pairs
       for a node of the product graph
       - [inputs : (string * ty) list] inputs of the program
@@ -148,40 +145,6 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
         it is reached for the first time (instant = n) and one where it is reached again (instant > n) ? 
       *)
 
-
-    (*
-      output in the precondition refers to the previous output, not the current one
-    *)  
-    (* let _at_current_instant_replace_pre : (ty,_) fol_t -> (ty,_) fol_t =
-      if v.v_min_nb_instants.is_max = true then
-        map_fol_pred 
-          (map_expr (fun e ->
-            match e.value with
-            | Var (x, inst) ->
-              begin
-                let inst = Option.map (
-                  function 
-                  | (At n) when n = v.v_min_nb_instants.nb_instant && v.v_min_nb_instants.is_max -> None 
-                  | x ->  Some x) inst
-                in
-                let value = 
-                  match Bindings.find x env.env_variables |> fst with
-                  | Output  -> 
-                    (* input/output is not the current instant input/output but the previous one*)
-                    Var (x, Some (Previous 1))
-                  | State | Input  ->
-                    (* state variables and inputs are *)
-                    Var (x,Option.join inst)
-                  | Local -> failwith "no local variable in spec"
-                in
- 
-              { e with value  }
-            end
-            | _ -> e
-          ))
-              
-      else Fun.id 
-    in *)
     let at_current_instant_replace_post : ('a,'b) fol_t -> ('a,'b) fol_t =
       if v.v_min_nb_instants.is_max then
         map_fol_pred 
@@ -201,7 +164,6 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
       ) f |> mk_disj
       in
 
-    
 
     let m : B.BA.t info list M.t =
       (* Factorize exit arcs by common first component by buildin a map from
@@ -229,16 +191,11 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
           *)
           let current_req : (_, base_ty, min_nb_instants) inst_spec_t Sig.formula = 
             [fol_of_eba_replace at_current_instant_replace_post [req]]|> mk_conj in
-
-          (* remove any trivial precondition *)
-            (* (List.filter
-              (function
-                | { conjuncts = [ (f, _) ] } -> f.value <> FOL_True
-                | { conjuncts = [] } -> false
-                | _ -> true)
-              [ previous_ens; current_req ]) *)
                
-              (previous_ens.conjuncts@current_req.conjuncts) |> mk_conj
+             List.filter (function
+                | { disjuncts = [ (f, _) ] } -> f.value <> FOL_True
+                | { disjuncts = [] } -> false
+                | _ -> true) (previous_ens.conjuncts@current_req.conjuncts) |> mk_conj
 
         and ensures : (_,base_ty, min_nb_instants) inst_spec_t Sig.formula =
           (* disjunction of output properties sharing the same input property *)

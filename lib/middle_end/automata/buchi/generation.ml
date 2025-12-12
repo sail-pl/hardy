@@ -50,48 +50,27 @@ module M(TAtom: TseitinAtomSig)
       (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p |> snd))
       pp_ltl_binop pp_ltl_unop) *)
 
-  let pp_ltl_short =
+  let pp_ltl_short fmt : (_ PSyn.fol_t, PSyn.temp_f_prop) labeled ltl  -> unit =
     Printer.(pp_ltl
-      (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p |> fst))
-      pp_ltl_binop pp_ltl_unop)
+      (fun fmt p -> Format.pp_print_string fmt (B.FAtom.add_and_get p.value |> fst))
+      pp_ltl_binop pp_ltl_unop) fmt
 
   let from_ltl : _ ltl -> string ltl =
-    map_ltl_pred (fun p -> B.FAtom.add_and_get p |> snd)
+    map_ltl_pred (fun p -> B.FAtom.add_and_get p.value |> snd)
 
 
   let spec_to_input (cli : Cli.info)
-      (spec : (_,SSyn.base_ty) PSyn.temp_spec_t list hoare_pair) : input =
-    let print_formula (name, spec) =
+      (spec : PSyn.base_temp_spec_t list hoare_pair) : input =
+    let print_formula (name, spec : string * (_ PSyn.fol_t, PSyn.temp_f_prop) labeled ltl) =
       if cli.verbose then
         Format.printf "%s formula: %a@." name
           pp_ltl_short spec
     in
 
-    let fjoin = fold_mjoin Fun.id and_ltl true_ltl in
+    (* flatten the conjunction of formulas to a single formula *)
+    let fjoin : PSyn.base_temp_spec_t list -> _ = fold_mjoin (fun x -> x.value) and_ltl true_ltl in
     let rely = ("rely", fjoin spec.requires) in
-    (* get the rely formula that do not depend on output.
-       those formula can then be added as extra guarantee hypothesis for a potential simplication of the guarantee automaton  
-    *)
-    (* let _rely_input_only = List.filter (fold_ltl (fun acc _ -> acc) 
-      (fold_fol (fun acc _ -> acc) 
-            (fun acc p -> 
-                if acc then acc 
-                else match p with 
-                  | Atom e -> fold_expr (
-                      fun acc f -> if acc then acc else 
-                        match f.value with 
-                        | Var (_,_) -> failwith "fixme: 
-                                type spec variables, and also preprocess specifications:  
-                                -> add tags to spec: input-only, safety etc.
-                                -> move this code there
-                                "
-                        | _ -> acc
-                      ) acc e
-                  | Predicate _ -> false (*fixme: look up definition*)
-            )) 
-      false) spec.requires 
-    in
-    print_formula rely; *)
+    print_formula rely;
     let rely_spec = pair_map (Right from_ltl) rely in
     let guarantee = ("guarantee", fjoin spec.ensures) in
     print_formula guarantee;
@@ -100,8 +79,8 @@ module M(TAtom: TseitinAtomSig)
       pair_map
         (Right
            (fun g ->
-             (* because the input is read-only, any predicate on input is
-          obviously still true at the end of the instant.
+             (* because the input is read-only and history is not updated until next instant, any predicate from the requires formula
+            must still hold at the end of the instant.
           It is added to the guarantee formula to potentialy simplify
           the product automaton.
       *)

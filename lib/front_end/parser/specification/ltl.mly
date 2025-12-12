@@ -13,7 +13,7 @@ let ltl(atom) :=
         | FALSE ; {LTL_False}
         | ~ = unary ; ~ = ltl(atom) ; %prec UNARY <LTL_Unary>
         | f1 = ltl(atom) ; op = binary ; f2 = ltl(atom) ; {LTL_Binary (f1,op,f2)}
-        | ~ = atom ; <LTL_Atom>
+        | a = atom ; {LTL_Atom (mk_labeled () a)}
     )
     | ~ = delimited("(",ltl(atom),")") ; <>
 

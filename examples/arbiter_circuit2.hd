@@ -3,8 +3,8 @@ output g1 g2 g3 : bool;
 var curr_req : int;
 
 // assume each client does not send additional request until it has been granted access 
-relies on G ({r1} -> X ({g1} R ({g1} || !{r1})))
-relies on G ({r2} -> X ({g2} R ({g2} || !{r2})))
+relies on G ({r1} -> X ({prev g1} R ({prev g1} || !{r1})))
+relies on G ({r2} -> X ({prev g2} R ({prev g2} || !{r2})))
 
 
 //relies on G !{r2}

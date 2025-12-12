@@ -30,7 +30,7 @@ and 'a ltl_ =
   | LTL_Binary of 'a ltl * ltl_binary * 'a ltl
 
 
-let rec fold_ltl j pj init form  = match form.value with
+let rec fold_ltl (j: 'acc -> 'a ltl -> 'acc) (pj : 'acc -> 'a -> 'acc)  (init: 'acc) (form: 'a ltl)  = match form.value with
 | LTL_True | LTL_False -> j init form 
 | LTL_Atom p -> pj init p 
 | LTL_Unary (_,f') -> j (fold_ltl j pj init f') form 
@@ -51,6 +51,7 @@ let rec map_ltl_pred : type a b. (a -> b) -> a ltl -> b ltl =
       let value = LTL_Binary (map_ltl_pred m f'1, bin, map_ltl_pred m f'2) in
       { form with value }
   | (LTL_True | LTL_False) as value -> { form with value }
+
 
 (** {2 Helpers to build locatable formulas} *)
 
