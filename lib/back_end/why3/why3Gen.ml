@@ -262,9 +262,10 @@ let pterm_of_inv = pterm_of_fol
 
 module
   M
-  (* : Sig.S 
+  : Sig.S 
     with type triple_data = Syntax.triple_data_t
-     and type fol_data = min_nb_instants  *) =
+     and type fol_data = min_nb_instants 
+     and type out_pgrm =  w3 * P.mlw_file * Pmodule.pmodule Wstdlib.Mstr.t =
 struct
   (* type in_ty = ty *)
   type triple_data = Syntax.triple_data_t
@@ -273,13 +274,12 @@ struct
   (* (in_ty temp_spec_t, (in_ty,fol_data) inst_spec_t, variant_t, unit) program *)
   (* type in_spec = ((in_ty,fol_data) inst_spec_t list) hoare_pair *)
 
-  type in_pgrm = base_program
+  type in_pgrm = middleend_program
   type in_setup = (base_spec_t, ty) setup
   type in_body = (base_spec_t, ty) stmt list
 
   type in_fun =
-    ( triple_data,
-      (ty, base_ty, min_nb_instants) inst_spec_t HardyMiddleEnd.Sig.formula )
+    ((ty, base_ty, min_nb_instants) inst_spec_t HardyMiddleEnd.Sig.formula,triple_data)
     hoare_triple
 
   type in_spec = in_fun
@@ -289,6 +289,12 @@ struct
   type out_fun = out_decl
   type out_setup = out_decl
   type out_spec = P.spec
+
+  type processed_defs = {
+    processed_decls : out_decl list ;
+    processed_setup : out_setup option ;
+    processed_functions: out_fun list ;
+  }
 
   let reset () = Hashtbl.clear bindings
 
@@ -416,16 +422,15 @@ struct
     
   let generate_body (b : in_body) : out_body = expr_of_statements pterm_of_inv b
 
-  let generate_function (d : triple_data_t) spec body =
+  let generate_function (d : triple_data_t) (spec: out_spec) body =
     let open P in
     let open PH in
     Efun ([], None, pat Pwild, Ity.MaskVisible, spec, body) |> expr |> fun m ->
     Dlet (ident d.triple_id, false, Expr.RKnone, m)
 
-  let generate_setup : in_setup option -> out_setup option =
+  let generate_setup (s: in_setup) : out_setup  =
     let open PH in
-    let d = { triple_id = "setup" } in
-    Option.map (fun s ->
+    let d = { triple_id = "setup"; invariants = [] ; min_nb_instants = None} in
         let bdy = generate_body s.setup_body in
         let spec =
           let f =
@@ -438,7 +443,7 @@ struct
               sp_post = [ (Loc.dummy_position, [ (pat Pwild, f) ]) ];
             }
         in
-        generate_function d spec bdy)
+        generate_function d spec bdy
 
   let length_assert (n : min_nb_instants) : P.term =
     let open P in
@@ -450,60 +455,72 @@ struct
       |> term
 
   (** generates WhyML logical expression to represent specification *)
-  let generate_spec ((_d, spec) : in_spec) : out_spec =
+  let generate_spec (spec : in_spec) : out_spec =
     let open PH in
-    (* let convert conv_data (f, d) =
-      let f = pterm_of_fol f in
-      Option.fold (conv_data d) ~none:f ~some:(fun l -> why3_and l f)
-    in *)
 
     let sp_pre =
-      (* in the precondition, "naked" state variables are always equal 
-        to the head of the history, except if we just received our first input, that is, history size is 0
-      *)
-      let curr cat =
-        let eq = Tinnfix
-          ( tapp (qualid [nth_h cat]) [ tconst 0; Tquant (Dterm.DTlambda, one_binder "x", [], tvar @@ qualid ["x"]) |> term ],
+      let history =
+        let state_eq_head = 
+        (* in the precondition, "naked" state variables are always equal 
+          to the head of the history, except if we just received our first input, that is, history size is 0
+            *)
+          Tinnfix
+          ( tapp (qualid [nth_h State]) [ tconst 0; Tquant (Dterm.DTlambda, one_binder "x", [], tvar @@ qualid ["x"]) |> term ],
             Ident.op_infix "=" |> ident,
-            tvar (qualid [ get_cat_ty cat ]) )
+            tvar (qualid [ get_cat_ty State ]) )
         |> term
-      in
-      P.Tbinnop
-        ( length_assert {is_max=false; nb_instant=1},
-          DTimplies,
-          eq) |> term
-    in
+        in 
 
-      curr State
-      :: List.fold_left
-           (fun acc -> function
-           | {disjuncts=[((f: _),data)]} -> 
-              length_assert data :: pterm_of_fol f :: acc
-           | d ->  let f = fold_mjoin (fun ((f: _),data : _ inst_spec_t) -> 
-                  why3_and (pterm_of_fol f) (length_assert data) 
+        let imp = P.Tbinnop ( length_assert {is_max=false; nb_instant=1}, DTimplies, state_eq_head) |> term in
+        (*
+          assert min history length: 
+          useful in case only a function invariant is set (there would be no temporal formula to get the information from)
+        *)
+        Option.fold ~none:imp ~some:(fun inst -> 
+          if inst.nb_instant >= 1 then 
+            why3_and state_eq_head (length_assert inst)
+          else 
+            length_assert inst
+        ) spec.data.min_nb_instants
+
+      and inv = List.map (fun inv ->
+        (* invariant parameterized by outputs are about the previous output in the history *)
+        pterm_of_fol (map_fol_pred (map_expr Fun.id (fun ((id,(_,(cat,ty))) as v) -> 
+          if cat = Output || cat = Input then 
+            (id,(Some (Previous 1),(cat,ty)))
+        else v
+        )) inv)
+      ) spec.data.invariants
+      in
+      
+      
+        history :: List.fold_left
+          (fun acc -> function
+          | {disjuncts=[f]} -> 
+              length_assert f.label :: pterm_of_fol f.value :: acc
+          | d ->  let f = fold_mjoin (fun (f : _ inst_spec_t) -> 
+                  why3_and (pterm_of_fol f.value) (length_assert f.label) 
               ) why3_or (term Ttrue) d.disjuncts
               in f::acc
-            ) []
-           spec.requires.conjuncts
-    in
-    let sp_post =
+            ) inv spec.requires.conjuncts
+    and sp_post =
       List.fold_left
         (fun l disj -> match disj with 
-        | ({disjuncts=[(f,_)]} : (ty, base_ty, fol_data) inst_spec_t list disjunction) -> 
-                 (Loc.dummy_position,[pat Pwild , pterm_of_fol f]):: l
+        | ({disjuncts=[f]} : (ty, base_ty, fol_data) inst_spec_t list disjunction) -> 
+                 (Loc.dummy_position,[pat Pwild , pterm_of_fol f.value]):: l 
         | d ->  
-            let f = fold_mjoin (fun ((f: _),_) -> pterm_of_fol f
+            let f = fold_mjoin (fun f -> pterm_of_fol f.value
             ) why3_or (term Ttrue) d.disjuncts
             in 
              (Loc.dummy_position,[pat Pwild ,f]) :: l 
           )
-           []
-        spec.ensures.conjuncts          
+           (List.map (fun inv -> Loc.dummy_position,[pat Pwild , pterm_of_fol inv]) spec.data.invariants)
+        spec.ensures.conjuncts  
     in
     { empty_spec with sp_pre; sp_post }
 
   (** generates WhyML program expression to represent the setup procedure *)
-  let generate_program decls setup funs =
+  let generate_program p =
     let uses =
       [
         [ "int"; "Int" ];
@@ -517,12 +534,12 @@ struct
       ]
       |> List.map (PH.use ~import:false)
     in
-    let helper_m = (PH.ident "ProgramHelper", uses @ decls) in
+    let helper_m = (PH.ident "ProgramHelper", uses @ p.processed_decls) in
     let triples_m =
       ( PH.ident "Program",
         uses
         @ PH.use ~import:false [ "ProgramHelper" ]
-          :: add_opt_to_list setup funs )
+          :: add_opt_to_list p.processed_setup p.processed_functions )
     in
     let pgrm = P.Modules [ helper_m; triples_m ] in
     let w3 = init_why3 () in

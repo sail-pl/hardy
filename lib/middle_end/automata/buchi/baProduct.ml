@@ -62,7 +62,7 @@ module Make(G : BuchiSig.S)
 
     let default : t =
       {
-        arc_f = { requires = G.Transition.default ; ensures = G.Transition.default};
+        arc_f = { requires = G.Transition.default ; ensures = G.Transition.default; data=()};
         (* arc_min_nb_instants = { nb_instant = 0; is_max = false }; *)
       }
   end
@@ -200,7 +200,7 @@ module Make(G : BuchiSig.S)
           Queue.push next_node workq;
           add_node next_node next_node_data);
         (* make the curr_node -> new_node transition *)
-        let arc_f = { requires = G.E.label r; ensures = G.E.label g } in
+        let arc_f = { requires = G.E.label r; ensures = G.E.label g ; data = () } in
         let edge =
           E.create curr_node
             {

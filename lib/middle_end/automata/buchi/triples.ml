@@ -104,7 +104,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
      List.map ( fun f -> 
             let to_fol (f : B.E.label ) : (instant option * ty, base_ty) fol_t = 
               f |> fol_of_eba (map_fol_pred (map_expr Fun.id replace_i))  in 
-            (to_fol f.v,f.i)
+            (mk_labeled f.i (to_fol f.v) )
           ) disjunctions.disjuncts |> mk_disj
      in
 
@@ -112,8 +112,8 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
     let disjunctions = 
     Option.fold init_post
       ~none:disjunctions 
-      ~some:(fun cond -> 
-        (cond, { nb_instant = 0; is_max = true })::disjunctions.disjuncts |> mk_disj) 
+      ~some:(fun spec -> 
+        (mk_labeled { nb_instant = 0; is_max = true } spec)::disjunctions.disjuncts |> mk_disj) 
 
     in mk_conj [disjunctions]
 
@@ -131,7 +131,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
   let generate_spec
       ((in_e, v, out_e) : BProd.edge list disjunction * BProd.vdata * BProd.edge list disjunction)
       (init_post : base_spec_t option) :
-      (_, base_ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair list =
+      ((_, base_ty, min_nb_instants) inst_spec_t Sig.formula, fol_data) hoare_triple list =
     assert (not (List.is_empty out_e.disjuncts));
 
     (* assert ((not (List.is_empty in_e)) || Option.is_some init_post); *)
@@ -160,7 +160,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
 
     let fol_of_eba_replace inst_rep :  B.BA.t info list -> (_,base_ty, min_nb_instants) inst_spec_t list disjunction =
       fun f -> List.map ( fun f -> 
-        (fol_of_eba inst_rep f.v, f.i)
+        (mk_labeled f.i (fol_of_eba inst_rep f.v))
       ) f |> mk_disj
       in
 
@@ -183,7 +183,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
       (fun (req : B.BA.t info)
           (ens : (B.BA.t info) list)
           (s :
-            (_, base_ty, min_nb_instants) inst_spec_t Sig.formula hoare_pair
+            ((_, base_ty, min_nb_instants) inst_spec_t Sig.formula, fol_data) hoare_triple
             list) ->
         let requires : (_,base_ty, min_nb_instants) inst_spec_t Sig.formula  =
           (*  predicate on possible states of current node, 
@@ -193,7 +193,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
             [fol_of_eba_replace at_current_instant_replace_post [req]]|> mk_conj in
                
              List.filter (function
-                | { disjuncts = [ (f, _) ] } -> f.value <> FOL_True
+                | { disjuncts = [f] } -> f.value.value <> FOL_True
                 | { disjuncts = [] } -> false
                 | _ -> true) (previous_ens.conjuncts@current_req.conjuncts) |> mk_conj
 
@@ -210,12 +210,11 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
         (* if List.for_all (fun d -> List.is_empty d.disjuncts) ensures.conjuncts then
           (* discard when postcondition is true *) s
         else { requires; ensures } :: s *)
-        { requires; ensures } :: s)
+        { requires; ensures ; data = v.v_min_nb_instants} :: s)
       m []
 
-  let generate_triples (p : base_program) (a : BProd.t) :
-      ( triple_data_t,
-        (_,base_ty, min_nb_instants) inst_spec_t Sig.formula )
+  let generate_triples (p : middleend_program) (a : BProd.t) :
+      ((_,base_ty, min_nb_instants) inst_spec_t Sig.formula, triple_data_t)
       hoare_triple
       list =
 
@@ -251,8 +250,8 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
           let open Format in
           let index = if i <> 0 then sprintf "_%i" i else "" in
           let id = BProd.(id_of_vertex v) ^ index in
-          let data = { triple_id = id  } in
-          (data, s))
+          let data = { triple_id = id ; invariants = p.prog_main.main_loop_inv ; min_nb_instants = Some s.data } in
+          { s with data})
         specs
     in
     BProd.fold_vertex (aux >> List.append) a []

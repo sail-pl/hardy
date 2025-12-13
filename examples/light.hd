@@ -9,13 +9,12 @@ guarantees {on}  R ({on} || ! {light})
 guarantees G ({on} -> {off} R ({off} || {light}))
 guarantees G ({off} -> {on} R ({on} || ! {light}))
 
-guarantees G {curr_light = light}
-
 setup : 
 	ensures { !curr_light  }
 	curr_light := false;
 
 loop:
+	invariant {curr_light = light}
 	if on then 
 		curr_light := true;
 	else 

@@ -6,10 +6,10 @@ relies on {i}
 relies on G ({i} -> X !{i})
 relies on G ((!{i}) -> X {i})
 
-guarantees G {o = !i}
 guarantees X G {o=!prev o}
 
 
 loop :
+    invariant { o = !i}
     emit !i to o;
 

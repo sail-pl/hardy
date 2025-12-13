@@ -25,9 +25,8 @@ module type TriplesSig = sig
 
   type automaton
 
-  val generate_triples : base_program -> automaton ->
-      ( triple_data_t,
-        (fol_ty, fol_qty, fol_data) inst_spec_t formula )
+  val generate_triples : frontend_program -> automaton ->
+      ((fol_ty, fol_qty, fol_data) inst_spec_t formula, triple_data_t )
       hoare_triple
       list
 end
@@ -57,12 +56,11 @@ module type S = sig
   type fol_data
   (** additional information over a formula *)
 
-  type in_program = base_program
+  type in_program = frontend_program
   (* (ty temp_spec_t, (ty,unit) inst_spec_t, variant_t, unit) program *)
 
   type triples =
-    ( triple_data,
-      (Shared.ty,Shared.base_ty, fol_data) inst_spec_t formula )
+    ( (Shared.ty,Shared.base_ty, fol_data) inst_spec_t formula, triple_data)
     hoare_triple
     list
 

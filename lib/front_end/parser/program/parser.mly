@@ -38,11 +38,11 @@ let program :=
             SETUP ; ":" ; setup_ensures= setup_ensures* ; setup_body=stmt* ; 
             {{setup_ensures;setup_body}}
     )? ;
-    LOOP ; ":" ; main_loop_inv = invariant? ; main_body = stmt* ; EOF ;
+    LOOP ; ":" ; main_loop_inv = invariant* ; main_body = stmt* ; EOF ;
     {
         {
             prog_decls;
-            prog_spec={requires;ensures};
+            prog_spec={requires;ensures;data=()};
             prog_setup; 
             prog_main = {main_loop_inv ; main_body}
         }

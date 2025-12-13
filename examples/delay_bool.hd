@@ -3,7 +3,6 @@ output o : bool;
 var x : bool; 
 
 guarantees ! {o}
-guarantees G {x = i}
 guarantees G ({i} -> X {o})
 guarantees G (!{i} -> X !{o})
 
@@ -12,5 +11,6 @@ setup:
     x := false;
 
 loop:
+    invariant {x = i}
     emit x to o;
     x := i;

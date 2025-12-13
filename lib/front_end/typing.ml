@@ -9,7 +9,7 @@ let reserved_words = ["result" ; "old" ;  "list" ; "int"] (* todo: add more*)
 
 let fail_if_reserved s = if List.mem s reserved_words then Format.sprintf "'%s' is a reserved word" s |> failwith else s
 
-let type_pgrm (p : parsed_program) : base_program = 
+let type_pgrm (p : parsed_program) : frontend_program = 
     let bindings = 
         let open Bindings in
         let check_dup = fun x (cat1,_) (cat2,_) -> 
@@ -77,7 +77,9 @@ let type_pgrm (p : parsed_program) : base_program =
             mk_labeled prop f_ltl
         ) 
         in
-        {requires = type_spec requires_checks p.prog_spec.requires  ; ensures = type_spec ensures_checks p.prog_spec.ensures}
+        {requires = type_spec requires_checks p.prog_spec.requires  ; 
+        ensures = type_spec ensures_checks p.prog_spec.ensures ;
+        data = ()}
 
     and prog_setup = Option.map (fun s -> 
         let setup_ensures = List.map type_prog_expr s.setup_ensures
@@ -89,7 +91,7 @@ let type_pgrm (p : parsed_program) : base_program =
     and prog_main = 
         let main_body = 
             List.map (map_stmt Fun.id (fun (id,()) -> id,(Bindings.find id bindings)) type_prog_expr) p.prog_main.main_body
-        and main_loop_inv = Option.map type_prog_expr p.prog_main.main_loop_inv in
+        and main_loop_inv = List.map type_prog_expr p.prog_main.main_loop_inv in
         {main_body; main_loop_inv}
     in
     {prog_setup; prog_main; prog_spec; prog_decls={env_variables=bindings}}

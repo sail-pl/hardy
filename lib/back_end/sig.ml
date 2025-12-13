@@ -13,8 +13,11 @@ open Shared
     - generation of a function from the body and its specification
     - generation of the program from the declarations, initialization procedure
       and functions *)
+
+(* type spec_info = {loop_invariant: }  *)
+
 module type S = sig
-  type in_pgrm = base_program
+  type in_pgrm = middleend_program
 
   (* (in_ty temp_spec_t, (in_ty,unit) inst_spec_t, variant_t, unit) program *)
   type fol_data
@@ -23,8 +26,7 @@ module type S = sig
   type in_body = (base_spec_t, ty) stmt list
 
   type in_fun =
-    ( triple_data,
-      (Shared.ty, Shared.base_ty, fol_data) inst_spec_t HardyMiddleEnd.Sig.formula )
+    ((Shared.ty, Shared.base_ty, fol_data) inst_spec_t HardyMiddleEnd.Sig.formula, triple_data)
     hoare_triple
 
   type in_spec = in_fun
@@ -35,17 +37,22 @@ module type S = sig
   type out_setup
   type out_fun
 
+  type processed_defs = {
+    processed_decls : out_decl list ;
+    processed_setup : out_setup option ;
+    processed_functions: out_fun list ;
+  }
+
   val reset : unit -> unit
   (** reset the backend state (bindings etc.) *)
 
   val generate_declarations : (cat_ty*base_ty) env -> out_decl list
-  val generate_setup : in_setup option -> out_setup option
+  val generate_setup : in_setup -> out_setup
   val generate_body : in_body -> out_body
   val generate_spec : in_spec -> out_spec
   val generate_function : triple_data -> out_spec -> out_body -> out_fun
 
-  val generate_program :
-    out_decl list -> out_setup option -> out_fun list -> out_pgrm
+  val generate_program : processed_defs -> out_pgrm
 
   val write_program : string -> out_pgrm -> unit
 end
@@ -53,15 +60,17 @@ end
 module F (B : S) = struct
   let translate_program (p : B.in_pgrm) (triples : B.in_fun list) : B.out_pgrm =
     B.reset ();
-    let decls = B.generate_declarations p.prog_decls in
-    let setup = B.generate_setup p.prog_setup in
-    let body = B.generate_body p.prog_main.main_body in
-    let f : B.in_fun -> B.out_fun =
-     fun (data, spec) ->
-      B.generate_function data (B.generate_spec (data, spec)) body
+    let processed_decls = B.generate_declarations p.prog_decls
+    and processed_setup = Option.map B.generate_setup p.prog_setup
+    and processed_functions = 
+      let body = B.generate_body p.prog_main.main_body in
+      let f : B.in_fun -> B.out_fun =
+        fun spec ->
+          B.generate_function spec.data (B.generate_spec spec) body
+        in
+      List.map f triples 
     in
-    let funs = List.map f triples in
-    B.generate_program decls setup funs
+    B.generate_program {processed_setup; processed_functions ; processed_decls}
 
   let write_program = B.write_program
 end

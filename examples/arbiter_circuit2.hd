@@ -26,9 +26,6 @@ guarantees G !({g1} && {g2})
 // private spec
 
 
-// only possible values for curr_req
-guarantees G ({curr_req = 0} || {curr_req =1} || {curr_req = 2})
-
 // if there is a pending request, it will be granted at the next instant 
 guarantees G ((!{curr_req = 0}) -> X (({g1} || {g2}) && {r1} -> {curr_req = 1}))
 
@@ -56,6 +53,10 @@ setup:
     curr_req := 0;
 
 loop:
+    // only possible values for curr_req
+    // it makes more sense to add it as an invariant here 
+    // but as a temporal spec, it simplifies automaton a bit...
+    invariant {curr_req = 0 || curr_req =1 || curr_req = 2}
     if curr_req <> 0 then
         if curr_req = 1 then
             emit true to g1;

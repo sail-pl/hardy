@@ -1,14 +1,16 @@
 input i : bool;
 output o : bool;
 var prev_i : bool;
+
+
 guarantees X G {o <-> (!(prev i)) && i}
-guarantees G {i = prev_i}
 
 setup :
     ensures { prev_i = false }
     prev_i := false;
 
 loop :
+    invariant {i = prev_i}
     emit (i && !prev_i) to o;
     prev_i := i;
 

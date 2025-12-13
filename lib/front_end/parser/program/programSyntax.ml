@@ -46,10 +46,12 @@ let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * 
 let expr_vars : (string * 't) list -> 't expr -> (string * 't) list = fun x -> 
   fold_expr (fun l e -> match e.value with Var (x, t) -> (x, t) :: l | _ -> l) x
 
-type 'spec hoare_pair = { requires : 'spec; ensures : 'spec }
+type ('spec,'data) hoare_triple = { requires : 'spec; ensures : 'spec ; data : 'data}
+
+type ('spec) hoare_pair = ('spec, unit) hoare_triple
+
 (** generic hoare requires/ensures pair *)
 
-type ('a, 'spec) hoare_triple = 'a * 'spec hoare_pair
 type 'v variant = { variant : 'v }
 
 let mk_variant x : _ variant = { variant = x }
@@ -86,7 +88,7 @@ type ('inv, 't) setup = {
 (** setup routine signature *)
 
 type ('inv, 't) main = {
-  main_loop_inv : 'inv option;
+  main_loop_inv : 'inv list;
   main_body : ('inv, 't) stmt list;
 }
 (** main function signature *)
@@ -104,9 +106,9 @@ type 'ty env = {
   env_variables : 'ty Bindings.t;
 }
     
-type ('temp_spec, 'inv, 't, 'decls) program = {
+type ('temp_spec, 'spec_data, 'inv, 't, 'decls) program = {
   prog_decls : 'decls;
-  prog_spec : 'temp_spec list hoare_pair;
+  prog_spec : ('temp_spec list,'spec_data) hoare_triple;
   prog_setup : ('inv, 't) setup option;
   prog_main : ('inv, 't) main;
 }

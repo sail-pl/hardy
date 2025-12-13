@@ -29,12 +29,11 @@ module M(TAtom: TseitinAtomSig)
   type input = (string * Tool.input) hoare_pair
   type fol_data = Hist.min_nb_instants
   type triple_data = Program.triple_data_t
-  type in_program = PSyn.base_program
+  type in_program = PSyn.frontend_program
 
   (* (SSyn.ty PSyn.temp_spec_t, (SSyn.ty,unit) PSyn.inst_spec_t, PSyn.variant_t, unit) program *)
   type triples =
-    ( triple_data,
-      (SSyn.ty,SSyn.base_ty, fol_data) PSyn.inst_spec_t Sig.formula )
+    ((SSyn.ty,SSyn.base_ty, fol_data) PSyn.inst_spec_t Sig.formula, triple_data )
     hoare_triple
     list
 
@@ -89,7 +88,7 @@ module M(TAtom: TseitinAtomSig)
              |> from_ltl))
         guarantee
     in
-    { requires = rely_spec; ensures = guarantee_spec }
+    { requires = rely_spec; ensures = guarantee_spec ; data = ()}
 
   let output_file (cli : Cli.info) name ext =
     Filename.(concat cli.outdir (name ^ ext))
@@ -101,7 +100,7 @@ module M(TAtom: TseitinAtomSig)
       (name, Tool.call cli file spec)
     in
     (* transform each LTL formula to a buchi automaton  *)
-    { requires = call_tool i.requires; ensures = call_tool i.ensures }
+    { requires = call_tool i.requires; ensures = call_tool i.ensures ; data = ()}
 
   let automaton_to_dot (type t) (module G : BuchiSig.S with type t = t) cli
       ((name, auto) : string * G.t) =

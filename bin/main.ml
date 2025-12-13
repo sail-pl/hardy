@@ -12,12 +12,12 @@ let main (type triple_data fol_data out_pgrm)
     (module Interactive : Sig.S
       with type program = Middle.in_program * out_pgrm
        and type triple =
-         ( triple_data,
+         (
            ( FrontParser.SharedSyntax.ty, FrontParser.SharedSyntax.base_ty,
              fol_data )
            FrontParser.Program.inst_spec_t list
            HardyMisc.Utils.disjunction list
-           HardyMisc.Utils.conjunction )
+           HardyMisc.Utils.conjunction, triple_data )
          FrontParser.ProgramSyntax.hoare_triple) =
   let module Cli = Cli () in
   let module I = TUI.F (Interactive) in
