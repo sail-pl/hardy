@@ -221,15 +221,21 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
 
 
     let aux v =
-      (* provide init post-condition for first node *)
+      (* provide init post-condition for first node 
+        we still return [true] in case there is no setup postcondition to ensure the first instant case
+        is covered
+      *)
       let extra_req : (instant option * ty,base_ty) fol_t option =
         if BProd.is_start_node v then
           Option.(
-            bind p.prog_setup (fun setup ->
+            fold p.prog_setup 
+            ~none:(Some true_fol) 
+            ~some:(fun setup ->
                 fold_mjoin some
                   (fun x y -> bind (map and_fol y) (fun f -> map f x))
                   None setup.setup_ensures
                   )
+                 
           )
         else None
       in
