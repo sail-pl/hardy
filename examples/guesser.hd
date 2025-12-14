@@ -1,0 +1,112 @@
+input 
+    number : int
+    answ : bool // true = smaller ; false = greater
+;
+
+output 
+    res : int
+    pick : int
+;
+
+var
+    lowerbound upperbound : int
+    state : int 
+    // 3 states: 
+    // 0: give range to env
+    // 1: ask questions
+    // 2: give answre
+;
+
+
+// initially, input is discarded and output provides a range `n` so that the 
+//  environnement can guess a number between 0 and n and
+// answers at the same time (for simplicity) using
+relies on X {0 <= number && number <= prev res} 
+
+// the environnement cannot lie
+relies on X X (G ({answ} <-> {number@1 >= prev pick}))
+
+//guarantees XXX XXX  { res = number@1 }
+
+
+//private spec
+
+//guarantees X {lowerbound <= number && number <= upperbound}
+
+guarantees X G {0 <= number@1 && number@1 <= first res }
+guarantees {upperbound = res && lowerbound = 0} && G { first res = first upperbound }
+
+guarantees X G ( { lowerbound >= first lowerbound &&  upperbound <= first upperbound })
+guarantees X G {first lowerbound <= number@1 &&  number@1 <= first upperbound }
+
+
+guarantees X ({!answ} R ({!answ} || {upperbound = first upperbound}))
+guarantees X (({answ}) R ({answ} || {lowerbound = first lowerbound}))
+
+
+//guarantees G {lowerbound <= (lowerbound + upperbound) / 2 && (lowerbound + upperbound) / 2 <= upperbound }
+//guarantees X G {lowerbound <= number@1 && number@1 <= upperbound }
+
+
+guarantees {state = 2} R ({state = 2} || {pick = (lowerbound + upperbound) / 2})
+guarantees {state = 2} R ({state = 2} || {lowerbound <= pick && pick <= upperbound})
+
+
+
+// at the end of the first instant, we are in state 1 and we keep it until we move on to state 2
+guarantees {state = 1} &&  ({state = 2} R ({state = 2} ||{ state = 1 }))
+
+guarantees XG {lowerbound >= prev lowerbound && upperbound <= prev upperbound}
+
+
+// up until state 2, we either decrease the upperbound or increase the lowerbound
+guarantees X ({state = 2} R ({state = 2} ||
+    {lowerbound > prev lowerbound || upperbound < prev upperbound}
+))
+
+
+//guarantees XG ({
+//state <> 2 
+//
+//} -> {prev lowerbound <= number@1 && number@1 <= prev upperbound })
+
+
+
+setup:
+    ensures { state = 0 && lowerbound = 0 && upperbound = 10}
+    state := 0;
+    lowerbound := 0;
+    upperbound := 10;
+
+loop:
+    invariant {lowerbound >= 0 && upperbound >= 0 && lowerbound <= upperbound}
+    invariant {state <> 0 && (state = 1 || state = 2)}
+    invariant {lowerbound <= (lowerbound + upperbound) / 2 && (lowerbound + upperbound) / 2 <= upperbound}
+
+    if state = 0 then
+        emit upperbound to res;
+        emit upperbound / 2 to pick;
+        state := 1;
+    else if state = 1 then
+        if answ then  // higher
+            if lowerbound = (lowerbound + upperbound) / 2 then
+                emit upperbound to res;
+                state := 2;
+            else
+                lowerbound := (lowerbound + upperbound) / 2;
+            end
+        else
+            // lower
+            if upperbound = (lowerbound + upperbound) / 2 then
+                emit lowerbound to res;
+                state := 2;
+            else
+                upperbound := (lowerbound + upperbound) / 2;
+            end
+        end
+        if state <> 2 then
+            emit (lowerbound + upperbound) / 2 to pick;
+        end
+    end end
+
+         
