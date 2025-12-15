@@ -456,6 +456,7 @@ struct
 
   (** generates WhyML logical expression to represent specification *)
   let generate_spec (spec : in_spec) : out_spec =
+    (* spec.data.min.nb_instants is None iff spec is not temporal (e.g. generating setup spec) *)
     let open PH in
 
     let sp_pre =
@@ -483,14 +484,27 @@ struct
             length_assert inst
         ) spec.data.min_nb_instants
 
-      and inv = List.map (fun inv ->
-        (* invariant parameterized by outputs are about the previous output in the history *)
-        pterm_of_fol (map_fol_pred (map_expr Fun.id (fun ((id,(_,(cat,ty))) as v) -> 
-          if cat = Output || cat = Input then 
-            (id,(Some (Previous 1),(cat,ty)))
-        else v
-        )) inv)
-      ) spec.data.invariants
+      and inv = 
+        (* if the current node is the first node with no incoming transition, i.e. there is no history, 
+          we must not assume the provided invariants to hold.
+          Note: it is also ignored when there is no history information i.e. spec.data.min_nb_instants = None
+        *)
+        Option.fold ~none:[] ~some:(fun inst -> 
+          if inst.nb_instant = 0 && inst.is_max then []
+          else 
+            List.map (fun inv ->
+              (* invariant parameterized by outputs are about the previous output in the history when used as a precondition, 
+                  which means they also depend on the previous input and state  
+                  (state is kept from one instant to the other so it is not useful to adjust it).
+              *)
+              pterm_of_fol (map_fol_pred (map_expr Fun.id (fun ((id,(_,(cat,ty))) as v) -> 
+                if cat = Output || cat = Input then 
+                  (id,(Some (Previous 1),(cat,ty)))
+                else v
+                )) 
+              inv)
+            ) spec.data.invariants
+        ) spec.data.min_nb_instants
       in
       
       
