@@ -497,7 +497,7 @@ struct
         history :: List.fold_left
           (fun acc -> function
           | {disjuncts=[f]} -> 
-              length_assert f.label :: pterm_of_fol f.value :: acc
+              pterm_of_fol f.value :: acc
           | d ->  let f = fold_mjoin (fun (f : _ inst_spec_t) -> 
                   why3_and (pterm_of_fol f.value) (length_assert f.label) 
               ) why3_or (term Ttrue) d.disjuncts
