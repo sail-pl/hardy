@@ -78,6 +78,7 @@ let rec translate_rexpr (e: ty expr) : P.expr =
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
   | Int n -> econst n ~loc
+  | Function (name,args) -> eapp (qualid [ name ]) (List.map translate_rexpr args)
   | Var (s, (cat_ty,_)) ->
     begin
     match cat_ty with
@@ -124,6 +125,7 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
   | True -> term ~loc Ttrue
   | False -> term ~loc Tfalse
   | Int n -> tconst ~loc n
+  | Function (name,args) -> tapp (qualid [ name ]) (List.map translate_term args)
   | Var (s, (inst,(cat_t,_))) ->
         begin
           match cat_t with

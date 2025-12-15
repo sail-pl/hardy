@@ -12,63 +12,69 @@ var
     lowerbound upperbound : int
     state : int 
     // 3 states: 
-    // 0: give range to env
+    // 0: give range to env (first instant)
     // 1: ask questions
-    // 2: give answre
+    // 2: give answer
 ;
 
+temporal WHILE(C,B) := (!C) R ((!C) || B)
 
-// initially, input is discarded and output provides a range `n` so that the 
-//  environnement can guess a number between 0 and n and
-// answers at the same time (for simplicity) using
+
+// at the first instant, input is ignored and the system provides a range `n` to `res` so that the 
+//  environnement can pick a number between 0 and n at the second instant
+// within the same instant, the system also makes an initial guess and the environnement provides an answer
 relies on X {0 <= number && number <= prev res} 
 
 // the environnement cannot lie
-relies on X X (G ({answ} <-> {number@1 >= prev pick}))
+relies on XG ({answ} <-> {number@1 >= prev pick})
 
 //guarantees XXX XXX  { res = number@1 }
 
 
 //private spec
 
-//guarantees X {lowerbound <= number && number <= upperbound}
-
-guarantees X G {0 <= number@1 && number@1 <= first res }
-guarantees {upperbound = res && lowerbound = 0} && G { first res = first upperbound }
-
-guarantees X G ( { lowerbound >= first lowerbound &&  upperbound <= first upperbound })
-guarantees X G {first lowerbound <= number@1 &&  number@1 <= first upperbound }
-
-
-guarantees X ({!answ} R ({!answ} || {upperbound = first upperbound}))
-guarantees X (({answ}) R ({answ} || {lowerbound = first lowerbound}))
-
-
-//guarantees G {lowerbound <= (lowerbound + upperbound) / 2 && (lowerbound + upperbound) / 2 <= upperbound }
-//guarantees X G {lowerbound <= number@1 && number@1 <= upperbound }
-
-
-guarantees {state = 2} R ({state = 2} || {pick = (lowerbound + upperbound) / 2})
-guarantees {state = 2} R ({state = 2} || {lowerbound <= pick && pick <= upperbound})
-
-
-
 // at the end of the first instant, we are in state 1 and we keep it until we move on to state 2
 guarantees {state = 1} &&  ({state = 2} R ({state = 2} ||{ state = 1 }))
 
-guarantees XG {lowerbound >= prev lowerbound && upperbound <= prev upperbound}
+
+guarantees {upperbound = res && lowerbound = 0} && G { first res = first upperbound }
+
+guarantees X G {0 <= number@1 && number@1 <= first res }
 
 
-// up until state 2, we either decrease the upperbound or increase the lowerbound
-guarantees X ({state = 2} R ({state = 2} ||
-    {lowerbound > prev lowerbound || upperbound < prev upperbound}
-))
+// remember the chosen number is inbetween the first lowerbound and upperbound
+guarantees X G {first lowerbound <= number@1 &&  number@1 <= first upperbound }
 
+
+
+//guarantees XX {lowerbound <= prev number && prev number <= upperbound}
 
 //guarantees XG ({
 //state <> 2 
 //
 //} -> {prev lowerbound <= number@1 && number@1 <= prev upperbound })
+
+
+
+
+//guarantees X ({!answ} R ({!answ} || {upperbound = first upperbound}))
+//guarantees X (({answ}) R ({answ} || {lowerbound = first lowerbound}))
+//guarantees X G ( { lowerbound >= first lowerbound &&  upperbound <= first upperbound })
+
+
+guarantees WHILE ({state <> 2}, {pick = (lowerbound + upperbound) / 2})
+
+guarantees X (
+    WHILE ({state <> 2}, {lowerbound <= pick && pick <= upperbound})
+)
+
+
+
+// up until state 2, we either decrease the upperbound or increase the lowerbound
+guarantees X (WHILE ({state <> 2}, 
+    {lowerbound > prev lowerbound || upperbound < prev upperbound}
+))
+
 
 
 
@@ -79,9 +85,9 @@ setup:
     upperbound := 10;
 
 loop:
-    invariant {lowerbound >= 0 && upperbound >= 0 && lowerbound <= upperbound}
     invariant {state <> 0 && (state = 1 || state = 2)}
-    invariant {lowerbound <= (lowerbound + upperbound) / 2 && (lowerbound + upperbound) / 2 <= upperbound}
+    //invariant {lowerbound >= 0 && upperbound >= 0 && lowerbound <= upperbound}
+    //invariant {lowerbound <= (lowerbound + upperbound) / 2 && (lowerbound + upperbound) / 2 <= upperbound}
 
     if state = 0 then
         emit upperbound to res;

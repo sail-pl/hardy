@@ -64,6 +64,9 @@ let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
   | True -> fprintf fmt "true"
   | False -> fprintf fmt "false"
   | Var (s, i) -> print_var fmt (s, i)
+  | Function (name,args) -> fprintf fmt "%s(%a)"  name 
+          (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") (fun fmt arg -> pp_exp fmt arg))
+          args
   | UnOp (ENot,e) -> fprintf fmt "!%a" pp_exp e
   | BinOp v ->
       fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp v.right
@@ -110,7 +113,7 @@ let rec pp_fol : 'a. (formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -> _ =
     | Predicate {name;args} -> 
         fprintf fmt "%s(%a)" 
           name 
-          (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") (fun fmt arg -> pp_atom fmt arg))
+          (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") pp_atom)
           args
 
 let pp_ltl_binop fmt ( op: ltl_binary) : unit = 

@@ -18,6 +18,7 @@ and 't expression_ =
   | Var of string * 't
   | UnOp of expr_uop * 't expr
   | BinOp of {left: 't expr ; op: expr_binop ; right : 't expr}
+  | Function of string * 't expr list
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
@@ -32,6 +33,7 @@ let rec fold_expr : type a. (a -> 't expr -> a) -> a ->'t expr -> a =
   match e.value with
   | Int _ | True | False | Var _  -> j init e
   | UnOp (_,e1) -> j (fold_expr j init e1 ) e
+  | Function (_,l) -> j (List.fold_left (fold_expr j) init l) e
   | BinOp x -> j (fold_expr j (fold_expr j init x.right) x.left) e 
 
 let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * t2) -> t1 expr -> t2 expr =
@@ -40,6 +42,7 @@ let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * 
   | Int _ | True | False as value -> m {e with value}
   | Var (id,v) -> let (id,v) = var_map (id,v) in m {e with value=Var (id,v)}
   | UnOp (op,e1) -> m { e with value = UnOp (op,map_expr m var_map e1)}
+  | Function (id,args) -> m { e with value = Function(id, List.map (map_expr m var_map) args)}
   | BinOp x ->
       m { e with value = BinOp { x with left=map_expr m var_map x.left; right=map_expr m var_map x.right} }
 
@@ -77,6 +80,14 @@ let rec aux s = match s.value with
 in aux s
 
 
+type ('inv, 't) pgrm_function = {
+  f_name : string;
+  f_requires : 'inv list;
+  f_ensures : 'inv list ;
+  f_args : string list ;
+  f_body : ('inv, 't) stmt list;
+}
+
 
 
 type 'ty var_decls = (string * 'ty) list
@@ -95,15 +106,17 @@ type ('inv, 't) main = {
 
 
 (** program memory environment, after parsing but before typechecking *)
-type parsed_env = {
+type ('inv,'t) parsed_env = {
   env_input : base_ty var_decls;
   env_output : base_ty var_decls;
   env_variables : base_ty var_decls;
+  env_functions : ('inv,'t) pgrm_function list;
 }
 
 (** program memory environment, after typechecking *)
-type 'ty env = {
+type ('inv,'t,'ty) env = {
   env_variables : 'ty Bindings.t;
+  env_functions : ('inv,'t) pgrm_function list;
 }
     
 type ('temp_spec, 'spec_data, 'inv, 't, 'decls) program = {

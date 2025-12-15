@@ -57,7 +57,7 @@ type parsed_program =
     unit,
     parsed_spec_t, 
     unit, 
-    Program.parsed_env
+    (((unit,Shared.base_ty) fol_t, unit) Program.parsed_env)
   ) Program.program
 
 type frontend_program =
@@ -66,7 +66,7 @@ type frontend_program =
     unit,
     base_spec_t, 
     Shared.ty, 
-    Shared.(cat_ty * base_ty) Program.env
+    (base_spec_t, parsed_spec_t, Shared.(cat_ty * base_ty)) Program.env
   ) Program.program
 
 type middleend_program =
@@ -75,7 +75,7 @@ type middleend_program =
     unit,
     base_spec_t, 
     Shared.ty, 
-    Shared.(cat_ty * base_ty) Program.env
+    (base_spec_t, parsed_spec_t, Shared.(cat_ty * base_ty)) Program.env
   ) Program.program
 
   type backend_program =
@@ -84,7 +84,7 @@ type middleend_program =
     unit,
     base_spec_t, 
     Shared.ty, 
-    Shared.(cat_ty * base_ty) Program.env
+    (base_spec_t, parsed_spec_t, Shared.(cat_ty * base_ty)) Program.env
   ) Program.program
 
 

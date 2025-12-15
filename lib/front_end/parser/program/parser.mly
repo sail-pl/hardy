@@ -22,7 +22,8 @@ let prog_requires == RELY ; ~ =  ltl_spec ;  <>
 
 let prog_ensures == GUARANTEE ; ~ =  ltl_spec ;<>
 
-let setup_ensures == ENSURES ;  ~ = braced(inst_spec) ;  <>
+let function_requires == REQUIRES ;  ~ = braced(inst_spec) ;  <>
+let function_ensures == ENSURES ;  ~ = braced(inst_spec) ;  <>
 
 let invariant == preceded(INVARIANT, braced(inst_spec)) 
 
@@ -35,7 +36,7 @@ let program :=
     requires = prog_requires* ; 
     ensures = prog_ensures* ; 
     prog_setup = midrule(
-            SETUP ; ":" ; setup_ensures= setup_ensures* ; setup_body=stmt* ; 
+            SETUP ; ":" ; setup_ensures= function_ensures* ; setup_body=stmt* ; 
             {{setup_ensures;setup_body}}
     )? ;
     LOOP ; ":" ; main_loop_inv = invariant* ; main_body = stmt* ; EOF ;
@@ -54,7 +55,10 @@ let braced(x) == delimited("{", x, "}")
 let declaration := 
     env_input=loption(input) ; 
     env_output=loption(output) ; 
-    env_variables = loption(var) ; {{env_input;env_output;env_variables}}
+    env_variables = loption(var) ; 
+    env_functions = func* ;
+    // env_spec_predicates = loption(predicate) ;
+    {{env_input;env_output;env_variables; env_functions}}
 
 
 let vdecl(KIND) == v = delimited(KIND, typed_decl_id*, ";"); {List.flatten v}
@@ -64,6 +68,21 @@ let var == vdecl(VAR)
 let input == vdecl(INPUT)
 
 let output == vdecl(OUTPUT)
+
+// let predicate := 
+//     | PREDICATE ; ID ; args = delimited("(", separated_list(COMMA, ID) ,")")? ; "=" ; body =  
+    
+//      {}
+
+
+let func :=
+    | FUNCTION ; 
+        f_name = ID ; f_args = delimited("(", separated_list(COMMA, ID) ,")") ; 
+        f_requires = function_requires* ;
+        f_ensures = function_ensures* ;
+        f_body = preceded ("=", stmt*) ; 
+        { {f_name; f_args; f_requires ; f_ensures ; f_body} }
+
 
 let typed_decl_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,t) ids}
 
@@ -87,10 +106,10 @@ let simpl_expr(var_e) :=
     | (id,x) = var_e ; {Var (id,x)}
 )
 
-(*         | name = ID ; args=loption(delimited("(",separated_list(COMMA, atom),")"))  {FOL_Atom (Predicate {name;args=[]}) } *)
 
 let expr(var_e) := 
     | located (
+        | ~ = ID ; ~=delimited("(", separated_list(COMMA, expr(var_e)) ,")") ; <Function>
         | EMARK ;  e = expr(var_e) ; %prec UNARY {UnOp (ENot,e)}
         | left = expr(var_e) ; op = binExpOp ; right = expr(var_e) ; {BinOp {left;op;right}}
         )
