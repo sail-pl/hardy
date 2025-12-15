@@ -74,48 +74,43 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
                   | Previous n ->
                       (* we are at the next instant, so previous values are 1 instant earlier *)
                       Previous (n + 1)
-                  | _ -> inst
+                  | At _ -> inst (* nothing to do if we mention a specific instant *)
                 in
                 (v, (Some inst, (cty,bty)))
     in
     (* get the possible states to be in from the previous transition second component *)
-    let disjunctions : B.E.label info list disjunction =
-      let l =
-        List.map
-          (fun e ->
-            let l = BProd.E.label e in
-            (* 'ensures' here are over history length + 1: 
-            annotate the formula to get the correct history quantification when converting back to fol *)
-            let nb_instant =
-              add_nb_instant 1 BProd.(get_vdata (E.src e)).v_min_nb_instants
-            in
-            {v=l.arc_f.ensures; i=nb_instant})
-          in_e.disjuncts
-      in
-      (* if an input led to no restriction on the state, then there is no need
-                to put the other possible states.
-                Indeed, if we prove the new state is independent of the current state,
-                there is no need to check for others.
-            *)
-      (* if List.exists (fun (f,_) -> BoolA.(DnfBASet.exists (fun a -> a= AtomicBASet.singleton True) f.disjuncts)) l then [] else l *)
-      l |> mk_disj
-    in
-    let disjunctions = 
+    List.map
+      (fun e ->
+        let l = BProd.E.label e in
+        (* 'ensures' here will become requires, so the instant quantification is over history length + 1: 
+        annotate the formula to get the correct history quantification when converting back to fol *)
+        let nb_instant =
+          add_nb_instant 1 BProd.(get_vdata (E.src e)).v_min_nb_instants
+        in
+        {v=l.arc_f.ensures; i=nb_instant})
+      in_e.disjuncts
+      
+    (* if an input led to no restriction on the state, then there is no need
+              to put the other possible states.
+              Indeed, if we prove the new state is independent of the current state,
+              there is no need to check for others.
+          *)
+    (* if List.exists (fun (f,_) -> BoolA.(DnfBASet.exists (fun a -> a= AtomicBASet.singleton True) f.disjuncts)) l then [] else l *)
+    |> fun (disj : B.E.label info list) -> 
      List.map ( fun f -> 
             let to_fol (f : B.E.label ) : (instant option * ty, base_ty) fol_t = 
               f |> fol_of_eba (map_fol_pred (map_expr Fun.id replace_i))  in 
             (mk_labeled f.i (to_fol f.v) )
-          ) disjunctions.disjuncts |> mk_disj
-     in
-
+          ) disj
+     |> fun disj ->
     (* if the current node is an init_node, add the setup postcondition to the disjunction *)
-    let disjunctions = 
     Option.fold init_post
-      ~none:disjunctions 
+      ~none:disj 
       ~some:(fun spec -> 
-        (mk_labeled { nb_instant = 0; is_max = true } spec)::disjunctions.disjuncts |> mk_disj) 
-
-    in mk_conj [disjunctions]
+        (mk_labeled { nb_instant = 0; is_max = true } spec)::disj ) 
+      
+    |> fun disj -> 
+    mk_conj [mk_disj disj]
 
 
   (** [generate_spec inputs in_e out_e init_post] builds the list of hoare pairs
@@ -173,8 +168,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
           let l = BProd.E.label e in
           M.add_to_list
             {v=l.arc_f.requires; i=v.v_min_nb_instants}
-            (* 'ensures' exit arcs are over the start of the next instant  *)
-            {v=l.arc_f.ensures; i=Instant.add_nb_instant 1 v.v_min_nb_instants}
+            {v=l.arc_f.ensures; i=v.v_min_nb_instants}
             m)
         M.empty out_e.disjuncts
     in
@@ -187,7 +181,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
             list) ->
         let requires : (_,base_ty, min_nb_instants) inst_spec_t Sig.formula  =
           (*  predicate on possible states of current node, 
-              every input and output variables refer to the begining and the end of the previous instant, respectively.    
+              every input and output variables refer to the beginning and the end of the previous instant, respectively.    
           *)
           let current_req : (_, base_ty, min_nb_instants) inst_spec_t Sig.formula = 
             [fol_of_eba_replace at_current_instant_replace_post [req]]|> mk_conj in
