@@ -515,7 +515,7 @@ struct
              (Loc.dummy_position,[pat Pwild ,f]) :: l 
           )
            (List.map (fun inv -> Loc.dummy_position,[pat Pwild , pterm_of_fol inv]) spec.data.invariants)
-        spec.ensures.conjuncts  
+        spec.ensures.conjuncts  |> List.rev
     in
     { empty_spec with sp_pre; sp_post }
 
