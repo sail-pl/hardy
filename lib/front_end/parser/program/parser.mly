@@ -122,12 +122,12 @@ let fol(atom) :=
     | located(
         | TRUE ; {FOL_True}
         | FALSE ; {FOL_False} 
-        | ~=atom ; <FOL_Atom>
+        | ~=delimited(LBRACE,atom,RBRACE) ; <FOL_Atom>
         | ~ = common_logic_unary ; ~ = fol(atom) ; %prec UNARY <FOL_StdUnary>
         | f1 = fol(atom) ; op = common_logic_binary ; f2 = fol(atom) ; {FOL_StdBinary (f1,op,f2)}
-        | FORALL ; vars = typed_decl_id+ ; COMMA ; f = fol(atom) ; {Forall (List.flatten vars, f)}
         | FORALL_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ForallPrev {h_var;binder;f}}
         | EXISTS_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ExistsPrev {h_var;binder;f}}
+        | FORALL ; vars = typed_decl_id+ ; COMMA ; f = fol(atom) ; {Forall (List.flatten vars, f)}
         | EXISTS ; vars = typed_decl_id+ ; COMMA ; f = fol(atom) ; {Exists (List.flatten vars , f)}
     )
     | ~ = delimited("(",fol(atom),")") ; <> 
