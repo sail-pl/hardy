@@ -21,24 +21,37 @@ and ('a, 'qty) fol_ =
   
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
-  | ExistsPrev of
-      string * ('a, 'qty) fol (* temporal existential quantification *)
+  | ForallPrev of  ('a, 'qty) prev_quant (* temporal universal quantification *)
+  | ExistsPrev of('a, 'qty) prev_quant (* temporal existential quantification *)
+and ('a, 'qty) prev_quant = {h_var: string; binder: string; f:  ('a, 'qty) fol}
 
 
 type 'a predicate = Atom of 'a | Predicate of {name: string; args: 'a list}
 
+let map_pred m : 'a predicate -> 'b predicate = function
+  | Atom x -> Atom (m x)
+  | Predicate x -> 
+      let args = List.map m x.args in
+      Predicate {x with args}
+  
+
 type ('a, 'qty) pred_fol = ('a predicate, 'qty) fol
+
+
+
 
 type 'qty pred_decl = {name: string; params: string list; body: (string,'qty) fol }
 
 let map_fol : type a b ty_a ty_b.
     ((a, ty_a) fol -> (b, ty_b) fol) ->
+    (a -> b) ->
     (string * ty_a -> string * ty_b) ->
     (a, ty_a) fol ->
     (b, ty_b) fol =
- fun m m_ty form ->
+ fun m m_atom m_ty form ->
   match form.value with
-  | FOL_True | FOL_False | FOL_Atom _ -> m form
+  | FOL_True | FOL_False as value-> {form with value}
+  | FOL_Atom a -> {form with value=FOL_Atom (m_atom a)}
   | FOL_StdUnary (o, f) ->
       let value = FOL_StdUnary (o, m f) in
       { form with value }
@@ -54,8 +67,13 @@ let map_fol : type a b ty_a ty_b.
   | Exists (l, f) ->
       let value = Exists (List.map m_ty l, m f) in
       { form with value }
-  | ExistsPrev (v, f) ->
-      let value = ExistsPrev (v, m f) in
+  | ForallPrev q ->
+      let f = m q.f in
+      let value = ForallPrev {q with f} in
+      { form with value }
+  | ExistsPrev q ->
+      let f = m q.f in
+      let value = ExistsPrev {q with f} in
       { form with value }
 
 let rec fold_fol : type a b t.
@@ -67,26 +85,19 @@ let rec fold_fol : type a b t.
   | FOL_StdUnary (_, f) -> j (fold_fol j pj init f) form
   | FOL_StdBinary (f1, _, f2) -> j (fold_fol j pj (fold_fol j pj init f1) f2) form
   | FOL_StdNary (_,l) -> j (List.fold_left (fold_fol j pj) init l) form
-  | Forall (_, f) | Exists (_, f) | ExistsPrev (_,f) -> j (fold_fol j pj init f) form
+  | Forall (_, f) | Exists (_, f) -> j (fold_fol j pj init f) form
+  | ExistsPrev q | ForallPrev q -> j (fold_fol j pj init q.f) form
 
 (** [map_fol_ty m f] replaces every quantifer [Exists (l,e)] and [Forall (l,e)]
     of [f] by [X (List.map m l,e)] *)
-let rec map_fol_ty m = map_fol (map_fol_ty m) m
+let rec map_fol_ty m = map_fol (map_fol_ty m) Fun.id m
 
 (** [map_fol_pred m f] replaces every atom [x] of [f] by [m x]
 *)
 let map_fol_pred_ty (type a b ty_a ty_b) 
-  (fty : ty_a -> ty_b)  (m : a -> b) (f: (a predicate, ty_a) fol) : (b predicate, ty_b) fol =
-  let rec map : (a predicate, ty_a) fol -> (b predicate, ty_b) fol = fun f -> match f.value with
-      | FOL_Atom Atom x -> 
-          {f with value = FOL_Atom (Atom (m x))}
-      | FOL_Atom Predicate x -> 
-          let args = List.map m x.args in
-          {f with value = FOL_Atom (Predicate {x with args})}
-      | FOL_True | FOL_False as f -> mk_dummy_loc f
-      | _ -> map_fol map (pair_map (Right fty)) f
-    in
-    map_fol map (pair_map (Right fty)) f 
+  (fty : ty_a -> ty_b)  (m : a -> b) 
+  = let rec aux (f: (a predicate, ty_a) fol) : (b predicate, ty_b) fol =
+    map_fol aux (map_pred m) (pair_map (Right fty)) f in aux  
 
 
 let map_fol_pred = fun x -> map_fol_pred_ty (Fun.id) x

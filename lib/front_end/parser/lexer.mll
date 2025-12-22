@@ -59,6 +59,7 @@ rule tokenize = parse
   | "#"                     { SHARP }
   | "$"                     { DOLLAR }
   | "at"                    { AT }
+  | "as"                    { AS }
   | "@"                     { SYMB_AT }
   | "last"                  { LAST }
   | "first"                 { FIRST }
@@ -67,6 +68,7 @@ rule tokenize = parse
   | "invariant"             { INVARIANT }
   | "variant"               { VARIANT }
   | "forall"                { FORALL }
+  | "forall_prev"           { FORALL_PREV }
   | "exists_prev"           { EXISTS_PREV }
   | "exists"                { EXISTS }
   | "("                     { LPAREN }

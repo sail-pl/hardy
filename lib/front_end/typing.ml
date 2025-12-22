@@ -9,6 +9,10 @@ let reserved_words = ["result" ; "old" ;  "list" ; "int"] (* todo: add more*)
 
 let fail_if_reserved s = if List.mem s reserved_words then Format.sprintf "'%s' is a reserved word" s |> failwith else s
 
+let fail_if_no_bindings id b = match Bindings.find_opt id b with
+    | Some x -> x
+    | None -> Format.sprintf "variable '%s' has not been declared" id |> failwith 
+
 let type_pgrm (p : parsed_program) : frontend_program = 
     let bindings = 
         let open Bindings in
@@ -26,21 +30,21 @@ let type_pgrm (p : parsed_program) : frontend_program =
     let requires_checks = fun acc e -> match e.value with 
         | Var (_,(None,(Output,_))) -> 
             failwith "output variables within 'relies on' spec cannot mention current output, only past"
-        | Var (_,(_,(Input,_))) ->
-            {acc with mentions_input = true;}
-        | Var (_,(_,(Output,_))) ->
-            {acc with mentions_output = true;}                       
+        | Var (_,(inst,(Input,_))) ->
+            {acc with mentions_input = true; mentions_history = Option.is_some inst}
+        | Var (_,(inst,(Output,_))) ->
+            {acc with mentions_output = true; mentions_history = Option.is_some inst}                       
         | Var (_,(_,(State,_))) ->
             failwith "'relies on' spec cannot mention state variables"
         | _ -> acc
         
     and ensures_checks = (fun acc e -> match e.value with 
-                | Var (_,(_,(Input,_))) ->
-                    {acc with mentions_input = true;}
-                | Var (_,(_,(Output,_))) ->
-                    {acc with mentions_output = true;}                       
-                | Var (_,(_,(State,_))) ->
-                    {acc with mentions_state = true;}      
+                | Var (_,(inst,(Input,_))) ->
+                    {acc with mentions_input = true; mentions_history = Option.is_some inst}
+                | Var (_,(inst,(Output,_))) ->
+                    {acc with mentions_output = true; mentions_history = Option.is_some inst}                       
+                | Var (_,(inst,(State,_))) ->
+                    {acc with mentions_state = true; mentions_history = Option.is_some inst}      
                 | _ -> acc
         )     
     and fold_fol_prop c = fold_fol (fun acc _ -> acc) (fun acc -> function
@@ -52,19 +56,37 @@ let type_pgrm (p : parsed_program) : frontend_program =
     ) dft_temp_f_prop
     in
 
-    let type_fol_expr = map_fol_pred @@ map_expr (Fun.id) (fun (id,t) -> 
-        id,(t,Bindings.find id bindings))
+    let type_fol_expr = 
+        let set_expr_type b = map_expr (Fun.id) (fun (id,t) -> id,(t,fail_if_no_bindings id b))
+        in
+
+        let rec aux b = 
+            (fun f -> match f.value with
+            | ForallPrev q -> 
+                let b = Bindings.add q.binder (Local, snd @@ fail_if_no_bindings q.h_var bindings) b in
+                let f = map b q.f in
+                {f with value = ForallPrev {q with f}}
+            | ExistsPrev q -> 
+                let b = Bindings.add q.binder (Local, snd @@ fail_if_no_bindings q.h_var bindings) b in
+                let f = map b q.f in
+                {f with value = ExistsPrev {q with f}}
+
+            | _ -> map b f
+            ) 
+        and map b = map_fol (aux b) (map_pred @@ set_expr_type b) Fun.id
+        in            
+        aux
     in
 
     let type_prog_expr = map_fol_pred @@ map_expr (Fun.id) (
-        fun (id,()) -> id,(None,Bindings.find id bindings)
+        fun (id,()) -> id,(None,fail_if_no_bindings id bindings)
         ) in
 
     let prog_spec = 
 
         let type_spec checks = List.map (fun (f_ltl: parsed_temp_spec_t) -> 
             let f_ltl = map_ltl_pred (fun f_fol -> 
-                let fol = type_fol_expr f_fol.value in
+                let fol = type_fol_expr bindings f_fol.value in
                 let prop = fold_fol_prop checks fol in 
                 if is_static_prop prop then 
                     Format.asprintf "temporal formula %a does not contain any program variables" 

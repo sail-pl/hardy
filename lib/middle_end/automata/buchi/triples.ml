@@ -67,7 +67,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
             | None, State ->
                 (* state variables are for the current instant as they are not modified in-between instants  *)
                 (v, (inst,(cty,bty)))
-            |None, Local -> failwith "no local variable in spec"
+            |None, Local -> (v, (inst,(cty,bty))) (* quantification over history *)
             | Some inst,_ ->
                 let inst =
                   match inst with
