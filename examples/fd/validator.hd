@@ -1,0 +1,22 @@
+input i : int;
+input bound : int;
+output ok : bool;
+
+var good : bool;
+
+relies on G { i >= 0 }
+relies on G { bound >= 0 }
+
+guarantees { ok = true }
+guarantees X G { !ok -> X !ok }                    // une fois faux, toujours faux
+guarantees X G { ok -> forall_prev i as p, p <= bound }  // si ok, tout le passé est <= bound
+
+setup:
+  ensures { good = true }
+  good := true;
+
+loop:
+  if i > bound then
+    good := false;
+  end
+  emit good to ok;
