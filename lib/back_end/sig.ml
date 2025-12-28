@@ -46,7 +46,7 @@ module type S = sig
   val reset : unit -> unit
   (** reset the backend state (bindings etc.) *)
 
-  val generate_declarations : (cat_ty*base_ty) env -> out_decl list
+  val generate_declarations : (cat_ty*base_ty option) env -> out_decl list
   val generate_setup : in_setup -> out_setup
   val generate_body : in_body -> out_body
   val generate_spec : in_spec -> out_spec

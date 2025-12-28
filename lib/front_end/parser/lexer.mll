@@ -15,10 +15,16 @@
     let sp = lexeme_start_p lexbuf and ep = lexeme_end_p lexbuf in 
     sp,ep
 
+let remove_leading_plus s =
+  let n = String.length s in
+  if n > 0 && s.[0] = '+' then String.sub s 1 (n-1) else s
+
 }
 
 
 let digit = ['0'-'9']
+let frac = '.' digit*
+let exp = ['e' 'E'] ['-' '+']? digit+
 let lowercase = ['a' - 'z']
 let uppercase = ['A' - 'Z']
 let letter = (lowercase | uppercase)
@@ -29,11 +35,15 @@ let id = lowercase (letter|digit|'_')* (* cannot begin with an uppercase because
 let newline = '\r' | '\n' | "\r\n"
 
 
+
 rule tokenize = parse
   | [' ' '\t']              { tokenize lexbuf }  (* Skip whitespaces *)
   | "//"                    { read_comment lexbuf } (* single-line comment *)
   | "bool"                  { TY_BOOL }
   | "int"                   { TY_INT } 
+  | "real"                  { TY_REAL }
+  | "string"                { TY_STRING }
+  | "array"                 { TY_ARRAY }
   | "true"                  { LTRUE  } 
   | "false"                 { LFALSE }
   | "if"                    { IF }
@@ -75,9 +85,9 @@ rule tokenize = parse
   | ")"                     { RPAREN }
   | "{"                     { LBRACE }
   | "}"                     { RBRACE }
-  (* | "["                     { LSQBRACE } *)
-  (* | "]"                     { RSQBRACE } *)
-  (* | "|"                     { SEP } *)
+  | "["                     { LSQBRACE }
+  | "]"                     { RSQBRACE }
+  | "|"                     { SEP }
   | ";"                     { SEMI }
   | ":="                    { ASSIGN }
   | "emit"                  { EMIT }
@@ -111,11 +121,33 @@ rule tokenize = parse
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }
   | "||"                    { OR }
+  | '"'      { read_string (Buffer.create 17) lexbuf }
   | digit+ as lxm           { INT (int_of_string lxm) }
+  
+  (* from https://gitlab.inria.fr/why3/why3/-/blob/master/src/parser/lexer.mll#L98 *)
+  | (digit+ as i)     ("" as f)    ['e' 'E'] (['-' '+']? digit+ as e)
+  | (digit+ as i) '.' (digit* as f) (['e' 'E'] (['-' '+']? digit+ as e))?
+  | (digit* as i) '.' (digit+ as f) (['e' 'E'] (['-' '+']? digit+ as e))?
+       { REAL (~radix:10,~num:i,~frac:f,~exp:(Option.map remove_leading_plus e))}
   | id as lxm               { ID (lxm) }
   | newline                 { next_line lexbuf; tokenize lexbuf }
   | eof                     { EOF }
   | _ as char               { raise (Lexical_error (pos_range lexbuf, Format.sprintf "Unexpected character '%s'" (Char.escaped char))) }
+and read_string buf = parse
+  | '"'       { STRING (Buffer.contents buf) }
+  | '\\' '/'  { Buffer.add_char buf '/'; read_string buf lexbuf }
+  | '\\' '\\' { Buffer.add_char buf '\\'; read_string buf lexbuf }
+  | '\\' 'b'  { Buffer.add_char buf '\b'; read_string buf lexbuf }
+  | '\\' 'f'  { Buffer.add_char buf '\012'; read_string buf lexbuf }
+  | '\\' 'n'  { Buffer.add_char buf '\n'; read_string buf lexbuf }
+  | '\\' 'r'  { Buffer.add_char buf '\r'; read_string buf lexbuf }
+  | '\\' 't'  { Buffer.add_char buf '\t'; read_string buf lexbuf }
+  | [^ '"' '\\']+
+    { Buffer.add_string buf (Lexing.lexeme lexbuf);
+      read_string buf lexbuf
+    }
+  | _ { raise (Lexical_error (pos_range lexbuf, "Illegal string character: " ^ Lexing.lexeme lexbuf )) }
+  | eof { raise (Lexical_error (pos_range lexbuf, "String is not terminated")) }
 and read_comment = parse
   | newline { next_line lexbuf; tokenize lexbuf } 
   | eof { EOF }

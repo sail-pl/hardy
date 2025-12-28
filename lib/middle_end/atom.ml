@@ -53,8 +53,10 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
         let left = remove_exp_loc v.left and right = remove_exp_loc v.right in
         BinOp { v with left; right }
     | UnOp (ENot,e) -> UnOp (ENot,(remove_exp_loc e))
-    | (Int _ | True | False | Var (_, _)) as v -> v
-  in
+    | (Int _ | Real _ | True | False | Var (_, _)) | String _ as v -> v
+    | ArrayCell (e1,e2) -> ArrayCell (remove_exp_loc e1, remove_exp_loc e2)
+    | Array l -> Array (Iarray.map remove_exp_loc l)
+    in
   mk_dummy_loc value
 
 (*
@@ -154,10 +156,10 @@ module Imperative (D: Data) : S with
 
   let subst =
     sub_atom_in_str (fun s ->
-        Format.asprintf "%a" (pp_fol (pp_pred (pp_exp D.pp_var)) D.pp_fol_qty) (get s).fol)
+        Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp D.pp_var)) (pp_print_option D.pp_fol_qty)) (get s).fol))
 
   let add_and_get (atom : ('ty,'qty) fol_t) =
-    let key = Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp D.pp_var)) D.pp_fol_qty) atom) |> String.hash in
+    let key = Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp D.pp_var)) (pp_print_option D.pp_fol_qty)) atom) |> String.hash in
     let label = Format.sprintf "p_%i" key in
     match AtomTable.find_opt atomic_bindings key with
     | None ->

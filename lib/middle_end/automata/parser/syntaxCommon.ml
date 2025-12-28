@@ -34,7 +34,7 @@ let lazy_bind (x:'a Lazy.t) (f: 'a -> 'b Lazy.t) : 'b Lazy.t = Lazy.force_val x 
     let open Lazy in
     let (let*) = lazy_bind in
     let (let+) x f = lazy_bind x (fun x -> f x |> from_val) in
-    let rec aux f = 
+    let [@warning "-4"] rec aux f = 
       fold_eba (fun f -> match f with 
       | And (f1,f2) | Or (f1,f2) ->  
         fun _ -> (* ignore delayed computation *)

@@ -59,13 +59,13 @@ struct
 
   let create (hoa : hoa) : t =
     let () = 
-      let props = List.filter_map (function Properties n -> Some n | _ -> None) hoa.header.items |> List.flatten in
+      let [@warning "-4"] props = List.filter_map (function Properties n -> Some n | _ -> None) hoa.header.items |> List.flatten in
       if not @@ List.mem "deterministic" props then
         failwith "non-deterministic automaton";
     in
-    let start = List.find_map (function Start [x] -> Some x | _ -> None ) hoa.header.items |> Option.get in
+    let [@warning "-4"] start = List.find_map (function Start [x] -> Some x | _ -> None ) hoa.header.items |> Option.get in
 
-    let ap_labels= List.find_map (function Atomic (_,l) -> Some l | _ -> None ) hoa.header.items |> Option.get |> List.mapi (fun i x -> (i,x)) in
+    let [@warning "-4"] ap_labels= List.find_map (function Atomic (_,l) -> Some l | _ -> None ) hoa.header.items |> Option.get |> List.mapi (fun i x -> (i,x)) in
 
       let true_atom = FAtom.add_and_get Fol.true_fol |> snd |> TAtom.create in
       let false_atom = FAtom.add_and_get Fol.false_fol |> snd |> TAtom.create in
@@ -80,7 +80,7 @@ struct
           Format.printf "no label for atom: %i, mapping to 'true'\n" n;
           true_atom
     in
-    let g = create ~size:(List.find_map (function States n -> Some n | _ -> None) hoa.header.items |> Option.get) () in
+    let [@warning "-4"] g = create ~size:(List.find_map (function States n -> Some n | _ -> None) hoa.header.items |> Option.get) () in
     List.iter
       (fun (state,edges) ->
         List.iter (fun edge ->
@@ -128,9 +128,8 @@ struct
       if TAtom.is_generated s then 
         Format.fprintf fmt "g%s" name
       else 
-          pp_fol (pp_pred (pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t)))) pp_base_ty fmt (name |> FAtom.get_atom |> snd) 
+        pp_fol (pp_pred (pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t)))) (Format.pp_print_option pp_base_ty) fmt (name |> FAtom.get_atom |> snd) 
   )
-  
   
   let pp_atom_short = fun fmt s -> 
       let name = TAtom.get_atom_id s in

@@ -2,9 +2,9 @@
 
 (** Types *)
 
-type base_ty = Ty_Int | Ty_Bool
+type base_ty = Ty_Int | Ty_Real | Ty_Bool | Ty_String | Ty_Array of base_ty * int option
 type cat_ty = State | Input | Output | Local
-type ty = cat_ty * base_ty
+type ty = cat_ty * (base_ty option)
 
 let is_state (c,_ : ty) : bool = c = State
 let is_input (c,_ : ty) : bool = c = Input

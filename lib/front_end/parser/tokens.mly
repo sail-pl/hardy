@@ -1,13 +1,15 @@
 %token <int> INT
+%token <(radix:int * num:string * frac:string * exp:string option)> REAL
 %token <string> ID
+%token <string> STRING
 
-%token TY_INT TY_BOOL
+%token TY_INT TY_REAL TY_BOOL TY_STRING TY_ARRAY
 
 // EXP & LOGIC
 %token SYMB_AT DOLLAR EMARK SHARP //HAT QMARK
 %token PLUS "+" MINUS "-" TIMES "*" DIVIDE "/" 
 %token EQ "=" NEQ "<>" GT ">" LT "<" GTE ">=" LTE "<=" LTRUE LFALSE
-// %token LSQBRACE "[" RSQBRACE "]"
+%token LSQBRACE "[" RSQBRACE "]"
 
 // LOGIC
 %token FORALL AS EXISTS EXISTS_PREV FORALL_PREV ARROW DARROW AND OR TRUE FALSE
@@ -29,7 +31,7 @@
 // %token SINCE
 
 // MISC
-%token SEMI ";" COLON ":" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" COMMA "," // DOT "."   SEP "|" TILDE "~"
+%token SEMI ";" COLON ":" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" COMMA ","  SEP "|" // DOT "."   TILDE "~"
 
 
 // ASSOC

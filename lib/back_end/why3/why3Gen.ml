@@ -17,7 +17,14 @@ let get_pp_string a b = Format.asprintf "%a" a b
 
 let get_cat_ty = get_pp_string (pp_private pp_cat_ty) 
 
-let get_pty ty = Ptree.(PTtyapp (Ptree_helpers.qualid [ty ], []))
+let get_custom_pty ty = Ptree.(PTtyapp (Ptree_helpers.qualid [ty ], []))
+
+let rec get_pty  = function
+| Ty_Bool 
+| Ty_String
+| Ty_Int
+| Ty_Real as ty -> Ptree.(PTtyapp (Ptree_helpers.qualid [ get_pp_string pp_base_ty ty ], []))
+| Ty_Array (ty',_) -> Ptree.(PTtyapp (Ptree_helpers.qualid [ "array" ], [get_pty ty']))
 
 (* variable environment *)
 let bindings : (string, ty) Hashtbl.t = Hashtbl.create 100
@@ -54,21 +61,67 @@ let get_quant_binders vars =
   List.concat
     (List.map
        (fun (v, ty) ->
-         let pty =
-           get_pty
-             (get_pp_string pp_base_ty ty)
-         in
-         PH.one_binder v ~pty)
+         PH.one_binder v ?pty:(Option.map get_pty ty))
        vars)
 
 let translate_binop app infix op =
   let id = PH.ident (
-      if op = Div then "div" else Ident.op_infix @@ Format.asprintf "%a" pp_expr_binop op  
+      if op = Div then "div" else Ident.op_infix @@ get_pp_string pp_expr_binop op  
     
   ) in
   match op with
   | Add | Sub | Mul | Div -> fun e1 e2 -> app (P.Qident id) [ e1; e2 ]
   | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr -> infix id
+
+
+  
+(* adapted from https://gitlab.inria.fr/why3/why3/-/blob/master/src/parser/parser_common.mly#L229 *)
+
+ let [@warning "-4"] rec reduce_fun_lit f = function
+    | [x]  -> f x (snd x)
+    | x::xs -> f x (reduce_fun_lit f xs)
+    | _ -> assert false (* our grammar disallows empty arrays *)
+ 
+let make_earray (a : P.expr iarray) = 
+  let open PH in
+  let open P in
+  let el = Iarray.to_seq a |> 
+  Seq.mapi (fun i e -> Econst (Constant.int_const ~il_kind:Number.ILitDec (BigInt.of_int i)) |> expr, e) |> List.of_seq
+  in
+  let id ?(id_ats=[]) id_str id_loc = { id_str; id_ats; id_loc } in
+
+  let var_of_string ?(id_ats=[]) nm loc = Qident (id ~id_ats nm loc) |> evar in
+  let proxy_atr = ATstr Ident.proxy_attr in
+  (* proxy vars for the literal domain/range expressions *)
+  let domain_ranga_vars i (e1,e2) =
+    let i = string_of_int i in
+    var_of_string ~id_ats:[proxy_atr] ("d'i" ^ i) e1.expr_loc,
+    var_of_string ~id_ats:[proxy_atr] ("r'i" ^ i) e2.expr_loc in
+  let el_proxies = List.mapi domain_ranga_vars el in
+
+
+  let fun_id_var = PH.ident (if Iarray.length a = 0 then "_" else "x'x") in
+    let [@warning "-4"] e2id e = match e with
+    | {expr_desc = Eident (Qident id); _} -> id | _ -> assert false in
+
+  let add_expr (e1,e2) e =
+    let v_eq_e1 = Einfix (evar (Qident fun_id_var),ident Ident.op_equ,e1) |> expr in
+    Eif (v_eq_e1,e2,e) |> expr in
+
+
+  let binder = (Loc.dummy_position, Some fun_id_var, false, None) in
+  let pattern = pat_var fun_id_var in
+  let ifte = reduce_fun_lit add_expr el_proxies in
+  let efun = Ptree.Efun ([binder], None, pattern, Ity.MaskVisible, empty_spec, ifte) |> expr in
+
+
+  let mk_let e (d,r) (e1,e2) =
+      let e = Elet (e2id r,false,Expr.RKnone,e2,e) |> expr in
+      Elet (e2id d,false,Expr.RKnone,e1,e) |> expr
+  in
+  let b = List.fold_left2 mk_let efun el_proxies el in
+  let f = Eattr (ATstr Ident.funlit, b)  in
+  eapp (qualid ["init"]) [econst @@ Iarray.length a; expr f]
 
 let rec translate_rexpr (e: ty expr) : P.expr =
   let open P in
@@ -82,7 +135,7 @@ let rec translate_rexpr (e: ty expr) : P.expr =
     begin
     match cat_ty with
           | Local -> evar ~loc (qualid [ s ])
-          | _ ->
+          | State | Input | Output ->
               eapp (qualid [ s ])
                 [ [ get_cat_ty cat_ty ] |> qualid |> evar ~loc ]
     end
@@ -92,10 +145,19 @@ let rec translate_rexpr (e: ty expr) : P.expr =
       match v.op with
       | EAnd -> Eand (e1, e2) |> expr
       | EOr -> Eor (e1, e2) |> expr
-      | _ ->
+      | Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq ->
           translate_binop (eapp ~loc)
             (fun x e1 e2 -> Einnfix (e1, x, e2) |> expr ~loc)
             v.op e1 e2)
+
+  | ArrayCell (s,n) -> 
+    let e = translate_rexpr s in
+        eapp ~loc (qualid [Ident.op_get ""]) [e ; translate_rexpr n]
+  | String s -> P.(Econst (Constant.string_const s)) |> expr ~loc
+  | Array a -> make_earray (Iarray.map translate_rexpr a)
+  | Real r -> P.(Econst (Constant.real_const_from_string ~neg:false ~radix:r.radix ~int:r.num ~frac:r.frac ~exp:r.exp)) |> expr ~loc
+
+
 let translate_lexpr (e : ty expr) : P.expr * string option =
   let open PH in
   let loc = get_loc e.label in
@@ -106,13 +168,18 @@ let translate_lexpr (e : ty expr) : P.expr * string option =
         | State ->
             ([ get_cat_ty State ] |> qualid |> evar ~loc, Some id)
         | Local -> ([] |> qualid |> evar ~loc, Some id)
-        | cat ->
+        | Input | Output as cat ->
             failwith
             @@ Format.sprintf
                  "can't assign expression to stream variable '%s' (%s)" id
                  (get_pp_string pp_cat_ty cat)
         end
-  | _ -> failwith "not an r-value"
+  | ArrayCell (s,n) -> 
+    let e = translate_rexpr s in
+    (* let x = Ident.sn_decode (Ident.op_update "") in *)
+    eapp ~loc (qualid [Ident.op_set ""]) [e; e ; translate_rexpr n], None   
+
+  | Int _ | Real _ | True | False | UnOp (_, _) | BinOp _ | Array _ | String _ -> failwith "not an l-value"
 
 
 let rec translate_term (e : (instant option * ty) expr) : P.term =
@@ -124,11 +191,12 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
   | True -> term ~loc Ttrue
   | False -> term ~loc Tfalse
   | Int n -> tconst ~loc n
+  | Real r -> P.(Tconst (Constant.real_const_from_string ~neg:false ~radix:r.radix ~int:r.num ~frac:r.frac ~exp:r.exp)) |> term ~loc
   | Var (s, (inst,(cat_t,_))) ->
         begin
           match cat_t with
           | Local -> tvar (qualid [ s ])
-          | _ -> (
+          | State | Input | Output -> (
               match inst with
               | Some (Previous 0) | None ->
                   tapp ~loc (qualid [ s ])
@@ -148,31 +216,37 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
                   tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ])
                 end
   | UnOp (ENot,t) -> Tnot (translate_term t) |> term  ~loc
-    | BinOp v -> (
-      let t1 = translate_term v.left and t2 = translate_term v.right in
-      match v.op with
-      | EAnd -> Tbinnop (t1, Dterm.DTand, t2) |> term ~loc
-      | EOr -> Tbinnop (t1, Dterm.DTor, t2) |> term ~loc
-      | _ ->
-          translate_binop (tapp ~loc)
-            (fun x e1 e2 -> Tinnfix (e1, x, e2) |> term ~loc)
-            v.op t1 t2)
+  | BinOp v -> (
+    let t1 = translate_term v.left and t2 = translate_term v.right in
+    match v.op with
+    | EAnd -> Tbinnop (t1, Dterm.DTand, t2) |> term ~loc
+    | EOr -> Tbinnop (t1, Dterm.DTor, t2) |> term ~loc
+    | Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq ->
+        translate_binop (tapp ~loc)
+          (fun x e1 e2 -> Tinnfix (e1, x, e2) |> term ~loc)
+          v.op t1 t2)
+  | Array _ -> failwith "array literals are not supported within Why3 terms"
+  | String s -> P.(Tconst (Constant.string_const s)) |> term ~loc
+  | ArrayCell (s,n) ->
+    tapp ~loc (qualid [Ident.op_get ""]) [translate_term s ; translate_term n]
+  
 
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     P.expr =
   let open P in
   let open PH in
-  let rec tr_seq = function
+  let [@warning "-4"] rec tr_seq = function
     | [] -> expr unit_val
     | [ x ] -> tr_stmt x
     | s ->
         List.fold_right
           (fun x y ->
             match (tr_stmt x, y) with
-            | { expr_desc = Etuple []; _ }, x | x, { expr_desc = Etuple []; _ }
+            | { expr_desc = Etuple []; _ }, x 
+            | x, { expr_desc = Etuple []; _ }
               ->
                 x
-            | _ -> Esequence (tr_stmt x, y) |> expr)
+            | (_, _) -> Esequence (tr_stmt x, y) |> expr)
           s (expr unit_val)
   and tr_stmt (stmt : ('a, 'b) stmt) =
     let loc = get_loc stmt.label in
@@ -185,12 +259,11 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
     | Emit (e, id) ->
         get_binding_type id (fun (cat, _) ->
             let e1, field =
-              match cat with
-              | Local -> ([ id ] |> qualid |> evar, None)
-              | State | Output ->
+              match cat with 
+              | Output ->
                   ( [ get_cat_ty cat ] |> qualid |> evar,
                     Some ([ id ] |> qualid) )
-              | Input -> failwith @@ Format.sprintf "can't emit to '%s'" id
+              | Input | State | Local -> failwith @@ Format.asprintf "can't emit to %a variable '%s'" pp_cat_ty cat id
             in
             Eassign [ (e1, field, translate_rexpr e) ] |> expr ~loc)
     | If (e, t, f) ->
@@ -212,7 +285,7 @@ let get_bop =
   | LOr -> DTor
 
 let rec pterm_of_fol
-    ({ value = f; label = loc } : ((instant option * ty) expr predicate, base_ty) fol) : P.term =
+    ({ value = f; label = loc } : ((instant option * ty) expr predicate, base_ty option) fol) : P.term =
   let open PH in
   let open P in
   let loc = get_loc loc in
@@ -288,7 +361,7 @@ module
   : Sig.S 
     with type triple_data = Syntax.triple_data_t
      and type fol_data = min_nb_instants 
-     and type out_pgrm =  w3 * P.mlw_file * Pmodule.pmodule Wstdlib.Mstr.t =
+     and type out_pgrm =  P.mlw_file =
 struct
   (* type in_ty = ty *)
   type triple_data = Syntax.triple_data_t
@@ -307,7 +380,7 @@ struct
 
   type in_spec = in_fun
   type out_body = P.expr
-  type out_pgrm = w3 * P.mlw_file * Pmodule.pmodule Wstdlib.Mstr.t
+  type out_pgrm = P.mlw_file
   type out_decl = P.decl
   type out_fun = out_decl
   type out_setup = out_decl
@@ -321,13 +394,13 @@ struct
 
   let reset () = Hashtbl.clear bindings
 
-  let generate_declarations (env : (cat_ty*base_ty) env) : out_decl list =
+  let generate_declarations (env : (cat_ty*base_ty option) env) : out_decl list =
     let open P in
     let open PH in
     let mk_decl pty =
       Eany ([], RKnone, Some pty, pat Pwild, MaskVisible, empty_spec) |> expr
     in
-    let create_record t (decls : (string * base_ty) list) =
+    let create_record t (decls : (string * base_ty option) list) =
       let fields =
         List.map
           (fun (v, ty) ->
@@ -335,7 +408,7 @@ struct
             {
               f_loc = Loc.dummy_position;
               f_ident = ident v;
-              f_pty = get_pty (get_pp_string pp_base_ty ty);
+              f_pty = get_pty (Option.get ty) (* syntax disallows empty type here *) ;
               (* only inputs are read-only *)
               f_mutable = t <> Input;
               f_ghost = false;
@@ -361,7 +434,7 @@ struct
           ( ident (get_cat_ty t),
             false,
             RKnone,
-            mk_decl (get_pty (get_cat_ty t |> ty_suffix) ) ))
+            mk_decl (get_custom_pty (get_cat_ty t |> ty_suffix) ) ))
     in
     let inputs,outputs,vars = Bindings.fold (fun id (ct,bt) (i,o,s) -> match ct with
       | Input -> (id,bt)::i,o,s
@@ -388,7 +461,7 @@ struct
         pure (logic) functions *)
                  f_pty =
                    PTpure
-                    (get_pty (get_cat_ty ty |> ty_suffix));
+                    (get_custom_pty (get_cat_ty ty |> ty_suffix));
                  f_mutable = false;
                  f_ghost = true;
                })
@@ -490,7 +563,7 @@ struct
             *)
           Tinnfix
           ( tapp (qualid [nth_h State]) [ tconst 0; Tquant (Dterm.DTlambda, one_binder "x", [], tvar @@ qualid ["x"]) |> term ],
-            Ident.op_infix "=" |> ident,
+            Ident.op_equ |> ident,
             tvar (qualid [ get_cat_ty State ]) )
         |> term
         in 
@@ -568,6 +641,7 @@ struct
         [ "list"; "HdTlNoOpt" ];
         [ "list"; "NthNoOpt" ];
         [ "list"; "Quant" ];
+        ["array"; "Init"]
       ]
       |> List.map (PH.use ~import:false)
     in
@@ -578,14 +652,8 @@ struct
         @ PH.use ~import:false [ "ProgramHelper" ]
           :: add_opt_to_list p.processed_setup p.processed_functions )
     in
-    let pgrm = P.Modules [ helper_m; triples_m ] in
-    let w3 = init_why3 () in
-    let w3_modules =
-      try
-        Why3.Typing.type_mlw_file w3.env [] "???" pgrm 
-      with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e
-    in
-    w3,pgrm,w3_modules
+    P.Modules [ helper_m; triples_m ]
 
-  let write_program name (_,p,_) = print_program p (name ^ ".mlw")
+
+  let write_program name p = print_program p (name ^ ".mlw")
 end

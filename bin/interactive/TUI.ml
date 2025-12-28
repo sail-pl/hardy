@@ -1,4 +1,4 @@
-module Ui = struct
+(* module Ui = struct
   open Nottui
   module W = Nottui_widgets
 
@@ -39,7 +39,7 @@ module Ui = struct
       | _ -> `Unhandled)
 
   let start_ui msg = Nottui_unix.run ~quit (Lwd.map ~f:shortcuts (layout msg))
-end
+end *)
 
 module F (I : Sig.S) = struct
   let bar ~total =

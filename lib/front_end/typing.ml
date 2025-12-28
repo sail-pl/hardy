@@ -14,20 +14,20 @@ let fail_if_no_bindings id b = match Bindings.find_opt id b with
     | None -> Format.sprintf "variable '%s' has not been declared" id |> failwith 
 
 let type_pgrm (p : parsed_program) : frontend_program = 
-    let bindings = 
+    let bindings : (cat_ty * base_ty option) Bindings.t = 
         let open Bindings in
         let check_dup = fun x (cat1,_) (cat2,_) -> 
             Format.asprintf "duplicate %a and %a variable %s" Printer.pp_cat_ty cat1 Printer.pp_cat_ty cat2 x |> failwith
         in
 
-        let inputs = List.map (fun (s,t) -> (fail_if_reserved s,(Input, t))) p.prog_decls.env_input |> of_list
-        and outputs = List.map (fun (s,t) -> (fail_if_reserved s,(Output, t))) p.prog_decls.env_output |> of_list
-        and states = List.map (fun (s,t) -> (fail_if_reserved s,(State, t))) p.prog_decls.env_variables |> of_list in
+        let inputs = List.map (fun (s,t) -> (fail_if_reserved s,(Input, Some t))) p.prog_decls.env_input |> of_list
+        and outputs = List.map (fun (s,t) -> (fail_if_reserved s,(Output, Some t))) p.prog_decls.env_output |> of_list
+        and states = List.map (fun (s,t) -> (fail_if_reserved s,(State, Some t))) p.prog_decls.env_variables |> of_list in
         
         union check_dup inputs outputs |> fun io -> union check_dup io states
     in
 
-    let requires_checks = fun acc e -> match e.value with 
+    let [@warning "-4"] requires_checks = fun acc e -> match e.value with 
         | Var (_,(None,(Output,_))) -> 
             failwith "output variables within 'relies on' spec cannot mention current output, only past"
         | Var (_,(inst,(Input,_))) ->
@@ -38,7 +38,7 @@ let type_pgrm (p : parsed_program) : frontend_program =
             failwith "'relies on' spec cannot mention state variables"
         | _ -> acc
         
-    and ensures_checks = (fun acc e -> match e.value with 
+    and [@warning "-4"] ensures_checks = (fun acc e -> match e.value with 
                 | Var (_,(inst,(Input,_))) ->
                     {acc with mentions_input = true; mentions_history = Option.is_some inst}
                 | Var (_,(inst,(Output,_))) ->
@@ -60,7 +60,7 @@ let type_pgrm (p : parsed_program) : frontend_program =
         let set_expr_type b = map_expr (Fun.id) (fun (id,t) -> id,(t,fail_if_no_bindings id b))
         in
 
-        let rec aux b = 
+        let [@warning "-4"] rec aux b = 
             (fun f -> match f.value with
             | ForallPrev q -> 
                 let b = Bindings.add q.binder (Local, snd @@ fail_if_no_bindings q.h_var bindings) b in
@@ -83,14 +83,13 @@ let type_pgrm (p : parsed_program) : frontend_program =
         ) in
 
     let prog_spec = 
-
         let type_spec checks = List.map (fun (f_ltl: parsed_temp_spec_t) -> 
             let f_ltl = map_ltl_pred (fun f_fol -> 
                 let fol = type_fol_expr bindings f_fol.value in
                 let prop = fold_fol_prop checks fol in 
                 if is_static_prop prop then 
                     Format.asprintf "temporal formula %a does not contain any program variables" 
-                        Printer.(pp_fol (pp_pred (pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t)))) pp_base_ty) fol |> failwith
+                        Printer.(pp_fol (pp_pred (pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t)))) (Format.pp_print_option pp_base_ty)) fol |> failwith
                 ;
                 mk_labeled prop fol
             ) f_ltl in

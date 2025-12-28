@@ -11,7 +11,7 @@ module U = HardyMisc.Utils
 (** {2 type instantiation} *)
 
 
-type ('ty,'qty) fol_t = ('ty Program.expr, 'qty) Fol.pred_fol
+type ('ty,'qty) fol_t = ('ty Program.expr, 'qty option) Fol.pred_fol
 
 type ('ty, 'qty, 'data) inst_spec_t = ((Instant.instant option * 'ty ,'qty) fol_t, 'data) U.labeled
 (** instantaneous specification of program expression *)
@@ -67,7 +67,7 @@ type frontend_program =
     unit,
     base_spec_t, 
     Shared.ty, 
-    Shared.(cat_ty * base_ty) Program.env
+    Shared.(cat_ty * base_ty option) Program.env
   ) Program.program
 
 type middleend_program =
@@ -76,7 +76,7 @@ type middleend_program =
     unit,
     base_spec_t, 
     Shared.ty, 
-    Shared.(cat_ty * base_ty) Program.env
+    Shared.(cat_ty * base_ty option) Program.env
   ) Program.program
 
   type backend_program =
@@ -85,7 +85,7 @@ type middleend_program =
     unit,
     base_spec_t, 
     Shared.ty, 
-    Shared.(cat_ty * base_ty) Program.env
+    Shared.(cat_ty * base_ty option) Program.env
   ) Program.program
 
 

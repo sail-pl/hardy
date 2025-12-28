@@ -1,0 +1,6 @@
+(lang dune 3.14)
+
+(env (dev (flags (:standard 
+                     -w "+4" -warn-error "+4" ;fragile match
+
+))))

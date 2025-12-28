@@ -67,9 +67,15 @@ let output == vdecl(OUTPUT)
 
 let typed_decl_id := ids = ID+ ; COLON ; t = ty ;  {List.map (fun id -> id,t) ids}
 
+let typed_decl_id_opt := ids = ID+ ; t = preceded(COLON , ty)?;  {List.map (fun id -> id,t) ids}
+
+
 let ty :=
-    | TY_BOOL ; { Ty_Bool }
-    | TY_INT ; { Ty_Int }
+    | TY_BOOL ; {Ty_Bool}
+    | TY_INT ; {Ty_Int}
+    | TY_REAL ; {Ty_Real}
+    | TY_STRING ; {Ty_String}
+    | t = ty ; TY_ARRAY ;  {Ty_Array (t,None)}
 
 let stmt := located (
     | e1 = basic_expr ; ":=" ; e2 = basic_expr ; ";" ; {Assign (e1,e2)}
@@ -84,6 +90,10 @@ let simpl_expr(var_e) :=
     | LTRUE ; {True}
     | LFALSE ; {False}
     | ~ = INT ; <Int>
+    | r = REAL ; { let (~radix,~num,~frac,~exp) = r in Real {radix; num; frac; exp}}
+    | "[" ; "|" ; l = separated_nonempty_list(";", expr(var_e)) ; "|" ; "]" ; {Array (Iarray.of_list l)} (* array litterals cannot be empty *)
+    | ~ = simpl_expr(var_e) ; "[" ; ~ = expr(var_e) ; "]" ; <ArrayCell>
+    | ~ = STRING ; <String>
     | (id,x) = var_e ; {Var (id,x)}
 )
 
@@ -127,8 +137,8 @@ let fol(atom) :=
         | f1 = fol(atom) ; op = common_logic_binary ; f2 = fol(atom) ; {FOL_StdBinary (f1,op,f2)}
         | FORALL_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ForallPrev {h_var;binder;f}}
         | EXISTS_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ExistsPrev {h_var;binder;f}}
-        | FORALL ; vars = typed_decl_id+ ; COMMA ; f = fol(atom) ; {Forall (List.flatten vars, f)}
-        | EXISTS ; vars = typed_decl_id+ ; COMMA ; f = fol(atom) ; {Exists (List.flatten vars , f)}
+        | FORALL ; vars = typed_decl_id_opt+ ; COMMA ; f = fol(atom) ; {Forall (List.flatten vars, f)}
+        | EXISTS ; vars = typed_decl_id_opt+ ; COMMA ; f = fol(atom) ; {Exists (List.flatten vars , f)}
     )
     | ~ = delimited("(",fol(atom),")") ; <> 
 

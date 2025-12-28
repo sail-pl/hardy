@@ -89,7 +89,7 @@ module Make(G : BuchiSig.S)
     let l1, l2 = V.label v in
     G.is_start_node l1 && G.is_start_node l2
 
-  let get_edge_type (e : E.label) =
+  let [@warning "-4"] get_edge_type (e : E.label) =
     let req = G.get_edge_type e.arc_f.requires
     and ens = G.get_edge_type e.arc_f.ensures in
     match (req, ens) with
@@ -190,7 +190,7 @@ module Make(G : BuchiSig.S)
 
       let next_node_data = { v_min_nb_instants } in
 
-      let create_edge (r, g) =
+      let [@warning "-4"] create_edge (r, g) =
         let next_node = G.(E.dst r, E.dst g) in
         (* add it to the list if not already treated 
         (mem_vertex will only check the label, not the vertex data, which is precisely what we want

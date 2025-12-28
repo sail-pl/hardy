@@ -22,7 +22,7 @@
    (synopsis "A short synopsis")
    (description "A longer description")
   (depends 
-  (ocaml (>= 5.1.0))
+  (ocaml (>= 5.4.0))
   why3
   alt-ergo
   (coq (>= 8.18))

@@ -86,13 +86,13 @@ struct
 
   let id_of_vertex = Format.asprintf "%a" pp_vertex
 
-  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp (fun fmt (x,(y,_)) -> pp_hist fmt (x,y)))) pp_base_ty) fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> snd) 
+  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp (fun fmt (x,(y,_)) -> pp_hist fmt (x,y)))) (Format.pp_print_option pp_base_ty)) fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> snd) 
   let pp_atom_short = fun fmt s -> Format.pp_print_string fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> fst) 
 
 
   let pp_edge fmt (f : E.label) = 
     let nb_lit = 
-      let rec aux f = 
+      let [@warning "-4"] rec aux f = 
         fold_eba (fun f -> match f with 
         | And (f1,f2) | Or (f1,f2)  -> fun _ -> max (aux f1) (aux f2)
         | _ -> Lazy.map_val ((+) 1)

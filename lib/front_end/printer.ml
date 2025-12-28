@@ -13,9 +13,12 @@ let pp_cat_ty fmt = function
   | State -> fprintf fmt "state"
   | Local -> fprintf fmt "local"
 
-let pp_base_ty fmt = function
-  | Ty_Bool -> fprintf fmt "bool"
-  | Ty_Int -> fprintf fmt "int"
+let rec pp_base_ty fmt = function
+  | Ty_Bool -> Format.fprintf fmt "bool" 
+  | Ty_Int -> Format.fprintf fmt "int" 
+  | Ty_Real -> Format.fprintf fmt "real" 
+  | Ty_String -> Format.fprintf fmt "string"
+  | Ty_Array (ty,_) -> Format.fprintf fmt "array %a" pp_base_ty ty
 
 let pp_ty fmt (c, t) = fprintf fmt "%a.%a" pp_cat_ty c pp_base_ty t
 
@@ -54,21 +57,26 @@ let pp_hist fmt (v, h) =
 
 (* let pp_nohist fmt (id,_) = pp_print_string fmt id *)
 
-let pp_paren_exp fmt f e =
+let [@warning "-4"] pp_paren_exp fmt f e =
   match e.value with BinOp _ -> fprintf fmt "(%a)" f e | _ -> f fmt e
 
 let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
   let pp_exp fmt = pp_paren_exp fmt (pp_exp print_var) in
   match e.value with
   | Int n -> fprintf fmt "%i" n
+  | Real r -> fprintf fmt "%s.%s%a" r.num r.frac (pp_print_option pp_print_string) r.exp
   | True -> fprintf fmt "true"
   | False -> fprintf fmt "false"
   | Var (s, i) -> print_var fmt (s, i)
   | UnOp (ENot,e) -> fprintf fmt "!%a" pp_exp e
   | BinOp v ->
       fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp v.right
+  | String s -> Format.fprintf fmt "%s" s
+  | Array l -> Format.(fprintf fmt "[%a]" (pp_print_array ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_exp) (Iarray.to_array l))
+  | ArrayCell (id,n) -> Format.fprintf fmt "%a[%a]" pp_exp id pp_exp n
 
-let pp_paren_fol pp_fol pp_atom fmt (p : _ fol) =
+  
+let [@warning "-4"] pp_paren_fol pp_fol pp_atom fmt (p : _ fol) =
   match p.value with
   | FOL_StdBinary _ -> fprintf fmt "(%a)" pp_fol p
   | FOL_Atom e -> pp_atom fmt e
@@ -131,7 +139,7 @@ let pp_ltl_unop fmt  ( op: ltl_unary) : unit =
   in pp_print_string fmt op 
 
 
-let pp_ltl_binop_spin fmt ( op: ltl_binary) : unit =
+let [@warning "-4"] pp_ltl_binop_spin fmt ( op: ltl_binary) : unit =
   let op = match op with  
   | Until -> "U"
   | Release -> "V"

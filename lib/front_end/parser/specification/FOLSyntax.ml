@@ -42,6 +42,7 @@ type ('a, 'qty) pred_fol = ('a predicate, 'qty) fol
 
 type 'qty pred_decl = {name: string; params: string list; body: (string,'qty) fol }
 
+(* open recursion style *)
 let map_fol : type a b ty_a ty_b.
     ((a, ty_a) fol -> (b, ty_b) fol) ->
     (a -> b) ->

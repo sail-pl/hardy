@@ -140,7 +140,7 @@ let fol_of_eba (m:(_,_) fol_t -> (_,_) fol_t) : B.TAtom.t eba -> (_,_) fol_t =
         it is reached for the first time (instant = n) and one where it is reached again (instant > n) ? 
       *)
 
-    let at_current_instant_replace_post : ('a,'b) fol_t -> ('a,'b) fol_t =
+    let [@warning "-4"] at_current_instant_replace_post : ('a,'b) fol_t -> ('a,'b) fol_t =
       if v.v_min_nb_instants.is_max then
         map_fol_pred 
           (map_expr Fun.id (fun (id, (inst,t)) ->

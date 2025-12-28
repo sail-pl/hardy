@@ -13,11 +13,15 @@ type 't expr = 't expression_ locatable
 
 and 't expression_ =
   | Int of int
+  | Real of {radix:int ; num:string ; frac:string  ; exp:string option}
   | True
   | False
   | Var of string * 't
   | UnOp of expr_uop * 't expr
   | BinOp of {left: 't expr ; op: expr_binop ; right : 't expr}
+  | ArrayCell of 't expr * 't expr
+  | Array of 't expr iarray
+  | String of string
 
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
@@ -30,20 +34,26 @@ let private_var = Format.asprintf "%a" (pp_private Format.pp_print_string)
 let rec fold_expr : type a. (a -> 't expr -> a) -> a ->'t expr -> a =
  fun j init e ->
   match e.value with
-  | Int _ | True | False | Var _  -> j init e
+  | Int _ | Real _ | True | False | Var _ | String _  -> j init e
   | UnOp (_,e1) -> j (fold_expr j init e1 ) e
   | BinOp x -> j (fold_expr j (fold_expr j init x.right) x.left) e 
+  | ArrayCell (e1,e2) -> j (fold_expr j (fold_expr j init e2) e1) e 
+  | Array arr -> Iarray.fold_left (fold_expr j) init arr
+
 
 let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * t2) -> t1 expr -> t2 expr =
  fun m var_map e ->
   match e.value with
-  | Int _ | True | False as value -> m {e with value}
+  | Int _ | Real _ | True | False | String _ as value -> m {e with value}
   | Var (id,v) -> let (id,v) = var_map (id,v) in m {e with value=Var (id,v)}
   | UnOp (op,e1) -> m { e with value = UnOp (op,map_expr m var_map e1)}
   | BinOp x ->
       m { e with value = BinOp { x with left=map_expr m var_map x.left; right=map_expr m var_map x.right} }
+  | ArrayCell (id,e') -> m { e with value = ArrayCell (map_expr m var_map id,map_expr m var_map e') }
+  | Array arr -> m { e with value = Array (Iarray.map (map_expr m var_map) arr) }
 
-let expr_vars : (string * 't) list -> 't expr -> (string * 't) list = fun x -> 
+  
+let [@warning "-4"] expr_vars : (string * 't) list -> 't expr -> (string * 't) list = fun x -> 
   fold_expr (fun l e -> match e.value with Var (x, t) -> (x, t) :: l | _ -> l) x
 
 type ('spec,'data) hoare_triple = { requires : 'spec; ensures : 'spec ; data : 'data}

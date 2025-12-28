@@ -12,13 +12,13 @@ module Why3Utils = HardyBackEnd.Why3Utils
 
 
 module M(B : Buchi.BuchiSig.S) : Sig.S with 
-  type program = backend_program * (w3 * P.mlw_file * Why3.Pmodule.pmodule Why3.Wstdlib.Mstr.t) and 
+  type program = backend_program * P.mlw_file and 
   type triple = ((Shared.ty,Shared.base_ty, Why3Gen.fol_data) inst_spec_t list disjunction list conjunction, FrontParser.Program.triple_data_t)
       Program.hoare_triple
   = struct
   module BU = Buchi.BuchiSig.Utils (B)
 
-  type program = backend_program * (w3 * P.mlw_file * Why3.Pmodule.pmodule Why3.Wstdlib.Mstr.t)
+  type program = backend_program * P.mlw_file
   type proof_result = Success | Failure of string
   type automaton = B.t
   type node = B.vertex
@@ -52,9 +52,14 @@ module M(B : Buchi.BuchiSig.S) : Sig.S with
 
   type vc = Task.task
 
-  let init_backend ((_,(w3,_,modules)) : program) =
+  let init_backend ((_,modules) : program) =
     let open Why3Utils in
-    (* Why3Gen.reset (); *)
+    let w3 = init_why3 () in
+    let modules =
+      try
+        Why3.Typing.type_mlw_file w3.env [] "???" modules 
+      with Why3.Loc.Located (loc, e) -> Why3.Loc.error ~loc e
+    in
     let prover, driver = get_alt_ergo w3 in
     { prover; driver ; w3; modules}
 
