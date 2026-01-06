@@ -59,8 +59,8 @@ rule tokenize = parse
   | "var"                   { VAR }
   | "input"                 { INPUT }
   | "output"                { OUTPUT }
-  | "relies on"             { RELY }
-  | "guarantees"            { GUARANTEE }
+  | "assumes"               { ASSUMES }
+  | "guarantees"            { GUARANTEES }
   (* | "requires"              { REQUIRES } *)
   | "prev"                  { PREV }
   (* | "^"                     { HAT } *)

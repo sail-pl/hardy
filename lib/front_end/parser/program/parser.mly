@@ -19,9 +19,9 @@ let inst_spec == fol(expr_with_pred)
 let ltl_spec == ltl(braced(fol(tq_expr_with_pred)))
 
 
-let prog_requires == RELY ; ~ =  ltl_spec ;  <>
+let prog_requires == ASSUMES ; ~ =  ltl_spec ;  <>
 
-let prog_ensures == GUARANTEE ; ~ =  ltl_spec ;<>
+let prog_ensures == GUARANTEES ; ~ =  ltl_spec ;<>
 
 let setup_ensures == ENSURES ;  ~ = braced(inst_spec) ;  <>
 
