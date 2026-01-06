@@ -29,13 +29,13 @@ let type_pgrm (p : parsed_program) : frontend_program =
 
     let [@warning "-4"] requires_checks = fun acc e -> match e.value with 
         | Var (_,(None,(Output,_))) -> 
-            failwith "output variables within 'relies on' spec cannot mention current output, only past"
+            failwith "output variables within temporal assumptions cannot mention current output, only past"
         | Var (_,(inst,(Input,_))) ->
             {acc with mentions_input = true; mentions_history = Option.is_some inst}
         | Var (_,(inst,(Output,_))) ->
             {acc with mentions_output = true; mentions_history = Option.is_some inst}                       
         | Var (_,(_,(State,_))) ->
-            failwith "'relies on' spec cannot mention state variables"
+            failwith "temporal assumptions cannot mention state variables"
         | _ -> acc
         
     and [@warning "-4"] ensures_checks = (fun acc e -> match e.value with 
