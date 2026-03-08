@@ -1,0 +1,11 @@
+var x : int;
+
+relies on X {x=1} || X {x=2}
+guarantees X ({x=1} || {x=2})
+
+setup :
+    x := 2;
+
+loop :
+ x := x;
+

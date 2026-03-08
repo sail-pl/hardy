@@ -2,30 +2,25 @@
     open HardyMisc.Utils
     open SharedSyntax
     open ProgramSyntax
-    open InstantSyntax 
+    (* open InstantSyntax *)
 
     (* https://github.com/ocaml/dune/issues/2450 *)
     module FrontParser = struct end
 %}
 
 
-%start <Program.parsed_program> program
 
 %%
 
 // begin specification ------
 
-let inst_spec == fol(expr_with_pred)
-let ltl_spec == ltl(braced(fol(tq_expr_with_pred)))
+let prog_requires == ASSUMES ; ~ =  temporal_spec ;  <>
 
+let prog_ensures == GUARANTEES ; ~ =  temporal_spec ;<>
 
-let prog_requires == ASSUMES ; ~ =  ltl_spec ;  <>
+let setup_ensures == ENSURES ;  ~ = inst_spec ;  <>
 
-let prog_ensures == GUARANTEES ; ~ =  ltl_spec ;<>
-
-let setup_ensures == ENSURES ;  ~ = braced(inst_spec) ;  <>
-
-let invariant == preceded(INVARIANT, braced(inst_spec)) 
+let invariant == preceded(INVARIANT, inst_spec) 
 
 let variant == ~ = preceded(VARIANT, braced(basic_expr)); <mk_variant>
 
@@ -43,7 +38,7 @@ let program :=
     {
         {
             prog_decls;
-            prog_spec={requires;ensures;data=()};
+            prog_spec=mk_labeled ~label:() {requires;ensures};
             prog_setup; 
             prog_main = {main_loop_inv ; main_body}
         }
@@ -51,6 +46,9 @@ let program :=
 
 %public
 let braced(x) == delimited("{", x, "}")
+
+%public
+let sqbracketed(x) == delimited("[", x, "]")
 
 let declaration := 
     env_input=loption(input) ; 
@@ -113,9 +111,7 @@ let simpl_expr(var_e) :=
     | (id,x) = var_e ; {Var (id,x)}
 )
 
-(*         | name = ID ; args=loption(delimited("(",separated_list(COMMA, atom),")"))  {FOL_Atom (Predicate {name;args=[]}) } *)
-
-
+%public
 let expr(var_e) := 
     | simpl_expr(var_e)
     | ~=delimited("(", expr(var_e), ")") ; <>
@@ -125,7 +121,7 @@ let expr(var_e) :=
         | "[" ; "|" ; l = separated_nonempty_list(";", expr(var_e)) ; "|" ; "]" ; {Array (Iarray.of_list l)} (* array litterals cannot be empty *)
         | left = expr(var_e) ; op = binExpOp ; right = expr(var_e) ; {BinOp {left;op;right}}
         | ~=tuple(var_e) ; %prec below_COMMA <Prod>
-        )
+    )
 
 let reversed_tuple_body(var_e) :=
     | t = reversed_tuple_body(var_e) ; "," ; e = expr(var_e) ; { e::t }
@@ -135,21 +131,8 @@ let tuple(var_e) == rev(reversed_tuple_body(var_e))
 
 let basic_expr == expr(id = ID ; {id,()})
 
+%public
 let expr_with_pred == ~= basic_expr ; <Atom>
-
-
-let tq_expr := expr(
-    | id = ID ; {id,None}
-    | id = ID ; endrule(AT|SYMB_AT) ; n = INT ; {id,Some (At n)}
-    | endrule(PREV | LAST) ; n = endrule(n = option(INT); {Option.value ~default:1 n}) ; id = ID ;  {id,Some (Previous n)}
-    | id = ID ; SHARP ; n = INT ; {id,Some (Previous n)}
-    | endrule(START | FIRST | DOLLAR) ; id = ID ;  {id,Some (At 0)}
-)
-
-let tq_expr_with_pred := 
-    | ~=tq_expr ; <Atom>
-    // | name = ID ; args=loption(delimited("(",separated_list(COMMA, tq_expr),")")) ; { Predicate {name;args} }
-
 
 
 %public
@@ -160,8 +143,6 @@ let fol(atom) :=
         | ~=atom; <FOL_Atom>
         | ~ = common_logic_unary ; ~ = fol(atom) ; %prec UNARY <FOL_StdUnary>
         | ~ = fol(atom) ; ~ = common_logic_binary ; ~ = fol(atom) ; <FOL_StdBinary>
-        | FORALL_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ForallPrev {h_var;binder;f}}
-        | EXISTS_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ExistsPrev {h_var;binder;f}}
         | FORALL ; ~ = typed_decl_id_opt+ ; COMMA ; ~ = fol(atom)  ; <Forall>
         | EXISTS ; ~ = typed_decl_id_opt+ ; COMMA ; ~ = fol(atom) ; <Exists>
     )
@@ -194,4 +175,4 @@ let binExpOp ==
 
 
 %public
-let located(x) == ~ = x ; { mk_labeled (Some $loc) x }
+let located(x) == ~ = x ; { mk_labeled ~label:(Some $loc) x }

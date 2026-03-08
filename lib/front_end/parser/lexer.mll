@@ -3,6 +3,7 @@
   open Lexing
 
   exception Lexical_error of (position * position) * string
+  exception Syntax_error of (position * position) * string
 
   let next_line lexbuf =
     let pos = lexbuf.lex_curr_p in
@@ -38,7 +39,8 @@ let newline = '\r' | '\n' | "\r\n"
 
 rule tokenize = parse
   | [' ' '\t']              { tokenize lexbuf }  (* Skip whitespaces *)
-  | "//"                    { read_comment lexbuf } (* single-line comment *)
+  | "//"                    { read_single_line_comment lexbuf }
+  | "/*"                    { read_multi_line_comment lexbuf }
   | "unit"                  { TY_UNIT }
   | "bool"                  { TY_BOOL }
   | "int"                   { TY_INT } 
@@ -63,14 +65,13 @@ rule tokenize = parse
   | "guarantees"            { GUARANTEES }
   (* | "requires"              { REQUIRES } *)
   | "prev"                  { PREV }
-  (* | "^"                     { HAT } *)
-  (* | "any"                   { ANY } *)
-  (* | "?"                     { QMARK } *)
-  (* | "all"                   { ALL } *)
+  | "^"                     { HAT }
+  | "any"                   { ANY }
+  | "?"                     { QMARK }
+  | "all"                   { ALL }
   | "#"                     { SHARP }
   | "$"                     { DOLLAR }
   | "at"                    { AT }
-  | "as"                    { AS }
   | "@"                     { SYMB_AT }
   | "last"                  { LAST }
   | "first"                 { FIRST }
@@ -79,8 +80,6 @@ rule tokenize = parse
   | "invariant"             { INVARIANT }
   | "variant"               { VARIANT }
   | "forall"                { FORALL }
-  | "forall_prev"           { FORALL_PREV }
-  | "exists_prev"           { EXISTS_PREV }
   | "exists"                { EXISTS }
   | "("                     { LPAREN }
   | ")"                     { RPAREN }
@@ -110,13 +109,16 @@ rule tokenize = parse
   | ";"                     { SEMI }
   | ":"                     { COLON }
   | ","                     { COMMA }
-  (* | "S"                     { SINCE } *)
+  | "S"                     { SINCE }
   | "X"                     { NEXT }
   | "U"                     { UNTIL}
   | "R" | "V"               { RELEASE }
   | "M"                     { SRELEASE }
   | "F"                     { EVENTUALLY }
   | "G"                     { ALWAYS }
+  | "Y"                     { YESTERDAY }
+  | "O"                     { ONCE }
+  | "H"                     { HISTORICALLY }
   (* | "~"                     { TILDE } *)
   | "->" | "=>"             { ARROW }
   | "<->" | "<=>"           { DARROW }
@@ -149,7 +151,12 @@ and read_string buf = parse
     }
   | _ { raise (Lexical_error (pos_range lexbuf, "Illegal string character: " ^ Lexing.lexeme lexbuf )) }
   | eof { raise (Lexical_error (pos_range lexbuf, "String is not terminated")) }
-and read_comment = parse
+and read_single_line_comment = parse
   | newline { next_line lexbuf; tokenize lexbuf } 
   | eof { EOF }
-  | _ { read_comment lexbuf } 
+  | _ { read_single_line_comment lexbuf } 
+and read_multi_line_comment = parse
+  | "*/" { tokenize lexbuf } 
+  | newline { next_line lexbuf; read_multi_line_comment lexbuf } 
+  | eof { raise (Syntax_error (pos_range lexbuf, "Lexer - Unexpected EOF - please terminate your comment.")) }
+  | _ { read_multi_line_comment lexbuf } 

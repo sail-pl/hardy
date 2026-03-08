@@ -1,4 +1,4 @@
-open SyntaxCommon 
+open HardyFrontEnd.Syntax.Shared 
 
 (** {1 Parse tree for the Hanoi Omega-Automata Format (HOA) } *)
 
@@ -51,7 +51,7 @@ type header = {
 
 type state = {
     state_number : int;
-    state_label : label_expr eba option ;
+    state_label : label_expr bool_a option ;
     state_name : string option;
     state_acc_sets : int list
 }
@@ -60,7 +60,7 @@ type state = {
 type edge = {
   (* non-alternating automata can only use the OneState constructor of state_conj *)
   edge_dst : int list ; (* singleton if the automaton is non-alternating  *)
-  edge_label : label_expr eba option ;
+  edge_label : label_expr bool_a option ;
   edge_acc_sets : int list
 } 
 

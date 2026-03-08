@@ -6,7 +6,7 @@ type instant = At of int | Previous of int
 type min_nb_instants = { nb_instant : int; is_max : bool }
 (** approximation of the number of instants *)
 
-(* let min_nb_instant_dft = { nb_instant = 0; is_max = false } *)
+let min_nb_instant_dft = { nb_instant = 0; is_max = false }
 let add_nb_instant n i = { i with nb_instant = i.nb_instant + n }
 let make_exactly i = { i with is_max = true }
 

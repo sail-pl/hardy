@@ -59,9 +59,11 @@ let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * 
 let [@warning "-4"] expr_vars : (string * 't) list -> 't expr -> (string * 't) list = fun x -> 
   fold_expr (fun l e -> match e.value with Var (x, t) -> (x, t) :: l | _ -> l) x
 
-type ('spec,'data) hoare_triple = { requires : 'spec; ensures : 'spec ; data : 'data}
+type 'spec hoare_pair = { requires : 'spec; ensures : 'spec }
 
-type ('spec) hoare_pair = ('spec, unit) hoare_triple
+type ('spec, 'data) hoare_triple = ('spec hoare_pair, 'data) labeled
+
+let map_triple_data f t = {t with label=f t.label}
 
 (** generic hoare requires/ensures pair *)
 
@@ -81,13 +83,13 @@ and ('inv, 't) stmt_ =
   | While of 't expr * 'inv * 't expr variant * ('inv, 't) stmt list
 
 
-let map_stmt (type e1 e2) (m_expr : e2 expr -> e2 expr) (m_var : string * e1 -> string * e2) (m_fol: 't1 -> 't2) (s : _ stmt) : _ stmt = 
-let rec aux s = match s.value with 
-| Assign (e1, e2) -> {s with value=Assign (map_expr m_expr m_var e1, map_expr m_expr m_var e2)}
-| Emit (e, id) -> {s with value=Emit (map_expr m_expr m_var e, id)}
-| If (e, s1, s2) -> {s with value=If (map_expr m_expr m_var e, List.map aux s1, Option.map (List.map aux) s2) }
-| While (e, inv, var, body) -> {s with value=While (map_expr m_expr m_var e, m_fol inv, mk_variant (map_expr m_expr m_var var.variant), List.map aux body)}
-in aux s
+  let map_stmt (type e1 e2) (m_expr : e2 expr -> e2 expr) (m_var : string * e1 -> string * e2) (m_emit: string -> string) (m_fol: 't1 -> 't2)  (s : _ stmt) : _ stmt = 
+  let rec aux s = match s.value with 
+  | Assign (e1, e2) -> {s with value=Assign (map_expr m_expr m_var e1, map_expr m_expr m_var e2)}
+  | Emit (e, id) -> {s with value=Emit (map_expr m_expr m_var e, m_emit id)}
+  | If (e, s1, s2) -> {s with value=If (map_expr m_expr m_var e, List.map aux s1, Option.map (List.map aux) s2) }
+  | While (e, inv, var, body) -> {s with value=While (map_expr m_expr m_var e, m_fol inv, mk_variant (map_expr m_expr m_var var.variant), List.map aux body)}
+  in aux s
 
 
 

@@ -33,8 +33,8 @@ and 'a ltl_ =
 let rec fold_ltl (j: 'acc -> 'a ltl -> 'acc) (pj : 'acc -> 'a -> 'acc)  (init: 'acc) (form: 'a ltl)  = match form.value with
 | LTL_True | LTL_False -> j init form 
 | LTL_Atom p -> pj init p 
-| LTL_Unary (_,f') -> j (fold_ltl j pj init f') form 
-| LTL_Binary (f1,_,f2) -> j (fold_ltl j pj (fold_ltl j pj init f1) f2) form 
+| LTL_Unary (_,f')  -> j (fold_ltl j pj init f') form 
+| LTL_Binary (f1,_, f2) -> j (fold_ltl j pj (fold_ltl j pj init f1) f2) form 
 
 
 (** [map_ltl_pred m f] applies [m] to every predicates making up the formula [f]*)
@@ -58,5 +58,14 @@ let rec map_ltl_pred : type a b. (a -> b) -> a ltl -> b ltl =
 let and_ltl (f1 : 'a ltl) (f2 : 'a ltl) : 'a ltl =
   mk_dummy_loc (LTL_Binary (f1, LTL_StdBinary LAnd, f2))
 
+
+let disj_ltl (f1 : 'a ltl) (f2 : 'a ltl) : 'a ltl =
+  mk_dummy_loc (LTL_Binary (f1, LTL_StdBinary LOr, f2))
+
+
 let true_ltl = mk_dummy_loc LTL_True
 let false_ltl = mk_dummy_loc LTL_True
+
+let not_ltl f = mk_dummy_loc (LTL_Unary (LTL_StdUnary LNot, f))
+
+let atom_ltl a = mk_dummy_loc (LTL_Atom a)

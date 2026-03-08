@@ -1,6 +1,6 @@
 %{
     open NcSyntax
-    open SyntaxCommon
+    open HardyFrontEnd.Syntax.Shared
 %}
 
 %token<string> ATOM 

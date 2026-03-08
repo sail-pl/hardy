@@ -19,6 +19,7 @@ depends: [
   "ocamlgraph"
   "progress"
   "nottui-unix"
+  "shexp"
   "odoc" {with-doc}
 ]
 build: [

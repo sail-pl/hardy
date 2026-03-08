@@ -1,5 +1,38 @@
 (** {1 Misc Utilities} *)
 
+
+module type SIMP_TYPE = sig
+  type t
+end
+
+module type TYPE = sig
+  type 'a t
+end
+
+
+module type PRETTY_SIMP_TYPE = sig
+  include SIMP_TYPE
+  val pp : Format.formatter -> t -> unit
+end
+
+
+module type PRETTY_TYPE = sig
+  include TYPE
+  val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+end
+
+
+module type FUNCTOR = sig
+  include TYPE
+
+  val map : ('a -> 'b) -> 'a t -> 'b t
+end
+
+module type MONADIC = sig
+  include FUNCTOR
+    val join : 'a t t -> 'a t
+end
+
 type ('v, 'l) labeled = { value : 'v; label : 'l }
 
 (** Token Location *)
@@ -7,21 +40,48 @@ type ('v, 'l) labeled = { value : 'v; label : 'l }
 type loc = Lexing.position * Lexing.position
 type 'v locatable = ('v, loc option) labeled
 
-let mk_labeled label value = { label; value }
+let mk_labeled ~label value = { label; value }
+let map_value f lv = {lv with value=f lv.value}
+let map_label f lv = {lv with label=f lv.label}
+
+(* 
+  cannot write generic map: if the function is not present, it must use the previous value, which is of type 'a. 
+  So, if the function is present, it can only create value of type 'a from 'a
+
+let map_labeled (type a b) ?m_value:(mv_opt: (a -> b) option) ?m_label:ml_opt lv = 
+  let label = Option.fold ~none:lv.label ~some:(fun f -> f lv.label) ml_opt
+  and value = Option.fold ~none:lv.value ~some:(fun f -> f lv.value) mv_opt in 
+  {value;label} 
+
+let map_value f = fun x -> map_labeled ~m_value:f x
+let map_label f = fun x -> map_labeled ~m_label:f x
+*)
+
 let dummy_pos : loc = (Lexing.dummy_pos, Lexing.dummy_pos)
 let mk_dummy_loc value = { value; label = None }
 
-type 'f disjunction = { disjuncts : 'f }
 
+type 'f disjunction = { disjuncts : 'f list }
 let mk_disj disjuncts = { disjuncts }
+let disj_singleton x = { disjuncts=[x]}
+let map_disjuncts f d = {disjuncts=List.map f d.disjuncts}
+let add_disjunct d l = {disjuncts=d::l.disjuncts}
+let append_disjuncts c1 c2 = {disjuncts=List.append c1.disjuncts c2.disjuncts}
+let disj_empty = { disjuncts=[]}
 
 (** type alias for list of disjunctive and conjunctive formulas *)
 
-type 'f conjunction = { conjuncts : 'f }
+type 'f conjunction = { conjuncts : 'f list}
 let mk_conj conjuncts = { conjuncts }
+let map_conjuncts f d = {conjuncts=List.map f d.conjuncts }
+let conj_singleton x = { conjuncts=[x]}
+let conj_empty = { conjuncts=[]}
+let add_conjunct d l = {conjuncts=d::l.conjuncts}
+let append_conjuncts c1 c2 = {conjuncts=List.append c1.conjuncts c2.conjuncts}
 
 
-type 'a cnf = 'a list disjunction list conjunction
+
+type 'a cnf = 'a disjunction conjunction
 
 
 (** [fold_mjoin f j init l] returns [init] if [l = nil], [f x] if [l] = [x] and

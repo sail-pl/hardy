@@ -15,11 +15,11 @@ module type S = sig
     -> each formula is annoted
     -> possibility to display the triple to tell what to do
   *)
-  type triple
+  type triples
 
   (* prepare the environnement from the program declarations and setup procedure *)
   val init_backend : program -> backend_state
-  val get_vcs : backend_state -> triple list -> vc list
+  val get_vcs : backend_state -> triples -> vc list
 
   (* attempt to prove the given triples, returning for each triple if it was proved or not  
       -> failed triples are reported to the user 

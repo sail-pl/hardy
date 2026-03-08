@@ -1,20 +1,18 @@
 open HardyFrontEnd.Syntax
-(* open HardyFrontEnd.Printer *)
 open Program
+(* open HardyFrontEnd.Printer *)
 (* open Shared *)
 open HardyMisc.Utils
 
 (** maintains a correspondance between an atom and its associated unique
     identifier *)
 module type S = sig
-  type 'a t
+  include MONADIC
 
-  type 'b data 
+  type data 
+  type atom 
 
-  type ty
-  type qty
-
-  val get_atom : string -> (string * (ty,qty) fol_t) t
+  val get_atom : string t -> (string * atom) t
   (** [get_atom i] returns the short name and the atom corresponding to the identifier [i] *)
 
   val subst : string t -> string t
@@ -22,26 +20,31 @@ module type S = sig
       printing-friendly string where the types inside the atoms are replaced by
       [f_ty_to_str] *)
 
-  val add_and_get : (ty,qty) fol_t -> (string * string) t
-  (** [add_and_get a] returns the short and long identifier corresponding to the
-      atom [a], creating a fresh one if it does not exist *)
+  val register_atom : atom t -> (string * string) t
+  (** [register_atom a] returns the short and long identifier corresponding to the
+      atom [a], creating fresh ones if they do not exist  *)
 
-  val get_data : string -> 'b data t
-  val set_data : string -> 'b data -> unit t
+  val get_atom_ids : atom t -> (string * string) t
+  (** [get_atom_ids a] returns the short and long identifier corresponding to the
+      atom [a], that is required to have been previously registered *)
+
+  val get_data : string -> data t
+  val set_data : string -> data -> unit t
+
 end
 
 (** [sub_atom_in_str subst s] matches all atoms inside string [s]. Each atom [a]
     is then replaced by [subst a] *)
 let sub_atom_in_str subst =
   let open Str in
-  let r = regexp {|p_\([0-9]+\)|} in
+  let r = regexp {|p\([0-9]+\)|} in
   global_substitute r (fun m -> matched_string m |> subst)
 
 (** [atom_of_atom_id a] extracts the atom from the identifier [a]*)
 let atom_of_atom_id s : int = 
-    try  int_of_string s with 
+    try int_of_string s with 
     | Failure _ -> 
-      try String.(sub s 2 (length s - 2)) |> int_of_string with 
+      try String.(sub s 1 (length s - 1)) |> int_of_string with 
       | Invalid_argument err | Failure err -> failwith @@ Format.sprintf "%s (couldn't extract atom '%s')" err s
 
 
@@ -109,66 +112,69 @@ module Functional : S = struct
 end
 *)
 
-module type Data = sig
-  type t  
-  type fol_ty 
-  type fol_qty 
-  val pp_var : Format.formatter -> string * fol_ty -> unit
-  val pp_fol_qty : Format.formatter -> fol_qty -> unit
-end
-module Imperative (D: Data) : S with 
-  type 'a t = 'a and 
-  type _ data = D.t and
-  type qty = D.fol_qty and
-  type ty = D.fol_ty 
-  
+
+module Imperative (Data: SIMP_TYPE) (Atom: PRETTY_SIMP_TYPE (* atom type *)) : S with type atom = Atom.t with 
+  type 'a t = 'a and
+  type data = Data.t and
+  type atom = Atom.t
   = struct
   exception Atom_not_found of string
-
-  open HardyFrontEnd.Printer
 
   type 'a t = 'a
 
 
   (* forced to use a functor to know the type statically because of the value restriction *)
 
-  type _ data = D.t 
-  type qty = D.fol_qty
-  type ty = D.fol_ty
+  type data = Data.t
+  
+  type atom = Atom.t
 
 
-  type value = {short_id:string; fol:(ty,qty) fol_t; other: D.t option}
+  type 'a value = {short_id:string; atom: atom; other: 'a option}
 
   (* we need to hash the key ourselves as we use them in the output *)
   module AtomTable = Hashtbl.Make(struct include Int let hash = Fun.id end)
 
+  let map f x = f x
+
+  let join = Fun.id
+
   (* key is a hash of fol, value is a short name for fol + fol itself*)
-  let atomic_bindings : value AtomTable.t = AtomTable.create 100
+  let atomic_bindings : 'a value AtomTable.t = AtomTable.create 100
   let cnt = ref 0
 
-  let get k : value =
+  let get k : 'a value =
     try AtomTable.find atomic_bindings (atom_of_atom_id k)
-    with Not_found -> raise (Atom_not_found k)
+    with Not_found -> 
+      AtomTable.iter (fun k v -> Format.printf "%i -> %a @." k Atom.pp v.atom) atomic_bindings;
+      raise (Atom_not_found k)
 
-  let get_atom (k : string) : (string * (_,_) fol_t) t = let a = get k in (a.short_id, a.fol)
+  let get_atom (k : string) : (string * atom) t = let a = get k in (a.short_id, a.atom)
 
-  let get_data k : D.t t = (get k).other |> Option.get
+  let get_data k : 'a t = (get k).other |> Option.get
 
-  let set_data k (d:D.t) = 
+  let set_data k (d: 'a) = 
     let k = atom_of_atom_id k in 
     let a = AtomTable.find atomic_bindings k in AtomTable.replace atomic_bindings k {a with other=Some d}
 
   let subst =
     sub_atom_in_str (fun s ->
-        Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp D.pp_var)) (pp_print_option D.pp_fol_qty)) (get s).fol))
+        Format.(asprintf "%a" Atom.pp (get s).atom))
 
-  let add_and_get (atom : ('ty,'qty) fol_t) =
-    let key = Format.(asprintf "%a" (pp_fol (pp_pred (pp_exp D.pp_var)) (pp_print_option D.pp_fol_qty)) atom) |> String.hash in
-    let label = Format.sprintf "p_%i" key in
+  let get_atom_ids atom = 
+    let key = Format.(asprintf "%a" Atom.pp atom) |> String.hash in
+    let label = Format.sprintf "p%i" key in
+    let a = AtomTable.find atomic_bindings key in
+    (a.short_id,label)
+
+  let register_atom (atom : atom) =
+    let key = Format.(asprintf "%a" Atom.pp atom) |> String.hash in
+    let label = Format.sprintf "p%i" key in
     match AtomTable.find_opt atomic_bindings key with
     | None ->
+        (* Format.printf "adding atom %s@." label; *)
         let short_id = string_of_int !cnt in
-        AtomTable.add atomic_bindings key {short_id; fol=atom; other=None};
+        AtomTable.add atomic_bindings key {short_id; atom; other=None};
         incr cnt;
         (short_id, label)
     | Some a -> (a.short_id, label)

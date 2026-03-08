@@ -1,8 +1,8 @@
 (** {1 Back-end signature} *)
-
 open HardyFrontEnd.Syntax
-open Program
 open Shared
+open HardyMisc.Utils
+open Program
 
 (** The back-end requires:
 
@@ -17,22 +17,19 @@ open Shared
 (* type spec_info = {loop_invariant: }  *)
 
 module type S = sig
-  type in_pgrm = middleend_program
+  type local_spec
+  type temp_spec 
 
-  (* (in_ty temp_spec_t, (in_ty,unit) inst_spec_t, variant_t, unit) program *)
-  type fol_data
+  type in_pgrm = (temp_spec, unit, local_spec, ty, ty env) Program.program
+  type in_setup = (local_spec, ty) setup
+  type in_body = (local_spec, ty) stmt list
+  type in_fun 
+  type in_spec
+
   type triple_data
-  type in_setup = (base_spec_t, ty) setup
-  type in_body = (base_spec_t, ty) stmt list
 
-  type in_fun =
-    ((Shared.ty, Shared.base_ty, fol_data) inst_spec_t HardyMiddleEnd.Sig.formula, triple_data)
-    hoare_triple
-
-  type in_spec = in_fun
   type out_pgrm
   type out_decl
-  type out_spec
   type out_body
   type out_setup
   type out_fun
@@ -46,29 +43,29 @@ module type S = sig
   val reset : unit -> unit
   (** reset the backend state (bindings etc.) *)
 
-  val generate_declarations : (cat_ty*base_ty option) env -> out_decl list
+  val generate_declarations : ty env -> out_decl list
   val generate_setup : in_setup -> out_setup
   val generate_body : in_body -> out_body
-  val generate_spec : in_spec -> out_spec
-  val generate_function : triple_data -> out_spec -> out_body -> out_fun
+  val generate_function : ((in_spec, out_body) hoare_triple, triple_data) labeled ->  out_fun
 
   val generate_program : processed_defs -> out_pgrm
 
   val write_program : string -> out_pgrm -> unit
 end
 
+(* fixme: shouldn't require module encapsulation with OCaml >= 5.5 (modular explicits)  *)
 module F (B : S) = struct
-  let translate_program (p : B.in_pgrm) (triples : B.in_fun list) : B.out_pgrm =
+  let translate_program 
+    (p : B.in_pgrm) 
+    (triples : ((B.in_spec ,B.in_fun) hoare_triple, B.triple_data) labeled conjunction) 
+    : B.out_pgrm =
     B.reset ();
     let processed_decls = B.generate_declarations p.prog_decls
     and processed_setup = Option.map B.generate_setup p.prog_setup
     and processed_functions = 
       let body = B.generate_body p.prog_main.main_body in
-      let f : B.in_fun -> B.out_fun =
-        fun spec ->
-          B.generate_function spec.data (B.generate_spec spec) body
-        in
-      List.map f triples 
+      let c = map_conjuncts (map_value (map_triple_data (fun _ -> body)) >> B.generate_function) triples in 
+      c.conjuncts
     in
     B.generate_program {processed_setup; processed_functions ; processed_decls}
 

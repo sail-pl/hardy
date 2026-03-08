@@ -9,10 +9,27 @@
  (flags --only-tokens))
 
 (menhir
- (modules tokens specification/ltl program/parser)
- (merge_into pgrmParser)
+ (modules tokens specification/ltl specification/pltl program/pltl_spec program/parser)
+ (merge_into pgrmPltlParser)
  (flags
   --external-tokens Tokens
+  --unused-token SYMB_AT --unused-token DOLLAR  --unused-token SHARP
+  --unused-token UNDERSCORE  --unused-token HAT --unused-token QMARK 
+  --unused-token ALL --unused-token ANY --unused-token PREV --unused-token LAST --unused-token AT 
+  --unused-token FIRST
+  --unused-token START
+  ; --strict
+  --explain))
+
+(menhir
+ (modules tokens specification/ltl program/ltl_spec program/parser)
+ (merge_into pgrmLtlParser)
+ (flags
+  --external-tokens Tokens
+  --unused-token ONCE 
+  --unused-token YESTERDAY 
+  --unused-token HISTORICALLY 
+  --unused-token SINCE 
   ; --strict
   --explain))
 

@@ -3,6 +3,7 @@ open HardyMisc.Utils
 open SharedSyntax
 open FOLSyntax
 open LTLSyntax
+open PLTLSyntax
 open ProgramSyntax
 open InstantSyntax
 open Format
@@ -58,11 +59,11 @@ let pp_hist fmt (v, h) =
 
 (* let pp_nohist fmt (id,_) = pp_print_string fmt id *)
 
-let [@warning "-4"] pp_paren_exp fmt f e =
+let [@warning "-4"] pp_paren_exp f fmt e =
   match e.value with BinOp _ -> fprintf fmt "(%a)" f e | _ -> f fmt e
 
 let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
-  let pp_exp fmt = pp_paren_exp fmt (pp_exp print_var) in
+  let pp_exp = pp_paren_exp (pp_exp print_var) in
   match e.value with
   | Int n -> fprintf fmt "%i" n
   | Real r -> fprintf fmt "%s.%s%a" r.num r.frac (pp_print_option pp_print_string) r.exp
@@ -109,10 +110,10 @@ let rec pp_fol : 'a. (formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -> _ =
       fprintf fmt "forall %a. %a" pp_id_ty idty pp_fol' f
   | Exists (idty, f) ->
       fprintf fmt "exists %a. %a" pp_id_ty idty pp_fol' f
-  | ExistsPrev q ->
+  (* | ExistsPrev q ->
       fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_fol' q.f
   | ForallPrev q ->
-      fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_fol' q.f
+      fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_fol' q.f *)
 
   let pp_pred pp_atom fmt = 
     let open Format in
@@ -176,3 +177,37 @@ let pp_ltl (pp_atom : formatter -> 'a -> unit)
       | LTL_Unary (op, f) ->
           fprintf fmt "%a(%a)" pp_ltl_unop op aux f
       in aux 
+
+
+let pp_pltl_binop fmt ( op: pltl_binary) : unit = 
+  let op = match op with  
+  | Since -> "S"
+  | PLTL_StdBinary op -> asprintf "%a" pp_common_logic_binary op
+  in pp_print_string fmt op 
+
+let pp_pltl_unop fmt  ( op: pltl_unary) : unit =
+    let op = match op with  
+  | Once -> "O"
+  | Historically -> "H"
+  | Yesterday -> "Y"
+  | PLTL_StdUnary op -> asprintf "%a" pp_unop op
+  in pp_print_string fmt op 
+  
+let pp_ltl_default f = pp_ltl f pp_ltl_binop pp_ltl_unop
+
+
+let pp_pltl (pp_atom : formatter -> 'a -> unit)
+    (pp_pltl_binop : formatter -> pltl_binary -> unit)
+    (pp_pltl_unop : formatter -> pltl_unary -> unit) : formatter -> 'a pltl -> unit = 
+    let rec aux fmt f = 
+    match f.value with
+      | PLTL_True -> pp_print_string fmt "true"
+      | PLTL_False -> pp_print_string fmt "false"
+      | PLTL_Atom p -> pp_atom fmt p
+      | PLTL_Binary (f1, op, f2) ->
+          fprintf fmt "(%a) %a (%a)" aux f1 pp_pltl_binop op aux f2
+      | PLTL_Unary (op, f) ->
+          fprintf fmt "%a(%a)" pp_pltl_unop op aux f
+      in aux 
+
+let pp_pltl_default f = pp_pltl f pp_pltl_binop pp_pltl_unop

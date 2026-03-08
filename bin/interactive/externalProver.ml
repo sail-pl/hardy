@@ -1,32 +1,34 @@
 open HardyFrontEnd
 open HardyMiddleEnd.Automata
-open HardyBackEnd.Why3Utils
 open HardyMisc.Utils
 open Why3
 open Syntax
-(* open Syntax.Program *)
-module PH = Why3.Ptree_helpers
+open Syntax.Program
 module P = Why3.Ptree
-module Why3Gen = HardyBackEnd.Why3Gen.M
-module Why3Utils = HardyBackEnd.Why3Utils
+module Why3Utils = HardyBackEnd.Why3_back.Utils 
+
+(* module PH = Why3.Ptree_helpers
+module P = Why3.Ptree
+module Why3Gen = HardyBackEnd.Why3_back.Pltl.M
+module Why3Utils = HardyBackEnd.Why3_back.Utils *)
 
 
-module M(B : Buchi.BuchiSig.S) : Sig.S with 
-  type program = backend_program * P.mlw_file and 
-  type triple = ((Shared.ty,Shared.base_ty, Why3Gen.fol_data) inst_spec_t list disjunction list conjunction, FrontParser.Program.triple_data_t)
-      Program.hoare_triple
+module M(B : Buchi.BuchiSig.S)(T: SIMP_TYPE )(TriplesType : SIMP_TYPE)(BaseSpec : SIMP_TYPE)
+  : Sig.S with 
+    type program = (T.t, unit, BaseSpec.t, Shared.ty, Shared.ty env) program * P.mlw_file and 
+    type triples = TriplesType.t
+
+
   = struct
   module BU = Buchi.BuchiSig.Utils (B)
 
-  type program = backend_program * P.mlw_file
+  type nonrec program = (T.t, unit, BaseSpec.t, Shared.ty, Shared.ty env) program * P.mlw_file
   type proof_result = Success | Failure of string
   type automaton = B.t
   type node = B.vertex
   type proof_state = int
 
-  type triple = ((Shared.ty,Shared.base_ty, Why3Gen.fol_data) inst_spec_t list disjunction list conjunction, FrontParser.Program.triple_data_t)
-      Program.hoare_triple
-
+  type triples = TriplesType.t
   (* ------------ MIDDLE END INTERACTION ----------- *)
 
   (* let triple_eq (t1: triple) (t2 : triple) = String.equal (fst t1).triple_id (fst t2).triple_id
@@ -63,7 +65,7 @@ module M(B : Buchi.BuchiSig.S) : Sig.S with
     let prover, driver = get_alt_ergo w3 in
     { prover; driver ; w3; modules}
 
-  let get_vcs status (_ : triple list) : vc list =
+  let get_vcs status (_ : triples) : vc list =
   
     Wstdlib.Mstr.fold
       (fun _mname m acc ->
