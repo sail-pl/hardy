@@ -1,0 +1,19 @@
+input i : bool;
+
+output o : bool;
+
+
+// pure temporal reasoning
+
+assumes G ({{i}} -> X !{{i}})
+assumes G ((!{{i}}) -> X {{i}})
+
+// can't replace the prev because of equality
+
+// can we lift ppltltt to have first-order with equality ?
+
+guarantees X G {{i = !prev i}}
+
+loop :
+
+

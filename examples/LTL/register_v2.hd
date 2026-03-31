@@ -1,0 +1,50 @@
+input 
+    value : int
+    set : bool
+;
+
+output o : int;
+var x : int;
+
+
+
+//------ public spec ------
+
+
+// every output corresponds to 0 until set is enabled
+guarantees {{set}} R ({{set}} || {{o = 0}})
+
+// whenever set is enabled, every following outputs are the input received at the previous instant until 
+// set is disabled
+guarantees G ({{set}} -> {!{set}} R ({!{set}} || X {{o = prev value}}))
+
+// whenever set is disabled, every following outputs are the last input received when set was disabled until
+// it is enabled again
+// NOT POSSIBLE TO STATE CURRENTLY 
+
+
+//----- private spec -----
+
+
+// x is 0 as long as set is not enabled
+guarantees {{set}} R ({{set}} || {{x = 0}})
+
+
+// while set is enabled, x is the current input until it is disabled
+guarantees G ({{set}} -> {!{set}} R ({!{set}} || {{x = value}}))
+
+
+
+setup :
+    ensures { x = 0 }
+    x := 0;
+
+loop :
+    emit x to o;
+
+    if set then
+        x := value;
+    end
+
+
+    

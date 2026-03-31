@@ -1,0 +1,13 @@
+output z: int array
+;
+var 
+    x : (int*int) array 
+    y : real
+;
+
+
+
+loop:
+    invariant { z[0] = 1 && z[1] = 2 && z[2] = 3  }
+    x[1] := 2,3;
+    emit [|1;2;3|] to z;

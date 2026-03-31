@@ -1,0 +1,15 @@
+input i : bool;
+
+output o : bool;
+
+
+// pure temporal reasoning
+
+assumes G ({{i}} -> X !{{i}})
+assumes G ((!{{i}}) -> X {{i}})
+
+guarantees X G {{i = !prev i}}
+
+loop :
+
+

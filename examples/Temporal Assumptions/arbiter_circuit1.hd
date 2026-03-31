@@ -1,0 +1,62 @@
+input r1 r2 r3 : bool;
+output g1 g2 g3 : bool;
+
+
+// assume each client does not send additional request until it has been granted access 
+assumes G ({{r1}} -> X ({{g1}} R ({{g1}} || {!{r1}})))
+assumes G ({{r2}} -> X ({{g2}} R ({{g2}} || {!{r2}})))
+assumes G ({{r3}} -> X ({{g3}} R ({{g3}} || {!{r3}})))
+
+// just to test, assume only 1 request at a time can be made 
+assumes G !({{r1}} && {{r2}})
+assumes G !({{r2}} && {{r3}})
+assumes G !({{r1}} && {{r3}})
+
+
+// mutual exclusion 
+guarantees G !({{g1}} && {{g2}})
+guarantees G !({{g2}} && {{g3}})
+guarantees G !({{g1}} && {{g3}})
+
+// immediate response (realizable because of the second assumption)
+guarantees G ({{r1}} -> {{g1}}) 
+guarantees G ({{r2}} -> {{g2}}) 
+guarantees G ({{r3}} -> {{g3}}) 
+
+// no spurious grant: there exists in the history a request such that no grant has been given until this instant
+// version with past operator Since
+// guarantees G ({g1} -> ( (!{g1}) S {r1} )) 
+
+// version in pure FOL where hist_size represents the current history size
+// ts: time-step alias instant (maybe interesting to have a particular type to do some transformation and reasoning?)
+// guarantees G ({g1} -> 
+//       {
+//        exists i: ts, 
+//                0 <= i < hist_size && 
+//                r1@i && 
+//                (forall j:ts, 0 <= j <= i -> (!g1@j)) 
+//       }  ) 
+
+
+// version with syntaxic sugar, t has a private type that can only be applied to specific combinators 
+// guarantees G ({g1} -> 
+//       {
+//        exists_past r1 as r1_p, r1_p && 
+//            forall_past g1 as p_g1, ~p_g1
+//       }  ) 
+
+// this translates to 
+// {
+//     exists_past r1 0 (fun (r1_p,t) => forall_past g1 t (fun (g1,t') => !g1) )
+// }
+//
+// time is infered from current scope (outside, t=0, inside automatic ; watch out for captures but the syntax 
+// is restrictive enough (cannot manipulate time directly, only variables at a specific time point, maybe control number of temporal nesting) that it is trivial to ensure)
+
+
+
+
+loop:
+    emit r1 to g1;
+    emit r2 to g2;
+    emit r3 to g3;

@@ -1,0 +1,14 @@
+input i : int;
+output o : int;
+var x : int;
+
+guarantees X G {{o = last i}}
+
+setup :
+    ensures { x = 0 }
+    x := 0;
+
+loop :
+    invariant { x = i }
+    emit x to o ;
+    x := i ;

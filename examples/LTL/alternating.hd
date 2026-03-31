@@ -1,0 +1,36 @@
+// input is only used at the begining to determine if we begin with 0 or 1
+
+input i : bool;
+output o : bool;
+
+var 
+    init last_o : bool
+;
+
+//global spec
+guarantees {{o = i}}
+guarantees G ({{o}} -> X {{!o}})
+guarantees G (!{{o}} -> X {{o}})
+
+
+//local spec
+guarantees {{last_o = !i}}
+
+
+setup:
+    ensures {init}
+    init := true;
+
+loop: 
+    invariant {!init}
+    invariant {o = !last_o}
+    if init then
+        last_o := i;
+        init := false;
+    end
+
+    emit last_o to o;
+    last_o := !last_o;
+
+
+        

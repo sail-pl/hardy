@@ -1,0 +1,58 @@
+input 
+  armed : bool
+  x : int
+;
+
+output
+  y : int
+;
+
+var
+  z : int
+  state : int
+;
+
+// global spec
+guarantees {{armed} => {y = 0}}
+guarantees X G ({{armed}} => G {{y = prev x}})
+
+// before being armed, we allow anything to be emited
+// here, we choose to emit what we just received
+
+
+// local spec
+guarantees X G {{state <> 0}}
+guarantees {{!armed}} => ({{armed}} R ({{armed}} || {{state=1}}))
+guarantees G ({{armed}} => G {{state = 2}})
+
+setup: 
+  ensures {state = 0}
+  state := 0;
+
+loop:
+  invariant { z = x } 
+  invariant {0 <= state && state < 3}
+
+  if state = 0 then
+    if armed then
+      emit 0 to y;
+      state := 2;
+    else
+      state := 1;
+      emit x to y;
+    end
+  else
+    if state = 1 then
+      if armed then
+        state := 2;
+        emit z to y;
+      else
+        emit x to y;
+      end
+    else
+      if state = 2 then
+        emit z to y;
+      end
+    end
+  end
+  z := x;

@@ -1,0 +1,34 @@
+input set reset : bool;
+output level : bool;
+var current v : bool;
+
+relies on G {!(set && reset)}
+
+guarantees {set} R {set || !level}
+guarantees {set} R {set || !current}
+
+
+guarantees G ({!reset} R {(!reset) || !current})
+guarantees X G ({(!set) && !reset} -> {current = prev current})
+
+
+//guarantees forall v, G ( {!set && !reset && o = v} -> ({set || reset} R {set || reset || o = v}) )
+//guarantees G ( {(!set) && (!reset) && level = v} -> ({set || reset} R {set || reset || level = v}) )
+
+
+setup :
+    ensures { current = false }
+    current := false;
+
+loop :
+    //invariant {level = current}
+    //invariant {reset -> !current}
+    //invariant {set -> current}
+
+    if set then 
+        current := true;
+    else if reset then 
+        current := false;
+    end end
+    emit current to level;
+

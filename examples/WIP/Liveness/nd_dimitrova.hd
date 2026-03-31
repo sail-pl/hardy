@@ -1,0 +1,37 @@
+input i : int;
+output o : bool;
+var x : int;
+
+
+guarantees (FG({i} && X {o} )) || (GF ( ({!i}) && X ({!o})) )
+// todo: allow for direct automaton input
+// problem: atom hash
+
+
+// this is my version of the automaton corresponding to the formula
+//guarantees neverclaim {
+//    never {
+//    s0_init:
+//        if
+//        :: (1) -> goto s0_init
+//        :: (i) -> goto accept_s1
+//        :: !(i) -> goto accept_s2
+//        fi;
+//    accept_s1:
+//        if
+//        :: (i) && (o) -> goto accept_s1
+//        fi;
+//    accept_s2:
+//        if
+//        :: !(o) -> goto s0_init
+//        fi;
+//    }
+//}
+
+
+//(eventually, i is always true and o is true at the next step) or (there is always a finitely number of instants where i) 
+
+
+loop :
+    emit true to o;
+

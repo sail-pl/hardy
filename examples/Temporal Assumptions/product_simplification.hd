@@ -1,0 +1,16 @@
+input i : bool;
+output o : bool;
+
+assumes G ({{i}} -> X {!{(i)}})
+
+//assumes G ({!{i}} -> X {{i||false}})
+
+//guarantees G {o = !i}
+//guarantees X G {o=!prev o}
+
+
+
+
+
+loop :
+    //emit !i to o;

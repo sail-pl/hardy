@@ -1,0 +1,30 @@
+process Fby(x y: int) : int {
+    var cnt : int
+    Init: 
+        cnt := from;
+
+    Loop:
+        return cnt;
+
+    Last:
+
+        
+}
+
+
+
+process Fby (x y: int) : int {
+    Init:
+        
+}
+
+process Prev(n: int) : int {
+    var x;
+    Init:
+        x := n;
+}
+
+// adds the stream x to the delayed stream y
+process Sum_left(x y : int) : int {
+    return x + fby(0, prev (y))
+}

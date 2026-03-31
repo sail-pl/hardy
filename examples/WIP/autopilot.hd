@@ -1,0 +1,42 @@
+input altitude : int;
+output 
+    go_up go_down : bool
+;
+
+
+
+relies on { altitude = 0 }.
+
+// altitude can only change up to k between instants
+
+relies on G {altitude >= prev altitude - 100 && altitude <= prev altitude + 100}.
+
+relies on G ( {go_up} -> X {altitude > prev altitude }).
+relies on G ( {go_down} -> X {altitude < prev altitude}).
+
+
+
+guarantees G {!(go_up && go_down)}.
+
+// global propery of the whole system -> cannot be stated as is 
+// guarantees G X {altitude > 0}.
+
+// same issue here
+guarantees G ({altitude < 9000} -> X {altitude > prev altitude}).
+
+
+// commercial planes travel at an altitude between 9 and 13 km
+
+loop :
+ if altitude < 9000 then
+    emit true to go_up;
+    emit false to go_down;
+ else 
+    if altitude > 1300 then
+        emit true to go_up;
+        emit false to go_down;
+    else 
+        emit false to go_up;
+        emit false to go_down;
+    end
+end

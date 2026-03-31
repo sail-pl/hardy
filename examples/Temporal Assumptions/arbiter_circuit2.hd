@@ -1,0 +1,84 @@
+input r1 r2 r3 : bool;
+output g1 g2 g3 : bool;
+var curr_req : int;
+
+// assume each client does not send additional request until it has been granted access 
+assumes G ({{r1}} -> X ({{prev g1}} R ({{prev g1}} || {!{r1}})))
+assumes G ({{r2}} -> X ({{prev g2}} R ({{prev g2}} || {!{r2}})))
+
+
+//assumes G !{r2}
+//guarantees G !{g2}
+//guarantees G (!{curr_req =2})
+//assumes G ({r3} -> X ({g3} R ({g3} || !{r3})))
+
+// mutual exclusion 
+guarantees G !({{g1}} && {{g2}})
+//guarantees G !({{g2}} && {{g3}})
+//guarantees G !({{g1}} && {{g3}})
+
+// bounded response 
+//guarantees G ({r1} -> ({g1} || X {g1})) 
+//guarantees G ({r2} -> ({g2} || X {g2}))
+//guarantees G ({r3} -> {g3}) 
+
+
+// private spec
+
+
+// if there is a pending request, it will be granted at the next instant 
+guarantees G ({!{curr_req = 0}} -> X (({{g1}} || {{g2}}) && {{r1}} -> {{curr_req = 1}}))
+
+
+guarantees G ({{curr_req = 0}} -> (({{r1}} && {{r2}}) R (({{r1}} && {{r2}}) || {{curr_req = 0}})))
+guarantees G ({{curr_req = 0}} -> X ( ({{r1}} || {{r2}}) R (({{r1}} || {{r2}}) || ({!{g1}} && {!{g2}}))) )
+
+guarantees XG ({{curr_req = 1}} -> {{r1}} && {!{prev curr_req = 0}} && X {{g1}} )
+guarantees XG ({{curr_req = 2}} -> (({{r1}} && {{r2}} && {{prev curr_req = 0}}) || ({!{r1}} && {{r2}})) && X {{g2}} )
+
+guarantees ({{r1}} && {!{r2}} -> {{g1}})  
+guarantees XG ({!{r1}} && {!{r2}} && {{prev curr_req = 1}} -> {{g1}})
+guarantees ({{r2}} && {!{r1}} -> {{g2}}) 
+guarantees XG ({!{r1}} && {!{r2}} && {{prev curr_req = 2}} -> {{g2}})
+
+
+guarantees G ({{r1}} && {{prev curr_req = 0}} -> {{g1}})
+guarantees G ({{r2}} && {!{r1}} && {{prev curr_req = 0}} -> {{g2}})
+guarantees G ({{g1}} -> ({{prev curr_req = 1}} || {{r1}}))
+guarantees G ({{g2}} -> ({{prev curr_req = 2}} || {{r2}}))
+
+
+setup:
+    ensures {curr_req = 0}
+    curr_req := 0;
+
+loop:
+    // only possible values for curr_req
+    // it makes more sense to add it as an invariant here 
+    // but as a temporal spec, it simplifies automaton a bit...
+    invariant {curr_req = 0 || curr_req =1 || curr_req = 2}
+    if curr_req <> 0 then
+        if curr_req = 1 then
+            emit true to g1;
+            emit false to g2;
+        else if curr_req = 2 then
+            emit true to g2;
+            emit false to g1;
+        end end
+        // here, r1 and r2 can't be both present as one of the client is already waiting for a grant and cannot do a new request as per the specification
+        if r1 then
+            curr_req := 1;
+        else if r2 then
+            curr_req := 2;
+        else curr_req := 0;
+        end end
+    else
+        if r1 && r2 then
+            curr_req := 2;
+            emit true to g1;
+            emit false to g2;
+        else 
+            emit r1 to g1;
+            emit r2 to g2;
+        end
+    end

@@ -1,0 +1,2 @@
+// LTL does not allow us to only specify outputs only for even number of instants
+// see "Temporal logic can be more expressive", P. Wolper

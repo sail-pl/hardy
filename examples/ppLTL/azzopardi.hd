@@ -1,0 +1,39 @@
+// slightly modified example from ppLTLTT paper
+
+input err : int;
+output flag12 : bool;
+var err1 err2: bool;
+
+// the program must enable the flag as soon as both error1 and error2 have occured
+guarantees G {
+    (
+        O {{err = 1}} &&
+        O {{err = 2}} &&
+        WY H {{!flag12}}
+    ) 
+    <=> {{ flag12 }}
+}
+ 
+
+
+setup :
+    ensures { err1 = false && err2 = false }
+    err1 := false;
+    err2 := false;
+
+loop :
+    if err = 1 then
+        err1 := true;
+    end
+
+    if err = 2 then
+        err2 := true;
+    end
+
+    if err1 && err2 then
+        emit true to flag12;
+        err1 := false;
+        err2 := false;
+    else 
+        emit false to flag12;
+    end

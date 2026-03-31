@@ -1,0 +1,42 @@
+input 
+    problem reset : bool
+;
+
+output 
+    alarm: bool
+;
+
+
+var 
+    exists_pb : bool
+    cnt : int // artificial delay before emitting the alarm
+;
+
+
+guarantees G { {{alarm}} -> {{problem}} }
+
+setup:
+	exists_pb := false;
+	cnt := 3;
+
+loop:
+	if reset then
+		cnt := 3;
+		exists_pb := false;
+		emit false to alarm;
+	else 
+		if exists_pb then
+			if cnt = 0 then 
+				emit true to alarm;
+				exists_pb := false;
+				cnt := 3;
+			else
+				cnt := cnt - 1;
+			end
+		else
+			if problem then 
+				exists_pb := true;
+			end
+			emit false to alarm;
+		end
+	end

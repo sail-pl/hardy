@@ -1,0 +1,27 @@
+// imported from syfco/examples/acaciaplus/loadcomp2.tlsf
+
+input idle request0 request1 : bool;
+
+output grant0 grant1 : bool;
+
+
+relies on G F {idle}
+
+relies on G (!({idle} && (!{grant0}) && (!{grant1})) || X {idle})
+
+relies on G ((!{grant0}) || X (((!{request0}) && (!{idle})) U (!({request0}) && {idle})))
+
+
+guarantees  G ((!{request0}) || !{grant1})
+guarantees  G ((!{grant0}) || !{grant1})
+guarantees  G ((!{grant1}) || !{grant0})
+guarantees  G ((!{grant0}) || {request0} )
+guarantees  G ((!{grant1}) || {request1} )
+guarantees  G (((!{grant0}) && !{grant1}) || {idle})
+
+
+
+
+loop:
+    emit true to grant0;
+        

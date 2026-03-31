@@ -1,0 +1,10 @@
+input i : bool;
+output o : int;
+
+relies on F {i = 5}.
+guarantees F {o = 5}.
+
+setup :
+
+loop :
+ emit i to o;

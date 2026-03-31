@@ -1,0 +1,15 @@
+input 
+  req : bool
+;
+
+output
+  ack : bool
+;
+
+
+//global
+guarantees G ({{req}} => G {{ack}})
+
+
+loop:
+  emit true to ack;

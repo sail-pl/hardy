@@ -1,0 +1,23 @@
+input start_ : bool;
+output mode : bool;
+var started : bool;
+
+//global spec
+guarantees {{start_}} R ({{start_}} || {{!mode}})
+
+
+//local spec
+guarantees {{start_}} R ({{start_}} || {{!started}})
+
+
+setup:
+    ensures {!started}
+    started := false;
+
+loop:
+    if start_ && !started then
+        started := !started;
+    end
+
+    emit started to mode;
+

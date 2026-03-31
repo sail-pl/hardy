@@ -1,0 +1,18 @@
+input x : int;
+output y z : int;
+var s_x_0 s_x_2 : bool;
+
+guarantees {{x > 0}} -> X {{z = 0}}
+guarantees {{ x > 2 }} -> X {{ y >= 0 }}
+
+
+
+loop :    
+    invariant {x > 0} -> {s_x_0}
+    invariant {x > 2} -> {s_x_2}
+    if x > 0 then s_x_0 := true; end
+    if x > 2 then s_x_2 := true ; end
+
+    if s_x_0 then emit 0 to z; end    
+    if s_x_2 then emit 0 to y; end
+

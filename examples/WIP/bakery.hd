@@ -1,0 +1,96 @@
+input 
+    new_customer: bool 
+;
+
+output 
+    customerTicketO: int;
+    customerStatusO: int;
+;
+
+
+var 
+    current : int
+    customerTicket : array<int;5>
+    customerStatus : array<int;5> 
+    // 0 -> ASKING  
+    // 1 -> WAITING  
+    // 2 -> SERVED
+;
+
+
+
+START: 
+    {
+        ticket := 0;
+        customerTicket := [|0;0;0;0;0|];
+        customerStatus := [|0;0;0;0;0|];
+        emit 0 to current; 
+    }    
+    GOTO LOOP
+
+
+CHECK:
+{
+
+}
+WHEN 
+
+
+GET_TICKET:
+    local 
+        i: int
+        break:bool
+    ;
+
+    {
+        i := current:
+        break := false;
+        while (!break && ) do
+
+            if customerStatus[i] = 0 then
+                break := true
+            end
+
+            if current = 5 then
+                current := 0;
+            else 
+                current := current + 1;
+            end
+        done
+    }
+
+ACCESS:
+{
+    customerStatus[current] := 2
+}
+GOTO LEAVE
+
+
+LEAVE:
+{
+    customerStatus[current] := 0
+}
+GOTO NEXT
+
+NEXT:
+    local 
+        i: int
+        break:bool
+    ;
+
+    {
+        i := 0:
+        break := false;
+        while (i < 5 && !break) do
+            if current = 5 then
+                current := 0;
+            else 
+                current := current + 1;
+            end
+            i := i + 1;
+            if current = 1 then
+                break := true;
+            end
+        done
+    }
+GOTO ACCESS

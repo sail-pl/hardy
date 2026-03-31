@@ -1,0 +1,13 @@
+input i : bool;
+output o : int;
+
+
+
+// from LTL2BA: this spec admits no deterministic buchi automaton 
+guarantees FG {o=1}
+
+setup :
+
+loop :
+ emit 1 to o;
+
