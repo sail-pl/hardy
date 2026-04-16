@@ -21,8 +21,10 @@ and ('a, 'qty) fol_ =
   
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
+  (*
   | ForallPrev of  ('a, 'qty) prev_quant (* temporal universal quantification *)
   | ExistsPrev of('a, 'qty) prev_quant (* temporal existential quantification *)
+  *)
 and ('a, 'qty) prev_quant = {h_var: string; binder: string; f:  ('a, 'qty) fol}
 
 
@@ -36,8 +38,6 @@ let map_pred m : 'a predicate -> 'b predicate = function
   
 
 type ('a, 'qty) pred_fol = ('a predicate, 'qty) fol
-
-
 
 
 type 'qty pred_decl = {name: string; params: string list; body: (string,'qty) fol }
@@ -68,14 +68,14 @@ let map_fol : type a b ty_a ty_b.
   | Exists (l, f) ->
       let value = Exists (List.map m_ty l, m f) in
       { form with value }
-  | ForallPrev q ->
+  (* | ForallPrev q ->
       let f = m q.f in
       let value = ForallPrev {q with f} in
       { form with value }
   | ExistsPrev q ->
       let f = m q.f in
       let value = ExistsPrev {q with f} in
-      { form with value }
+      { form with value } *)
 
 let rec fold_fol : type a b t.
     (b -> (a, t) fol  -> b) -> (b -> a -> b) -> b -> (a, t) fol -> b =
@@ -87,7 +87,7 @@ let rec fold_fol : type a b t.
   | FOL_StdBinary (f1, _, f2) -> j (fold_fol j pj (fold_fol j pj init f1) f2) form
   | FOL_StdNary (_,l) -> j (List.fold_left (fold_fol j pj) init l) form
   | Forall (_, f) | Exists (_, f) -> j (fold_fol j pj init f) form
-  | ExistsPrev q | ForallPrev q -> j (fold_fol j pj init q.f) form
+  (* | ExistsPrev q | ForallPrev q -> j (fold_fol j pj init q.f) form *)
 
 (** [map_fol_ty m f] replaces every quantifer [Exists (l,e)] and [Forall (l,e)]
     of [f] by [X (List.map m l,e)] *)
@@ -107,7 +107,7 @@ let map_fol_pred = fun x -> map_fol_pred_ty (Fun.id) x
 
 let true_fol : ('a, 'b) fol = mk_dummy_loc FOL_True
 let false_fol : ('a, 'b) fol = mk_dummy_loc FOL_False
-let atomic_fol (x : 'a) : ('a, 'b) fol = mk_dummy_loc (FOL_Atom x)
+let atom_fol (x : 'a) : ('a, 'b) fol = mk_dummy_loc (FOL_Atom x)
 
 let not_fol (f : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (FOL_StdUnary (LNot, f))
@@ -129,3 +129,18 @@ let forall_fol (vars : (string * 'qty) list) (f : ('a, 'b) fol) : ('a, 'b) fol =
 
 let exists_fol (vars : (string * 'qty) list) (f : ('a, 'b) fol) : ('a, 'b) fol =
   mk_dummy_loc (Exists (vars, f))
+
+let fol_of_bool_a (convert_atom : 'a -> ('b, 'c) fol) (f: 'a bool_a) : ('b, 'c) fol =
+  let rec aux = function
+  | True -> true_fol
+  | False -> false_fol
+  | Atom a -> convert_atom a
+  | And (f1, f2) -> and_fol (aux f1) (aux f2) 
+  | Or (f1,f2) -> or_fol (aux f1) (aux f2)
+  | Not f -> not_fol (aux f)
+in aux f
+
+let fol_of_cnf (convert_atom : 'a -> ('a, 'b) fol) (f: 'a cnf) : ('a, 'b) fol cnf =
+  List.map (fun {disjuncts} ->
+      List.map convert_atom disjuncts |> mk_disj
+    ) f.conjuncts |> mk_conj

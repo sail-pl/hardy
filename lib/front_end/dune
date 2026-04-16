@@ -2,4 +2,4 @@
  (name hardyFrontEnd)
  (public_name hardy.front_end)
  (libraries hardyMisc frontParser)
- (modules parsing cli printer syntax typing))
+ (modules parsing cli printer syntax pltl_typing ltl_typing frontSig))

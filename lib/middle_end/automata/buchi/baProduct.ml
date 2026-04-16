@@ -2,7 +2,7 @@ open HardyFrontEnd
 open Syntax.Program
 (* open Syntax.Shared *)
 open Syntax.Instant
-open MiddleParser.SyntaxCommon
+(* open MiddleParser.SyntaxCommon *)
 
 
 type 'a arc_data = {
@@ -28,21 +28,21 @@ module Make(G : BuchiSig.S)
   (* /!\ make sure to always create vertices with the same argument order *)
 
 
-
-
   (* Atoms not needed in the product *)
   module FAtom : Atom.S = struct 
     type _ t = unit 
-    type qty = unit
-    type ty = unit
-    type _ data = unit 
+    type atom = unit
+    type data = unit 
     let subst _ = ()
-    let add_and_get _ = ()
+    let register_atom _ = ()
+    let get_atom_ids _ = ()
     let get_atom _ = ()
     let set_data _  _ = ()
     let get_data _ = ()
+    let map _ _ = ()
+    let join _ = ()
   end 
-  module TAtom : TseitinAtomSig = struct 
+  module TAtom : MiddleParser.Labeling.TseitinAtomSig = struct 
     type t = unit 
     let neg _ = ()
     let create _ = ()
@@ -53,7 +53,7 @@ module Make(G : BuchiSig.S)
     let is_generated _ = false
   end 
   
-  module BA = BoolAlgebra(TAtom)
+  (* module BA = BoolAlgebra(TAtom) *)
 
  module Transition : Graph.Sig.ORDERED_TYPE_DFT with type t =  G.E.label arc_data = struct
     type t =  G.E.label arc_data
@@ -62,7 +62,7 @@ module Make(G : BuchiSig.S)
 
     let default : t =
       {
-        arc_f = { requires = G.Transition.default ; ensures = G.Transition.default; data=()};
+        arc_f = { requires = G.Transition.default ; ensures = G.Transition.default};
         (* arc_min_nb_instants = { nb_instant = 0; is_max = false }; *)
       }
   end
@@ -73,7 +73,6 @@ module Make(G : BuchiSig.S)
       (Graph.Util.CMPProduct (G.V) (G.V)) (Transition)
 
   include GProd
-  module U = Nc2ba.Utils (GProd)
 
   type vdata = vertex_data
 
@@ -200,7 +199,7 @@ module Make(G : BuchiSig.S)
           Queue.push next_node workq;
           add_node next_node next_node_data);
         (* make the curr_node -> new_node transition *)
-        let arc_f = { requires = G.E.label r; ensures = G.E.label g ; data = () } in
+        let arc_f = { requires = G.E.label r; ensures = G.E.label g } in
         let edge =
           E.create curr_node
             {

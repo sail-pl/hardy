@@ -34,7 +34,7 @@
   ocamlgraph
   progress
   nottui-unix
-
+  shexp
   )
   ; (tags
   ; (topics "to describe" your project))

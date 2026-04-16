@@ -1,11 +1,26 @@
 type edge_type = Blocking | Universal | Unknown
 
+
+module VertexFind (G : Graph.Sig.I) = struct
+  (* no vertex find function ??
+    -> from the manual: 
+    "you should better keep the vertices as long as you create them."
+  *)
+  exception Found of G.V.t
+
+  let find_v_opt g i =
+    try
+      G.iter_vertex (fun v -> if G.V.label v = i then raise (Found v)) g;
+      None
+    with Found v -> Some v
+end
+
+
+
 module type S = sig
-  module FAtom : Atom.S
+  (* module TAtom : MiddleParser.SyntaxCommon.TseitinAtomSig *)
 
-  module TAtom : MiddleParser.SyntaxCommon.TseitinAtomSig
-
-  module BA : module type of MiddleParser.SyntaxCommon.BoolAlgebra(TAtom)
+  (* module BA : module type of MiddleParser.SyntaxCommon.BoolAlgebra(TAtom) *)
 
   include Graph.Sig.G
 

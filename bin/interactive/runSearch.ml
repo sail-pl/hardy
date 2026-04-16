@@ -7,7 +7,7 @@ module F (I : Sig.S) = struct
     let hash = I.triple_hash
   end) *)
 
-  type triples_status = (I.triple, I.proof_result) Hashtbl.t
+  (* type triples_status = (I.triple, I.proof_result) Hashtbl.t *)
 
   let run program funs =
     Format.print_flush ();

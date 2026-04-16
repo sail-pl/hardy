@@ -1,31 +1,33 @@
 open HardyFrontEnd.Syntax
-open MiddleParser.SyntaxCommon
+open FrontParser.SharedSyntax
+open MiddleParser.Labeling
 open MiddleParser.HoaSyntax
 (* open HardyMisc.Utils *)
 
 
+
 module Make
-  (TAtom: TseitinAtomSig)
-  (FAtom : Atom.S with 
+  (* (TAtom: 
+    TseitinAtomSig 
+    (* was used to force formulas into cnf, creating additional predicates to counter exponential size *)
+  ) *)
+  (Atom : Atom.S with 
     type 'a t = 'a 
-    and type _ data = Instant.min_nb_instants
-    and type qty = Shared.base_ty
-    and type ty = Instant.instant option * Shared.ty
-  ) :
+  (* formula level atoms *)
+  )
+  (Label : BoolA with type 'a t = Atom.atom
+    (* arc labeling: a boolean algebra of propositions *)
+  ) : 
   BuchiSig.S  
     with type init_val = hoa  
-    and type E.label = BoolAlgebra(TAtom).t
-    and type TAtom.t = TAtom.t
-    and type 'a FAtom.t = 'a 
-    and type FAtom.ty = Instant.instant option * Shared.ty
-    and type FAtom.qty = Shared.base_ty
-    and type _ FAtom.data = Instant.min_nb_instants
-
+    and type E.label = string bool_a
+    (* and type TAtom.t = TAtom.t *)
+    (* and type 'a FAtom.t = 'a  *)
+    (* and type FAtom.atom = FAtom.atom *)
+    (* and type 'a FAtom.data = 'a FAtom.data  *)
   =
 struct
-  module FAtom = FAtom
   module TAtom = TAtom
-  module BA = BoolAlgebra(TAtom)
 
   type hoa_vdata = {acceptant: bool; start:bool}
 
@@ -33,7 +35,6 @@ struct
 
     (* states are just labels and whether they are acceptant *)
     type t = string * hoa_vdata
-
 
 
     let compare s1 s2 = String.compare (fst s1) (fst s2)
@@ -44,7 +45,7 @@ struct
 
 
   module Transition = struct
-      type t =  BA.t
+      type t =  string bool_a
       let compare = Stdlib.compare
       let default : t = True
   end
@@ -65,27 +66,26 @@ struct
     in
     let [@warning "-4"] start = List.find_map (function Start [x] -> Some x | _ -> None ) hoa.header.items |> Option.get in
 
-    let [@warning "-4"] ap_labels= List.find_map (function Atomic (_,l) -> Some l | _ -> None ) hoa.header.items |> Option.get |> List.mapi (fun i x -> (i,x)) in
+    let [@warning "-4"] ap_labels = List.find_map (function Atomic (_,l) -> Some l | _ -> None ) hoa.header.items |> Option.get |> List.mapi (fun i x -> (i,x)) in
 
-      let true_atom = FAtom.add_and_get Fol.true_fol |> snd |> TAtom.create in
-      let false_atom = FAtom.add_and_get Fol.false_fol |> snd |> TAtom.create in
+      let true_atom = Atom.register_atom Label.tt |> snd (*|> TAtom.create *) in
+      let false_atom = Atom.register_atom Label.ff  |> snd (*|> TAtom.create*) in
 
-    let get_edge_label n : TAtom.t = 
-      (* Format.printf "[%a]@." (Format.pp_print_list (fun fmt (i,s) -> Format.fprintf fmt "(%i,%s)" i s)) ap_labels; *)
-      
+    let get_edge_label n : string = 
+      (* Format.printf "[%a]@." (Format.pp_print_list (fun fmt (i,s) -> Format.fprintf fmt "(%i,%s)" i s)) ap_labels; *) 
       match List.assoc_opt n ap_labels with
-      | Some id -> TAtom.create id
+      | Some id -> (* TAtom.create*) id
       | None -> 
           (* no label, make the atom map to true *)
           Format.printf "no label for atom: %i, mapping to 'true'\n" n;
-          true_atom
+          true_atom 
     in
     let [@warning "-4"] g = create ~size:(List.find_map (function States n -> Some n | _ -> None) hoa.header.items |> Option.get) () in
     List.iter
       (fun (state,edges) ->
         List.iter (fun edge ->
           let src = V.create  (string_of_int state.state_number, {start=state.state_number = start; acceptant=state.state_acc_sets <> []}) 
-          and label = edge.edge_label |> Option.get |> map_eba (function 
+          and label = edge.edge_label |> Option.get |> map_formula (function 
             | BoolLabel true -> true_atom
             | BoolLabel false -> false_atom
             | IntLabel i ->  get_edge_label i
@@ -123,31 +123,31 @@ struct
   | NotLabel e -> "~" ^ string_of_edge e *)
   
 
-  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(
-      let name = TAtom.get_atom_id s in
+  let pp_atom_full = fun fmt s ->
+      (* let name = TAtom.get_atom_id s in
       if TAtom.is_generated s then 
         Format.fprintf fmt "g%s" name
-      else 
-        pp_fol (pp_pred (pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t)))) (Format.pp_print_option pp_base_ty) fmt (name |> FAtom.get_atom |> snd) 
-  )
+      else  *)
+        Label.pp (fun _ _ -> ()) fmt (s |> Atom.get_atom |> snd)
+
   
   let pp_atom_short = fun fmt s -> 
-      let name = TAtom.get_atom_id s in
+      (*let name = TAtom.get_atom_id s in
       if TAtom.is_generated s then 
         Format.fprintf fmt "g%s" name
-      else
-        Format.pp_print_string fmt (name |> FAtom.get_atom |> fst |> fun s -> "a" ^ s) 
+      else*)
+        Format.pp_print_string fmt (s |> Atom.get_atom |> fst |> fun s -> "a" ^ s) 
 
 
   let pp_edge fmt (f : E.label) = 
-    let pp_atom = (if eba_depth f > 4 then pp_atom_short else pp_atom_full) in
-    Format.(fprintf fmt "%a" (pp_eba pp_atom) f)
+    let pp_atom = (if formula_depth f > 4 then pp_atom_short else pp_atom_full) in
+    Format.(fprintf fmt "%a" (pp_boola pp_atom) f)
   let get_vdata = snd
 
   let get_edge_type (_ : E.label) = BuchiSig.Unknown
 end
 
-module SpinHoaOutput : Sig.ToolSig with 
+module SpinHoaOutput : AutSig.ToolSig with 
         type input = string HardyFrontEnd.Syntax.Ltl.ltl and
         type output = hoa
 = struct
@@ -169,4 +169,36 @@ module SpinHoaOutput : Sig.ToolSig with
     if ret <> 0 then
       failwith (sprintf "non-0 exit-code (%i) from ltl2tgba@." ret)
     else MiddleParser.HoaParsing.parse_automaton hoa_file
+end
+
+
+module PpLTLHoaOutput : AutSig.ToolSig with 
+        type input = string Pltl.pltl HardyFrontEnd.Syntax.Ltl.ltl and
+        type output = hoa
+= struct
+  open HardyFrontEnd
+  
+  type input = string Pltl.pltl HardyFrontEnd.Syntax.Ltl.ltl
+  type output = hoa
+
+  let call (_i : Cli.info) (hoa_file : string -> string) (f : string Pltl.pltl Syntax.Ltl.ltl) : output =
+    let open Format in
+    let hoa_file = hoa_file ".hoa" in
+    
+    let to_spin = Printer.(pp_ltl (pp_pltl_default pp_print_string) pp_ltl_binop_spin pp_ltl_unnop_spin) in
+    
+    
+     let proc = Shexp_process.(Let_syntax.(
+        find_executable_exn "pltl2tgba" >>= fun pltl2tgba ->
+        run pltl2tgba [ "-f" ; asprintf "%a" to_spin f ] 
+        |- run "autfilt" ["-D" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
+        |> stdout_to hoa_file
+        |> stderr_to (hoa_file ^ ".err")
+      )
+      )
+    in
+    Shexp_process.eval proc;
+    (* if i.verbose then  
+      print_string @@ "command output: " ^ Shexp_process.eval proc; *)
+    MiddleParser.HoaParsing.parse_automaton hoa_file
 end

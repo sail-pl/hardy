@@ -1,6 +1,6 @@
 %{
-    open SyntaxCommon
     open HoaSyntax
+    open HardyFrontEnd.Syntax.Shared
 %}
 
 // based on https://adl.github.io/hoaf/
@@ -60,12 +60,12 @@ let label_expr :=
     | ~=INT ; <IntLabel>
     | ~=ANAME ; <NameLabel>
 
-let eba :=     
+let boolean_algebra :=     
     | ~ = label_expr ; <Atom>
-    | BANG ; ~=eba ; <Not>
-    | LPAR ; ~=eba ; RPAR ; <>
-    | e1=eba ; AMPER ; e2=eba ; {And (e1,e2)}
-    | e1=eba ; BAR ; e2=eba ; {Or (e1,e2)}
+    | BANG ; ~=boolean_algebra ; <Not>
+    | LPAR ; ~=boolean_algebra ; RPAR ; <>
+    | e1=boolean_algebra ; AMPER ; e2=boolean_algebra ; {And (e1,e2)}
+    | e1=boolean_algebra ; BAR ; e2=boolean_algebra ; {Or (e1,e2)}
 
 let acceptance_cond :=
     | ACCEPT_FIN ; LPAR ; complement=boption(BANG) ; set_number=INT ; RPAR ; { SetCond {fin_occur=true; set_number; complement } }
@@ -83,4 +83,4 @@ let acc_sig := LBRACE ; ~=INT* ; RBRACE ; <>
 
 let edge := edge_label=label? ; edge_dst=state_conj ; edge_acc_sets=loption(acc_sig) ; { {edge_dst; edge_label; edge_acc_sets} } 
 
-let label := LSQBRACE ; ~=eba ; RSQBRACE ; <>
+let label := LSQBRACE ; ~=boolean_algebra ; RSQBRACE ; <>

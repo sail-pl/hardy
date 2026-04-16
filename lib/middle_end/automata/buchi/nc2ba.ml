@@ -1,42 +1,20 @@
-open HardyFrontEnd.Syntax
-open MiddleParser.SyntaxCommon
+open FrontParser.SharedSyntax
 open MiddleParser.NcSyntax
 
-module Utils (G : Graph.Sig.I) = struct
-  (* no vertex find function ??
-    -> from the manual: 
-    "you should better keep the vertices as long as you create them."
-  *)
-  exception Found of G.V.t
-
-  let find_v_opt g i =
-    try
-      G.iter_vertex (fun v -> if G.V.label v = i then raise (Found v)) g;
-      None
-    with Found v -> Some v
-end
 
 module Make
-  (TAtom: TseitinAtomSig)
-  (FAtom : Atom.S with 
-    type 'a t = 'a and 
-    type _ data = Instant.min_nb_instants
-    and type qty = Shared.base_ty
-    and type ty = Instant.instant option * Shared.ty
-  ) :
-  BuchiSig.S with 
-    type init_val = neverclaim  and 
-    type E.label = BoolAlgebra(TAtom).t and 
-    type TAtom.t = TAtom.t and 
-    type 'a FAtom.t = 'a and 
-    type _ FAtom.data = Instant.min_nb_instants and
-    type FAtom.ty = Instant.instant option * Shared.ty and 
-    type FAtom.qty = Shared.base_ty
+  (Atom : Atom.S with 
+    type 'a t = 'a 
+   ) 
+   (Label : BoolA with type 'a t = Atom.atom) :
+  
+   BuchiSig.S with 
+    type init_val = neverclaim
+    (* and type 'a FAtom.t = 'a  *)
+    (* and type FAtom.atom = (Shared.base_ty, Shared.ty) fol_t Pltl.pltl *)
+    (* and type _ FAtom.data = Instant.min_nb_instants *)
   =
 struct
-  module FAtom = FAtom
-  module TAtom = TAtom
-  module BA = BoolAlgebra(TAtom)
 
   module State = struct
   (* states are just labels *)
@@ -50,7 +28,7 @@ struct
 
   (* output of ltl2ba with formula for each arc *)
   module Transition = struct
-    type t =   BA.t
+    type t = string bool_a
 
     let compare = Stdlib.compare
     let default : t =  True
@@ -71,7 +49,7 @@ struct
         let e =
           E.create
             (V.create tr.pml_src.pml_state)
-            (map_eba TAtom.create tr.pml_form)
+            (tr.pml_form)
             (V.create tr.pml_dst.pml_state)
         in
         add_edge_e g e)
@@ -86,14 +64,18 @@ struct
 
   let id_of_vertex = Format.asprintf "%a" pp_vertex
 
-  let pp_atom_full = fun fmt s -> HardyFrontEnd.Printer.(pp_fol (pp_pred (pp_exp (fun fmt (x,(y,_)) -> pp_hist fmt (x,y)))) (Format.pp_print_option pp_base_ty)) fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> snd) 
-  let pp_atom_short = fun fmt s -> Format.pp_print_string fmt ( s |> TAtom.get_atom_id |> FAtom.get_atom |> fst) 
+  let pp_atom_full = fun fmt s -> 
+    Label.pp (fun _ _ -> ()) fmt (s |> Atom.get_atom |> snd)
+  
+  let pp_atom_short = fun fmt s -> 
+        Format.pp_print_string fmt (s |> Atom.get_atom |> fst |> fun s -> "a" ^ s) 
+
 
 
   let pp_edge fmt (f : E.label) = 
     let nb_lit = 
       let [@warning "-4"] rec aux f = 
-        fold_eba (fun f -> match f with 
+        fold_formula (fun f -> match f with 
         | And (f1,f2) | Or (f1,f2)  -> fun _ -> max (aux f1) (aux f2)
         | _ -> Lazy.map_val ((+) 1)
         ) (fun _ -> Lazy.map_val ((+) 1)) (Lazy.from_val 0) f 
@@ -101,13 +83,13 @@ struct
     in
     (* serves as a hint to decide if atoms should be printed in short or full form *)
     let pp_atom = (if nb_lit > 6 then pp_atom_short else pp_atom_full) in
-    Format.(fprintf fmt "%a" (pp_eba pp_atom) f)
+    Format.(fprintf fmt "%a" (pp_boola pp_atom) f)
   let get_vdata _ = ()
 
   let get_edge_type (_ : E.label) = BuchiSig.Unknown
 end
 
-module Ltl2baNcOutput : Sig.ToolSig with 
+module Ltl2baNcOutput : AutSig.ToolSig with 
         type input = string HardyFrontEnd.Syntax.Ltl.ltl and
         type output = neverclaim
 = struct
@@ -132,7 +114,7 @@ module Ltl2baNcOutput : Sig.ToolSig with
 end
 
 
-module SpinNcOutput : Sig.ToolSig with 
+module SpinNcOutput : AutSig.ToolSig with 
         type input = string HardyFrontEnd.Syntax.Ltl.ltl and
         type output = neverclaim
 = struct
