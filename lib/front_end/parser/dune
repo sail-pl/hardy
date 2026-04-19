@@ -14,11 +14,15 @@
  (flags
   --external-tokens Tokens
   --unused-token SYMB_AT --unused-token DOLLAR  --unused-token SHARP
-  --unused-token UNDERSCORE  --unused-token HAT --unused-token QMARK 
-  --unused-token ALL --unused-token ANY --unused-token PREV --unused-token LAST --unused-token AT 
+  --unused-token UNDERSCORE  
+  --unused-token HAT --unused-token QMARK 
+  --unused-token ALL --unused-token ANY --unused-token AT 
+  --unused-token PREV --unused-token LAST  --unused-token AS
+  --unused-token EXISTS_PREV
+  --unused-token FORALL_PREV
   --unused-token FIRST
   --unused-token START
-  ; --strict
+  --strict
   --explain))
 
 (menhir
@@ -26,11 +30,15 @@
  (merge_into pgrmLtlParser)
  (flags
   --external-tokens Tokens
+  --unused-token HAT --unused-token QMARK 
+  --unused-token UNDERSCORE  
+  --unused-token ALL --unused-token ANY --unused-token AT 
   --unused-token ONCE 
   --unused-token YESTERDAY 
   --unused-token HISTORICALLY 
   --unused-token SINCE 
-  ; --strict
+  --unused-precedence-levels
+  --strict
   --explain))
 
 (library
