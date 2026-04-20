@@ -74,19 +74,19 @@ module
   type triple_data = triple_data and
   type local_spec = base_spec_t and
   type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) temp_spec_t, FrontSig.temp_f_prop)  labeled  and
-  type in_spec = (((instant option * Shared.ty, Shared.base_ty) fol_t, fol_data) U.labeled, formula_data) labeled cnf and
+  type in_spec = ((instant option * Shared.ty, Shared.base_ty) fol_t, formula_data) labeled cnf and
   type out_pgrm = P.mlw_file 
 = struct
 
   type local_spec = base_spec_t
   type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) temp_spec_t, FrontSig.temp_f_prop) labeled
 
-  type formula = ((instant option * Shared.ty, Shared.base_ty) fol_t, fol_data) U.labeled
+  type formula = ((instant option * Shared.ty, Shared.base_ty) fol_t, formula_data) U.labeled
 
   type in_pgrm = (temp_spec, unit, base_spec_t, ty, ty env) program
   type in_setup = (base_spec_t, ty) setup
   type in_body = (base_spec_t, ty) stmt list
-  type in_spec = (formula, formula_data) labeled cnf
+  type in_spec = formula cnf
   type in_fun = cnf_data
 
   type nonrec triple_data = triple_data
@@ -282,18 +282,22 @@ module
                   which means they also depend on the previous input and state  
                   (state is kept from one instant to the other so it is not useful to adjust it).
               *)
-              pterm_of_fol (map_fol_pred (map_expr Fun.id Fun.id) 
+              pterm_of_fol (map_fol_pred (map_expr Fun.id (fun ((id,(_,(cat,ty))) as v) -> 
+                if cat = Output || cat = Input then 
+                  (id,(Some (Previous 1),(cat,ty)))
+                else v
+                )) 
               inv)
             ) d.invariants
         ) (Some d.nb_instants)
       in
       history :: List.fold_left
-        (fun acc (f: (formula, formula_data)  labeled disjunction) -> match f with
+        (fun acc (f: formula disjunction) -> match f with
         | {disjuncts=[f]} -> 
-            pterm_of_fol f.value.value :: acc
+            pterm_of_fol f.value :: acc
         | d ->
             let f = fold_mjoin (fun f -> 
-                why3_and (pterm_of_fol f.value.value) (length_assert f.label.formula_data) 
+                why3_and (pterm_of_fol f.value) (length_assert f.label.formula_data) 
             ) why3_or (term Ttrue) d.disjuncts
             in f::acc 
         ) inv spec.requires.conjuncts
@@ -301,9 +305,9 @@ module
       List.fold_left
         (fun l disj -> match disj with 
         | {disjuncts=[f]} -> 
-                 (Loc.dummy_position,[pat Pwild , pterm_of_fol f.value.value]):: l 
+                 (Loc.dummy_position,[pat Pwild , pterm_of_fol f.value]):: l 
         | d ->  
-            let f = fold_mjoin (fun f -> pterm_of_fol f.value.value
+            let f = fold_mjoin (fun f -> pterm_of_fol f.value
             ) why3_or (term Ttrue) d.disjuncts
             in 
              (Loc.dummy_position,[pat Pwild ,f]) :: l 

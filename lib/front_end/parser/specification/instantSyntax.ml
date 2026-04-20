@@ -6,6 +6,11 @@ type instant = At of int | Previous of int
 type min_nb_instants = { nb_instant : int; is_max : bool }
 (** approximation of the number of instants *)
 
+
+let pp_min_nb_instant : Format.formatter -> min_nb_instants -> unit = fun fmt inst -> 
+  Format.fprintf fmt "insts %s %i" (if inst.is_max then "=" else "≥") inst.nb_instant
+
+
 let min_nb_instant_dft = { nb_instant = 0; is_max = false }
 let add_nb_instant n i = { i with nb_instant = i.nb_instant + n }
 let make_exactly i = { i with is_max = true }

@@ -36,8 +36,16 @@ type parsed_spec_t = (unit,Shared.base_ty) fol_t
 type base_spec_t = (Instant.instant option * Shared.ty,Shared.base_ty) fol_t
 
 
-type eba_data = {eba_data : Instant.min_nb_instants }
-type fol_data = {fol_data : Instant.min_nb_instants }
+(* data of the product automaton transitions *)
+type transition_data = {transition_data : Instant.min_nb_instants }
+
+(* type fol_data = {fol_data : unit } *)
+
+(* data of first-order logic formulas *)
 type formula_data = {formula_data : Instant.min_nb_instants }
+
+(* data of the conjunction of formulas *)
 type cnf_data = {cnf_data : Instant.min_nb_instants}
+
+
 type triple_data = { triple_id : string ; invariants : base_spec_t list; nb_instants : Instant.min_nb_instants}

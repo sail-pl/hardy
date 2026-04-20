@@ -18,10 +18,6 @@ end
 
 
 module type S = sig
-  (* module TAtom : MiddleParser.SyntaxCommon.TseitinAtomSig *)
-
-  (* module BA : module type of MiddleParser.SyntaxCommon.BoolAlgebra(TAtom) *)
-
   include Graph.Sig.G
 
 

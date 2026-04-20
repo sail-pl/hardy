@@ -16,7 +16,6 @@ module M
         with type 'a t = 'a (* imperative version for simplicity *)
         with type atom = ((Instant.instant option * ty, base_ty) fol_t, temp_f_prop) labeled
       ) 
-      (* (F : Shared.Formula with type 'a t := FAtom.atom) *)
       (B:  BuchiSig.S 
       )
       (
@@ -28,9 +27,9 @@ module M
         ) 
         : GenSig.TriplesSig with
         type local_spec = base_spec_t and
-        type temp_spec = ((temp_f_prop, Instant.instant option * Shared.ty, Shared.base_ty) temp_spec_t, temp_f_prop) labeled and
+        type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) temp_spec_t, temp_f_prop) labeled and
         type automaton = BProd.t  and
-        type t = ((( ((Instant.instant option * Shared.ty, Shared.base_ty) fol_t, fol_data) U.labeled, formula_data) labeled cnf, cnf_data) hoare_triple, triple_data) labeled conjunction
+        type t = (( ((Instant.instant option * ty, base_ty) fol_t, formula_data) labeled cnf, cnf_data) hoare_triple, triple_data) labeled conjunction
         
   = struct
   module BUtils = BuchiSig.Utils (B)
@@ -38,33 +37,22 @@ module M
   (* triples are generated from the product automaton *)
   type automaton = BProd.t
 
-  type temp_spec = ((temp_f_prop, Instant.instant option * Shared.ty, Shared.base_ty) temp_spec_t, temp_f_prop) labeled
+  type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) temp_spec_t, temp_f_prop) labeled
 
   type local_spec = base_spec_t
 
   (* triples contains formulas with the following type*)
-  type formula = ((Instant.instant option * Shared.ty, Shared.base_ty) fol_t, fol_data) U.labeled
+  type formula = ((Instant.instant option * ty, base_ty) fol_t, formula_data) labeled
 
-
-  type nonrec formula_data = formula_data
 
   (* final form of triples *)
-  type t = (((formula, formula_data) labeled cnf, cnf_data) hoare_triple, triple_data) labeled conjunction
-
-
-
-  let atom_of_label (m: AtomStore.atom -> formula) : string bool_a -> formula = 
-    fun x -> 
-      let f = map_formula (fun a ->  m AtomStore.(map snd (get_atom a))) x in
-      (*fixme: do not remove labels *)
-      mk_labeled ~label:{fol_data=Instant.min_nb_instant_dft} (fol_of_bool_a (fun x -> x.value) f) 
-  
+  type t = ((formula cnf, cnf_data) hoare_triple, triple_data) labeled conjunction
 
 
   (** [previous_instant_spec in_e init_post] produces the set of state formulas that must hold for a set of (incoming) edges [in_e],
       optionally appending an additional formula [init_post] if the node is initial
   *)
-  let previous_instant_spec (in_e,_v: BProd.edge disjunction * BProd.vdata) (init_post : base_spec_t option) : (formula, formula_data) labeled cnf =
+  let previous_instant_spec (in_e,_v: BProd.edge disjunction * BProd.vdata) (init_post : base_spec_t option) : formula cnf =
     let replace_i (v, (inst,(cty,bty))) =
         match inst,cty with
         (* no past *)
@@ -94,7 +82,7 @@ module M
         let nb_instant =
           add_nb_instant 1 BProd.(get_vdata (E.src e)).v_min_nb_instants
         in
-        mk_labeled ~label:{eba_data=nb_instant} l.arc_f.ensures)
+        mk_labeled ~label:{transition_data=nb_instant} l.arc_f.ensures)
       in_e
       
     (* if an input led to no restriction on the state, then there is no need
@@ -104,40 +92,35 @@ module M
           *)
     (* if List.exists (fun (f,_) -> BoolA.(DnfBASet.exists (fun a -> a= AtomicBASet.singleton True) f.disjuncts)) l then [] else l *)
 
-    |> fun (disj : (string bool_a, eba_data) labeled disjunction) ->
+    |> fun (disj : (string bool_a, transition_data) labeled disjunction) ->
 
-    (* the minimum number of instants of each eba is the maximum of all the minimum of the atoms  *)
-    (* assert (List.fold_left (fun acc x -> Int.min acc x.label.eba_data.nb_instant) Int.max_int disj.disjuncts = v.v_min_nb_instants.nb_instant); *)
+    (* the minimum number of instants of each transition is the maximum of all the minimum of the atoms  *)
+    (* assert (List.fold_left (fun acc x -> Int.min acc x.label.transition_data.nb_instant) Int.max_int disj.disjuncts = v.v_min_nb_instants.nb_instant); *)
 
-    map_disjuncts (fun d ->       
-      let value = (atom_of_label @@ (map_value @@ map_fol_pred @@ map_expr Fun.id replace_i >> map_label @@ fun _ -> {fol_data=min_nb_instant_dft})) d.value
-      and label = {formula_data=d.label.eba_data} (* now the label is over a formula *)
-      in 
-      mk_labeled ~label value    
+    map_disjuncts (fun d ->  
+        map_formula (fun a ->
+          let atom = AtomStore.(map snd (get_atom a)) (* recover atoms *) in
+          (map_fol_pred @@ map_expr Fun.id replace_i) atom.value  (* adjust temporal quantification *)
+        ) d.value 
+        |> fol_of_bool_a Fun.id (* flatten boolean algebra into fol *)
+        |> mk_labeled ~label:{formula_data=d.label.transition_data} (* enrich the formula with transition data *)
     ) disj
       
-    |> fun (disj : (formula, formula_data) labeled disjunction) ->
+    |> fun (disj : formula disjunction) ->
 
     (* if the current node is initial, add the setup postcondition to the disjunction *)
     Option.fold init_post
       ~none:disj 
       ~some:(fun (spec : base_spec_t) -> 
         let spec : formula = 
-            let pred = map_fol_pred_ty Fun.id (map_expr Fun.id (fun (id,(cat,t)) -> id,(cat,t))) spec
-            and label = {fol_data=min_nb_instant_dft}
-            in mk_labeled ~label pred 
-        in 
-
-        let spec : (formula, formula_data) labeled =  
-          let label = {formula_data = { nb_instant = 0; is_max = true }} in
-          mk_labeled ~label spec
-         
+            let pred = spec (* map_fol_pred_ty Fun.id (map_expr Fun.id Fun.id) spec *)
+            and label = {formula_data={ nb_instant = 0; is_max = true }} (* we are at the first instant if we executed the setup just before *)
+            in mk_labeled ~label pred          
         in add_disjunct spec disj
       ) 
       
-    |> fun (disj : (formula, formula_data) labeled disjunction) -> 
-     mk_conj [disj]
-
+    |> fun (disj : formula disjunction) -> 
+    mk_conj [disj]
 
     (* if a variable from the current node precondition or postcondition refers to the instant n and we know we are at this instant, 
       remove the temporal quantification
@@ -145,7 +128,7 @@ module M
         it is reached for the first time (instant = n) and one where it is reached again (instant > n) ? 
       *)
 
-    let [@warning "-4"] at_current_instant_replace_post (v: BProd.vdata) : ('a,'b) fol_t -> ('a,'b) fol_t =
+  let [@warning "-4"] at_current_instant_replace_post (v: BProd.vdata) : ('a,'b) fol_t -> ('a,'b) fol_t =
       if v.v_min_nb_instants.is_max then
         map_fol_pred 
           (map_expr Fun.id (fun (id, (inst,t)) ->
@@ -171,7 +154,7 @@ module M
   let generate_node_spec
       ((in_e, v, out_e) : BProd.edge disjunction * BProd.vertex * BProd.edge disjunction)
       (init_post : base_spec_t option) :
-      ((formula, formula_data) labeled cnf, cnf_data) hoare_triple conjunction =
+      (formula cnf, cnf_data) hoare_triple conjunction =
     
     (* a state always has a successor *)
     assert (not (List.is_empty out_e.disjuncts));
@@ -179,11 +162,12 @@ module M
     (* apart from the initial node, a state always has a predecessor *)
     assert ((not (List.is_empty in_e.disjuncts)) || BProd.is_start_node v);
 
+    (* get data from the vertex *)
     let vdata = BProd.get_vdata v in
 
     (* create a map binding the exit-arc rely formula to all its guarantee ones *)
     let module M = Map.Make (struct
-      type t = (string bool_a, eba_data) labeled
+      type t = (string bool_a, transition_data) labeled
 
       let compare (e1 : t) (e2 : t) =
         (* let open Format in  *)
@@ -191,12 +175,13 @@ module M
     end) in
 
     (* adapt previous ensures to the current instant *)
-    let previous_ens : (formula, formula_data) labeled cnf = previous_instant_spec (in_e,vdata) init_post in
+    let previous_ens : formula cnf = previous_instant_spec (in_e,vdata) init_post 
+    in  
 
-    let m : (string bool_a, eba_data) labeled disjunction M.t =
+    let m : (string bool_a, transition_data) labeled disjunction M.t =
       (* Factorize exit arcs by common first component by buildin a map from
         first components to matching second components *)
-      let add_v_info = mk_labeled ~label:{eba_data=vdata.v_min_nb_instants} in
+      let add_v_info = mk_labeled ~label:{transition_data=vdata.v_min_nb_instants} in
       List.fold_left
         (fun m e ->
           let l = BProd.E.label e in
@@ -209,18 +194,22 @@ module M
 
     (* construct the spec for each first component
     *)
-    let mk_spec (req : (string bool_a, eba_data) labeled) (ens : (string bool_a, eba_data) labeled disjunction) 
-           : ((formula, formula_data) labeled cnf, cnf_data) hoare_triple conjunction -> ((formula, formula_data) labeled cnf, cnf_data) hoare_triple conjunction =
+    let mk_spec (req : (string bool_a, transition_data) labeled) (ens : (string bool_a, transition_data) labeled disjunction) 
+           : (formula cnf, cnf_data) hoare_triple conjunction -> (formula cnf, cnf_data) hoare_triple conjunction =
 
-        let requires : (formula, formula_data) labeled cnf  =
+        let requires : formula cnf  =
           (*  predicate on possible states of current node, 
               every input and output variables refer to the beginning and the end of the previous instant, respectively.    
           *)
-          let previous_req : (formula, formula_data) labeled cnf = previous_ens
-          and current_req : (formula, formula_data) labeled cnf = 
-              let value = (atom_of_label @@ (map_value @@  at_current_instant_replace_post vdata >> map_label @@ fun _ -> {fol_data=min_nb_instant_dft})) req.value
-              and label = {formula_data=req.label.eba_data} (* now the label is over a formula *)
-              in {value;label} |> disj_singleton |> conj_singleton
+          let previous_req : formula cnf = previous_ens
+          and current_req : formula cnf = 
+              map_formula (fun a ->
+                let atom = AtomStore.(map snd (get_atom a)) (* recover atoms *) in
+                (  at_current_instant_replace_post vdata) atom.value  (* adjust temporal quantification *)
+              ) req.value 
+              |> fol_of_bool_a Fun.id (* flatten boolean algebra into fol *)
+              |> mk_labeled ~label:{formula_data=req.label.transition_data} (* enrich the formula with transition data *)
+              |> disj_singleton |> conj_singleton
           in
           let reqs = previous_req.conjuncts@current_req.conjuncts in 
           (* List.filter (function
@@ -229,7 +218,7 @@ module M
             | _ -> true) reqs |> |> mk_conj *)
             mk_conj reqs 
 
-        and ensures : (formula, formula_data) labeled cnf =
+        and ensures : formula cnf =
           (* disjunction of output properties sharing the same input property *)
           (*let disjuncts =
              if List.exists (fun (f, _) -> f = True) ens then
@@ -237,10 +226,13 @@ module M
               []
             else fol_of_dnf_boola_replace ens
           in *)
-          map_disjuncts (fun ens ->       
-              let value = (atom_of_label @@ (map_value @@  at_current_instant_replace_post vdata >> map_label @@ fun _ -> {fol_data=min_nb_instant_dft})) ens.value
-            and label = {formula_data=ens.label.eba_data} (* now the label is over a formula *)
-            in {value;label}
+          map_disjuncts (fun ens ->      
+            map_formula (fun a ->
+             let atom = AtomStore.(map snd (get_atom a)) (* recover atoms *) in
+              (at_current_instant_replace_post vdata) atom.value  (* adjust temporal quantification *)
+            ) ens.value 
+            |> fol_of_bool_a Fun.id (* flatten boolean algebra into fol *)
+            |> mk_labeled ~label:{formula_data=ens.label.transition_data} (* enrich the formula with transition data *)
           ) ens |> conj_singleton
         in
         (* if List.for_all (fun d -> List.is_empty d.disjuncts) ensures.conjuncts then
@@ -275,7 +267,7 @@ module M
       let in_e = BProd.pred_e a v |> mk_disj in
       let out_e = BProd.succ_e a v |> mk_disj in
 
-      let specs : ((formula, formula_data) labeled cnf, cnf_data) hoare_triple conjunction =
+      let specs : (formula cnf, cnf_data) hoare_triple conjunction =
         generate_node_spec (in_e, v, out_e) extra_req
       in
 

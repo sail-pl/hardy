@@ -28,33 +28,6 @@ module Make(G : BuchiSig.S)
   (* /!\ make sure to always create vertices with the same argument order *)
 
 
-  (* Atoms not needed in the product *)
-  module FAtom : Atom.S = struct 
-    type _ t = unit 
-    type atom = unit
-    type data = unit 
-    let subst _ = ()
-    let register_atom _ = ()
-    let get_atom_ids _ = ()
-    let get_atom _ = ()
-    let set_data _  _ = ()
-    let get_data _ = ()
-    let map _ _ = ()
-    let join _ = ()
-  end 
-  module TAtom : MiddleParser.Labeling.TseitinAtomSig = struct 
-    type t = unit 
-    let neg _ = ()
-    let create _ = ()
-    let pp _ _ = () 
-    let fresh () = ()
-    let get_atom_id _ = ""
-    let is_neg _ = false
-    let is_generated _ = false
-  end 
-  
-  (* module BA = BoolAlgebra(TAtom) *)
-
  module Transition : Graph.Sig.ORDERED_TYPE_DFT with type t =  G.E.label arc_data = struct
     type t =  G.E.label arc_data
 
@@ -98,11 +71,11 @@ module Make(G : BuchiSig.S)
 
   let pp_vertex fmt v =
     let l1, l2 = V.label v in
-    Format.fprintf fmt "{pre_%a @, post_%a} @. insts %s %i"
+    Format.fprintf fmt "{pre_%a @, post_%a} @. %a"
       G.pp_vertex l1
       G.pp_vertex l2
-      (if (get_vdata v).v_min_nb_instants.is_max then "=" else "≥")
-      (get_vdata v).v_min_nb_instants.nb_instant
+      pp_min_nb_instant
+     (get_vdata v).v_min_nb_instants
 
   let id_of_vertex v =
     let l1, l2 = V.label v in
