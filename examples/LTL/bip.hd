@@ -2,6 +2,7 @@ input i : bool;
 
 output o : bool;
 
+//assumes {{i}} 
 assumes G ({{i}} -> X !{{i}})
 assumes G ((!{{i}}) -> X {{i}})
 

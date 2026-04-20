@@ -13,10 +13,28 @@ var
   is_full : bool
 ;
 
-assumes G {{ data_in >= 0 }}
 
-guarantees {{ full = false }}
-guarantees X G {{ full = is_full }}
+// a size 1 buffer
+
+assumes G {{ data_in >= 0 }} 
+assumes G {!{push && pop}}
+
+
+//public spec
+
+
+// buffer is full until a pop is issued
+guarantees G ( {{full}} -> ({{pop}} R ({{pop}} || {{full}}) ))
+
+
+// buffer is empty until a push is issued
+guarantees G ({!{full}} -> ({{push}} R ({{push}} || {!{full}}) ))
+
+
+// if the buffer holds the current input, either it already had this input or the buffer was not full
+guarantees X G ({{buf = data_in}} -> ({{!prev full}} || {{buf = prev buf}}) )
+
+
 
 setup:
   ensures { buf = 0 }
@@ -25,6 +43,7 @@ setup:
   is_full := false;
 
 loop:
+  invariant {full = is_full}
   if pop && !is_full then
     emit false to has_out;
     emit 0 to data_out;
