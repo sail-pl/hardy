@@ -28,8 +28,7 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
         begin
           match cat_t with
           | Local -> tvar (qualid [ s ])
-          | State | Input | Output -> (
-              match inst with
+          | State | Input | Output -> match inst with
               | Some (Previous 0) | None ->
                   tapp ~loc (qualid [ s ])
                     [ [ get_cat_ty cat_t] |> qualid |> tvar ]
@@ -45,7 +44,7 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
                         tconst (n + 1) )
                     |> term
                   in
-                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ])
+                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ]
                 end
   | UnOp (ENot,t) -> Tnot (translate_term t) |> term  ~loc
   | BinOp v -> (

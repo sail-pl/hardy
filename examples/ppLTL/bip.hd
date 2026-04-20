@@ -2,18 +2,15 @@
  
  output o : bool;
  
- assumes {{{i}}}
- assumes G ( {{{i}}} -> X !{{{i}}} )
- assumes G ((!{{{i}}}) -> X {{{i}}})
+assumes {{{i}}}
+assumes G ( {{{i}}} -> X !{{{i}}} )
+assumes G ((!{{{i}}}) -> X {{{i}}})
  
 
 guarantees {{{!o}}}
-guarantees X G ({{{o}}} -> {Y {{o}}})
-guarantees X G ({{{!o}}} -> {!Y {{o}} })
+guarantees X G ({{{o}}} -> {Y {!{o}}})
+guarantees X G ({{{!o}}} -> {Y {{o}} })
 
-
-// problem: tests passes with this
-// guarantees X G ({{{i && false}} })
    
    
    

@@ -27,11 +27,13 @@ type ('atom_label,'ty,'qty) temp_spec_t = ('ty, 'qty, 'atom_label) inst_spec_t L
 type parsed_temp_spec_t = (unit, unit, Shared.base_ty) temp_spec_t
 type parsed_spec_t = (unit,Shared.base_ty) fol_t
 
-type base_spec_t = (Shared.ty,Shared.base_ty) fol_t
+type base_spec_t = (Instant.instant option * Shared.ty,Shared.base_ty) fol_t
 
 
-type eba_data = {eba_data : Instant.min_nb_instants }
-type fol_data = {fol_data : Instant.min_nb_instants }
+type transition_data = {transition_data : Instant.min_nb_instants }
+
 type formula_data = {formula_data : Instant.min_nb_instants }
+
 type cnf_data = {cnf_data : Instant.min_nb_instants}
+
 type triple_data = { triple_id : string ; invariants : base_spec_t list; nb_instants : Instant.min_nb_instants}

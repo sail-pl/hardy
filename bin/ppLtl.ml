@@ -11,11 +11,7 @@ open Pltl_spec
 
 (* atoms are FOL formulas *)
 module AtomicFormula = struct 
-
-  (* type atom = ((Shared.ty ,Shared.base_ty) fol_t, temp_f_prop) labeled Pltl.pltl *)
-
-
-  type t = ((Shared.ty, Shared.base_ty) fol_t, FrontSig.temp_f_prop) labeled
+  type t = ((Instant.instant option * Shared.ty, Shared.base_ty) fol_t, FrontSig.temp_f_prop) labeled
 
     
   let pp_atom : Format.formatter -> _ -> unit =  fun fmt a ->
@@ -56,7 +52,7 @@ module Label : FrontParser.SharedSyntax.BoolA with type 'a t = AtomicFormula.t
 
   let pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> atom -> unit = fun _ -> AtomicFormula.pp
 
-  let atomic (a : ((Shared.ty, Shared.base_ty) fol_t, temp_f_prop) labeled) : Atom.atom = a
+  let atomic (a : ((Instant.instant option * Shared.ty, Shared.base_ty) fol_t, temp_f_prop) labeled) : Atom.atom = a
 
 end
 

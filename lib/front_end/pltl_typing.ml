@@ -18,12 +18,12 @@ let fail_if_no_bindings id b = match Bindings.find_opt id b with
 module M : FrontSig.Typing with 
     type in_local_spec = parsed_spec_t and
     type in_temp_spec = parsed_temp_spec_t and
-    type out_temp_spec = ((FrontSig.temp_f_prop, Shared.ty, Shared.base_ty) temp_spec_t, FrontSig.temp_f_prop) U.labeled and
+    type out_temp_spec = ((FrontSig.temp_f_prop, InstantSyntax.instant option * Shared.ty, Shared.base_ty) temp_spec_t, FrontSig.temp_f_prop) U.labeled and
     type out_local_spec = base_spec_t
 
 = struct
     type in_temp_spec = parsed_temp_spec_t
-    type out_temp_spec = ((FrontSig.temp_f_prop, Shared.ty, Shared.base_ty) temp_spec_t, FrontSig.temp_f_prop) U.labeled
+    type out_temp_spec = ((FrontSig.temp_f_prop, InstantSyntax.instant option * Shared.ty, Shared.base_ty) temp_spec_t, FrontSig.temp_f_prop) U.labeled
     (* Instant.instant should always be None, this just allows for uniform processing  *)
 
     type in_local_spec = parsed_spec_t
@@ -45,12 +45,12 @@ module M : FrontSig.Typing with
         union check_dup inputs outputs |> fun io -> union check_dup io states
     in
 
-    let [@warning "-4"] requires_checks = fun acc (e:ty expr ) -> match e.value with 
-        | Var (_,(Input,_)) ->
+    let [@warning "-4"] requires_checks = fun acc (e:(InstantSyntax.instant option*ty) expr ) -> match e.value with 
+        | Var (_,(_,(Input,_))) ->
             FrontSig.{acc with mentions_input = true}
-        | Var (_,(Output,_)) ->
+        | Var (_,(_,(Output,_))) ->
             {acc with mentions_output = true}                       
-        | Var (_,(State,_)) ->
+        | Var (_,(_,(State,_))) ->
             failwith "temporal assumption cannot mention state variables"
         | _ -> acc
     in 
@@ -64,35 +64,39 @@ module M : FrontSig.Typing with
 
     ) FrontSig.dft_temp_f_prop
     in
-    let set_expr_type  : unit expr -> ty expr = map_expr (Fun.id) (fun (id,()) -> id,fail_if_no_bindings id bindings)
-    in
+    (* https://ocaml.org/manual/5.2/polymorphism.html#ss:explicit-polymorphism*)
+    let set_expr_type : 'a 'b. ('a -> 'b) -> 'a Program.expr -> ('b * ty) Program.expr = fun f x ->
+        map_expr Fun.id (fun (id,t) -> id,(f t,fail_if_no_bindings id bindings)) x in
 
-    let type_prog_spec : (unit, base_ty) fol_t -> base_spec_t = map_fol_pred set_expr_type in
+
+    let type_prog_spec f = fun x ->  map_fol_pred (set_expr_type f) x in
 
 
-    let type_fol_expr : (cat_ty * base_ty option) Bindings.t -> (unit, base_ty) fol_t -> (ty, base_ty) fol_t = 
+    let type_fol_expr : (cat_ty * base_ty option) Bindings.t -> 
+        (unit, base_ty) fol_t -> 
+        (InstantSyntax.instant option * ty, base_ty) fol_t = 
     let rec map b  = 
         map_fol 
             (fun x -> map b x (* infinite loop if no eta-expension ??? *)) 
-            (map_pred set_expr_type) 
-            (fun (id,_) -> (id,None))
+            (map_pred (set_expr_type (fun () -> None))) 
+            Fun.id
     in            
     map
     in
 
-    let type_fun =  List.map (
+    let type_fun f =  List.map (
         map_stmt 
             Fun.id 
             (fun (id,()) -> id,(fail_if_no_bindings id bindings)) 
             (fun id -> fail_if_no_bindings id bindings |> ignore; id) 
-            type_prog_spec
+            (type_prog_spec f)
     ) in
 
     let prog_spec : (out_temp_spec list, unit) hoare_triple = 
         let type_spec checks = 
             List.map (fun (f_ltl:parsed_temp_spec_t) : out_temp_spec ->
-                let f_ltl : (FrontSig.temp_f_prop, ty, base_ty) temp_spec_t = 
-                    map_ltl_pred (map_pltl_pred @@ fun f_fol : ((ty ,base_ty) fol_t, FrontSig.temp_f_prop) labeled -> 
+                let f_ltl : (FrontSig.temp_f_prop, InstantSyntax.instant option * ty, base_ty) temp_spec_t = 
+                    map_ltl_pred (map_pltl_pred @@ fun f_fol : ((InstantSyntax.instant option * ty ,base_ty) fol_t, FrontSig.temp_f_prop) labeled -> 
                         let fol = type_fol_expr bindings f_fol.value in
                         let prop = fold_fol_prop checks fol in 
                         if FrontSig.is_static_prop prop then 
@@ -115,15 +119,15 @@ module M : FrontSig.Typing with
 
     and prog_setup : (base_spec_t, ty) setup option = 
         Option.map (fun s -> 
-        let setup_ensures : base_spec_t list = List.map type_prog_spec s.setup_ensures
-        and setup_body : (base_spec_t, ty) stmt list = type_fun s.setup_body in
+        let setup_ensures : base_spec_t list = List.map (type_prog_spec (fun () -> None)) s.setup_ensures
+        and setup_body : (base_spec_t, ty) stmt list = type_fun (fun () -> None)  s.setup_body in
         {setup_ensures; setup_body}
 
     )
     p.prog_setup 
     and prog_main = 
-        let main_body = type_fun p.prog_main.main_body
-        and main_loop_inv = List.map type_prog_spec p.prog_main.main_loop_inv in
+        let main_body = type_fun (fun () -> None) p.prog_main.main_body
+        and main_loop_inv = List.map (type_prog_spec (fun () -> None)) p.prog_main.main_loop_inv in
         {main_body; main_loop_inv}
     in
     {prog_setup; prog_main; prog_spec; prog_decls={env_variables=bindings}}
