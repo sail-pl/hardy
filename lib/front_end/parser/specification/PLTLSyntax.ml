@@ -8,11 +8,13 @@ type pltl_unary =
   | PLTL_StdUnary of standard_logic_uop
   | Once
   | Yesterday
+  | WeakYesterday
   | Historically
 
 type pltl_binary = 
   | PLTL_StdBinary of standard_logic_bop 
   | Since
+  | WeakSince
 
 type 'a pltl = 'a pltl_ locatable
 

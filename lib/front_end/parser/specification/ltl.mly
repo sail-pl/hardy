@@ -28,5 +28,5 @@ let unary_top ==
 let binary_top == 
     | SRELEASE ; {StrongRelease}
     | RELEASE ; {Release}
-    | WUNTIL ; {WeakUntil}
+    | WEAK_UNTIL ; {WeakUntil}
     | UNTIL ; {Until}

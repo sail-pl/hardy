@@ -22,10 +22,12 @@ let pltl(atom) :=
 let unary_op == 
     | ONCE ; {Once}
     | YESTERDAY; {Yesterday}
+    | WEAK_YESTERDAY; {WeakYesterday}
     | HISTORICALLY ; { Historically }
     | ~ = common_logic_unary ; <PLTL_StdUnary>
 
 
 let binary_op == 
     | SINCE ; {Since}
+    | WEAK_SINCE ; { WeakSince }
     | ~ = common_logic_binary ; <PLTL_StdBinary>

@@ -53,9 +53,15 @@ module M : FrontSig.Typing with
         | Var (_,(_,(State,_))) ->
             failwith "temporal assumption cannot mention state variables"
         | _ -> acc
-    in 
-    let ensures_checks = requires_checks 
-          
+    and [@warning "-4"] ensures_checks = fun acc (e:(InstantSyntax.instant option*ty) expr ) -> match e.value with 
+        | Var (_,(inst,(Input,_))) ->
+            FrontSig.{acc with mentions_input = true; mentions_history = Option.is_some inst}
+        | Var (_,(inst,(Output,_))) ->
+            {acc with mentions_output = true; mentions_history = Option.is_some inst}                       
+        | Var (_,(inst,(State,_))) ->
+            {acc with mentions_state = true; mentions_history = Option.is_some inst}      
+        | _ -> acc    
+
     and fold_fol_prop c = fold_fol (fun acc _ -> acc) (fun acc -> function
         | Atom e -> fold_expr c acc e
         | Predicate p -> 

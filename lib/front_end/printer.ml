@@ -129,7 +129,8 @@ let pp_ltl_binop fmt ( op: ltl_binary) : unit =
   let op = match op with  
   | Until -> "U"
   | Release -> "R"
-  | WeakUntil | StrongRelease -> failwith "unspported binop"
+  | WeakUntil -> "W"
+  | StrongRelease -> "M"
   | LTL_StdBinary op -> asprintf "%a" pp_common_logic_binary op
   in pp_print_string fmt op 
 
@@ -142,7 +143,7 @@ let pp_ltl_unop fmt  ( op: ltl_unary) : unit =
   in pp_print_string fmt op 
 
 
-let [@warning "-4"] pp_ltl_binop_spin fmt ( op: ltl_binary) : unit =
+let pp_ltl_binop_spin fmt ( op: ltl_binary) : unit =
   let op = match op with  
   | Until -> "U"
   | Release -> "V"
@@ -150,7 +151,8 @@ let [@warning "-4"] pp_ltl_binop_spin fmt ( op: ltl_binary) : unit =
   | LTL_StdBinary LOr -> "||"
   | LTL_StdBinary LAnd -> "&&"
   | LTL_StdBinary Equiv -> "<->"
-  | _ -> failwith "unsupported bop"
+  | WeakUntil -> "W"
+  | StrongRelease -> "M"
   in pp_print_string fmt op 
 
 let pp_ltl_unnop_spin fmt ( op: ltl_unary) : unit =
@@ -182,6 +184,7 @@ let pp_ltl (pp_atom : formatter -> 'a -> unit)
 let pp_pltl_binop fmt ( op: pltl_binary) : unit = 
   let op = match op with  
   | Since -> "S"
+  | WeakSince -> "Z"
   | PLTL_StdBinary op -> asprintf "%a" pp_common_logic_binary op
   in pp_print_string fmt op 
 
@@ -190,6 +193,7 @@ let pp_pltl_unop fmt  ( op: pltl_unary) : unit =
   | Once -> "O"
   | Historically -> "H"
   | Yesterday -> "Y"
+  | WeakYesterday -> "T" (* syntax from https://github.com/DoppeD/ppLTLTT/tree/main/ppLTLTT *)
   | PLTL_StdUnary op -> asprintf "%a" pp_unop op
   in pp_print_string fmt op 
   
