@@ -30,6 +30,7 @@ type info = {
   verbose : bool;
   outdir : string;
   no_i_a_conj : bool;
+  smoke_tests : bool; 
 }
 (** parameters provided by the cli *)
 
@@ -52,6 +53,7 @@ functor
     let input_file = ref ""
     let verbose = ref false
     let no_i_a_conj = ref false
+    let smoke_tests = ref false
     let cwd = Sys.getcwd ()
     let ltl_atom = ref ""
     let aut_format = ref ""
@@ -64,6 +66,9 @@ functor
         ( "-noiaconj",
           Set no_i_a_conj,
           "do not add the rely the formula to the guarantee one" );
+
+        ("-smoketests", Set smoke_tests,
+        "replace all ensures with false to detect inconsistent specification")
       ]
 
     let get_input_file f =
@@ -87,6 +92,7 @@ functor
         verbose = !verbose;
         outdir = output_path;
         no_i_a_conj = !no_i_a_conj;
+        smoke_tests = !smoke_tests;
       } with
       | IncorrectAtom -> failwith @@ Format.sprintf "incorrect atom '%s'" !ltl_atom
       | IncorrectAutFormat -> failwith @@ Format.sprintf "incorrect automaton format '%s'" !aut_format

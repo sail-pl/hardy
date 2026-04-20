@@ -97,6 +97,6 @@ module Middle = Generation.M(struct type t = Typing.out_local_spec end)(Atom)(LT
 
 module Triples = Triples_ltl.M(Atom)(B)(BProd)
 
-module Interactive = ExternalProver.M(B)(struct type t = Typing.out_temp_spec end)(Triples)(struct type t = base_spec_t end)
+module Interactive(Cli: Cli.CliSig) = ExternalProver.M(B)(struct type t = Typing.out_temp_spec end)(Triples(Cli))(struct type t = base_spec_t end)
 
 module Back = HardyBackEnd.Why3_back.Ltl.M

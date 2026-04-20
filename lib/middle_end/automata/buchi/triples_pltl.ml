@@ -25,6 +25,7 @@ module M
         type E.label = string bool_a BaProduct.arc_data and 
         type vdata = BaProduct.vertex_data
         ) 
+        (Cli :  Cli.CliSig)
         : GenSig.TriplesSig with
         type local_spec = base_spec_t and
         type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) temp_spec_t, temp_f_prop) labeled and
@@ -206,6 +207,10 @@ module M
               []
             else fol_of_dnf_boola_replace ens
           in *)
+          if Cli.get_info.smoke_tests then
+              (* attempt to prove false *)
+              mk_labeled ~label:{formula_data=min_nb_instant_dft} false_fol |> disj_singleton |> conj_singleton 
+          else
           map_disjuncts (fun ens ->       
             map_formula (fun a ->
              AtomStore.(map snd (get_atom a)).value (* recover atoms *)

@@ -85,8 +85,8 @@ let () =
     (module Parsing)
     (module Typing)
     (module Middle)
-    (module Triples)
-    (module Interactive)
+    (module Triples(Cli))
+    (module Interactive(Cli))
     (module Back)
   | PastLTL -> 
     let open PpLtl in
@@ -95,6 +95,6 @@ let () =
     (module Parsing)
     (module Typing)
     (module Middle)
-    (module Triples)
-    (module Interactive)
+    (module Triples(Cli))
+    (module Interactive(Cli))
     (module Back)
