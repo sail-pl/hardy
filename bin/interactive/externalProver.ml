@@ -7,11 +7,6 @@ open Syntax.Program
 module P = Why3.Ptree
 module Why3Utils = HardyBackEnd.Why3_back.Utils 
 
-(* module PH = Why3.Ptree_helpers
-module P = Why3.Ptree
-module Why3Gen = HardyBackEnd.Why3_back.Pltl.M
-module Why3Utils = HardyBackEnd.Why3_back.Utils *)
-
 
 module M(B : Buchi.BuchiSig.S)(T: SIMP_TYPE )(TriplesType : SIMP_TYPE)(BaseSpec : SIMP_TYPE)
   : Sig.S with 
@@ -29,6 +24,7 @@ module M(B : Buchi.BuchiSig.S)(T: SIMP_TYPE )(TriplesType : SIMP_TYPE)(BaseSpec 
   type proof_state = int
 
   type triples = TriplesType.t
+  
   (* ------------ MIDDLE END INTERACTION ----------- *)
 
   (* let triple_eq (t1: triple) (t2 : triple) = String.equal (fst t1).triple_id (fst t2).triple_id

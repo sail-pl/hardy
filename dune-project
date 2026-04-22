@@ -33,7 +33,7 @@
   zarith
   ocamlgraph
   progress
-  nottui-unix
+  ;nottui-unix
   shexp
   )
   ; (tags

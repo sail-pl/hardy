@@ -18,7 +18,6 @@ depends: [
   "zarith"
   "ocamlgraph"
   "progress"
-  "nottui-unix"
   "shexp"
   "odoc" {with-doc}
 ]

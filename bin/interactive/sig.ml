@@ -34,14 +34,6 @@ module type S = sig
     - delete an out transition
   *)
 
-  (* we make a run tree, trying to find a valid path:
-    - we start at the root node and get possible transitions
-    - we try all of triples generated from the transitions
-    - we recurse on triples that could be proved
-    - breadth-first or depth-first ? right now, depth-first with backtracking, later, parallel breadh-first
-    - when we reach a node we already treated, we return
-  *)
-
   (* val get_init_node : automaton -> node
   (* val get_node_triples : program -> automaton -> node -> triple list *)
   val get_next_node : automaton -> triple -> node
