@@ -1,4 +1,4 @@
-Require Import List.
+From Stdlib Require Import List.
 From Hardy Require Import automaton product.
 
 Module Type Verif_Domain.

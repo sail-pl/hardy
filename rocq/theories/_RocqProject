@@ -1,0 +1,11 @@
+-arg -w
+-arg -deprecated-native-compiler-option
+-arg -w
+-arg -native-compiler-disabled
+-arg -native-compiler
+-arg ondemand
+-arg -boot
+-R /home/terence/.opam/default/lib/coq/theories Corelib
+-Q /home/terence/.opam/default/lib/coq/user-contrib/Stdlib Stdlib
+-R . Hardy
+-R ../../_build/default/rocq/theories Hardy

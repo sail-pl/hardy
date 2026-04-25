@@ -1,8 +1,8 @@
-(lang dune 3.11)
-(using coq 0.8)
+(lang dune 3.22)
+(using rocq 0.12)
 (name hardy)
 
-(using menhir 2.1)
+(using menhir 3.0)
 
 (generate_opam_files true)
 
@@ -13,19 +13,16 @@
 
 (maintainers "Térence Clastres")
 
-; (license LICENSE)
-
-; (documentation https://url/to/documentation)
+(license COPYING)
 
 (package
   (name hardy)
-   (synopsis "A short synopsis")
-   (description "A longer description")
+  (synopsis "Hardy is a proof of concept synchronous reactive program verification framework enabling deductive verification of temporal properties.")
   (depends 
   (ocaml (>= 5.4.0))
   why3
   alt-ergo
-  (coq (>= 8.18))
+  (rocq (>= 9.2))
   dune
   menhir
   (ocamlformat (and (= 0.26.1) :with-dev-setup))
@@ -33,9 +30,6 @@
   zarith
   ocamlgraph
   progress
-  ;nottui-unix
   shexp
   )
-  ; (tags
-  ; (topics "to describe" your project))
-  )
+)

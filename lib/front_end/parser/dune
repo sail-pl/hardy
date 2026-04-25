@@ -6,7 +6,8 @@
 
 (menhir
  (modules tokens)
- (flags --only-tokens))
+ (flags --only-tokens)
+ (explain false))
 
 (menhir
  (modules tokens specification/ltl specification/pltl program/ppltl/ppltl_spec program/common)
@@ -23,7 +24,7 @@
   --unused-token FIRST
   --unused-token START
   --strict
-  --explain))
+  ))
 
 (menhir
  (modules tokens specification/ltl program/ltl/ltl_spec program/common)
@@ -41,7 +42,7 @@
   --unused-token SINCE 
   --unused-precedence-levels
   --strict
-  --explain))
+  ))
 
 (library
  (name frontParser)

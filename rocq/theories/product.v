@@ -1,5 +1,5 @@
+From Stdlib Require Import List.
 From Hardy Require Import automaton.
-Require Import List.
 Section Product.
 
     (** Given two automata [atm1 : automaton node1 label1] and 

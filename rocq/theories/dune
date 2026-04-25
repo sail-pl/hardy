@@ -1,0 +1,4 @@
+(rocq.theory
+ (name Hardy)
+ (theories Stdlib)
+ (generate_project_file))
