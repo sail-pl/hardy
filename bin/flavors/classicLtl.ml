@@ -95,8 +95,8 @@ module BProd = BaProduct.Make(B)
 
 module Middle = Generation.M(struct type t = Typing.out_local_spec end)(Atom)(LTLSpec)(SpinHoaOutput)(B)(BProd)
 
-module Triples = Triples_ltl.M(Atom)(B)(BProd)
+module Triples = Triples_ltl.M(Ltl_spec)(Atom)(B)(BProd)
 
-module Interactive(Cli: Cli.CliSig) = ExternalProver.M(B)(struct type t = Typing.out_temp_spec end)(Triples(Cli))(struct type t = base_spec_t end)
+module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t = base_spec_t end)(struct type t = Typing.out_temp_spec end)(Triples(Cli))
 
-module Back = HardyBackEnd.Why3_back.Ltl.M
+module Back = HardyBackEnd.Why3_back.Ltl.M(Ltl_spec)

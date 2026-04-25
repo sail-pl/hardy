@@ -173,15 +173,15 @@ end
 
 
 module PpLTLHoaOutput : AutSig.ToolSig with 
-        type input = string Pltl.pltl HardyFrontEnd.Syntax.Ltl.ltl and
+        type input = string Ppltl.pltl HardyFrontEnd.Syntax.Ltl.ltl and
         type output = hoa
 = struct
   open HardyFrontEnd
   
-  type input = string Pltl.pltl HardyFrontEnd.Syntax.Ltl.ltl
+  type input = string Ppltl.pltl HardyFrontEnd.Syntax.Ltl.ltl
   type output = hoa
 
-  let call (_i : Cli.info) (hoa_file : string -> string) (f : string Pltl.pltl Syntax.Ltl.ltl) : output =
+  let call (_i : Cli.info) (hoa_file : string -> string) (f : string Ppltl.pltl Syntax.Ltl.ltl) : output =
     let open Format in
     let hoa_file = hoa_file ".hoa" in
     

@@ -1,8 +1,8 @@
 (** front-end<->middle-end<->back-end *)
 
 module type S = sig
-  type automaton
-  type node
+  (* type automaton
+  type node *)
   type program
   type proof_result = Success | Failure of string
 

@@ -9,7 +9,6 @@ type expr_uop = ENot
 type expr_binop = Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr
 
 type 't expr = 't expression_ locatable
-(** variables can carry extra information of type ['t] *)
 
 and 't expression_ =
   | Int of int
@@ -24,8 +23,7 @@ and 't expression_ =
   | String of string
   | Prod of 't expr list
 
-(** [private_var x] renames variable id [x] to a name that cannot have been
-    declared by the user *)
+
 let pp_private (f : Format.formatter -> 'a -> unit) : Format.formatter -> 'a -> unit = 
   fun fmt -> Format.fprintf fmt "_%a" f
 
@@ -65,7 +63,6 @@ type ('spec, 'data) hoare_triple = ('spec hoare_pair, 'data) labeled
 
 let map_triple_data f t = {t with label=f t.label}
 
-(** generic hoare requires/ensures pair *)
 
 type 'v variant = { variant : 'v }
 
@@ -73,7 +70,6 @@ let mk_variant x : _ variant = { variant = x }
 let variant x = x.variant
 
 type ('inv, 't) stmt = ('inv, 't) stmt_ locatable
-(** program statements *)
 
 and ('inv, 't) stmt_ =
   | Assign of 't expr * 't expr
@@ -83,7 +79,7 @@ and ('inv, 't) stmt_ =
   | While of 't expr * 'inv * 't expr variant * ('inv, 't) stmt list
 
 
-  let map_stmt (type e1 e2) (m_expr : e2 expr -> e2 expr) (m_var : string * e1 -> string * e2) (m_emit: string -> string) (m_fol: 't1 -> 't2)  (s : _ stmt) : _ stmt = 
+let map_stmt (type e1 e2) (m_expr : e2 expr -> e2 expr) (m_var : string * e1 -> string * e2) (m_emit: string -> string) (m_fol: 't1 -> 't2)  (s : _ stmt) : _ stmt = 
   let rec aux s = match s.value with 
   | Assign (e1, e2) -> {s with value=Assign (map_expr m_expr m_var e1, map_expr m_expr m_var e2)}
   | Emit (e, id) -> {s with value=Emit (map_expr m_expr m_var e, m_emit id)}
@@ -92,31 +88,25 @@ and ('inv, 't) stmt_ =
   in aux s
 
 
-
-
 type 'ty var_decls = (string * 'ty) list
 
 type ('inv, 't) setup = {
   setup_ensures : 'inv list;
   setup_body : ('inv, 't) stmt list;
 }
-(** setup routine signature *)
 
 type ('inv, 't) main = {
   main_loop_inv : 'inv list;
   main_body : ('inv, 't) stmt list;
 }
-(** main function signature *)
 
 
-(** program memory environment, after parsing but before typechecking *)
 type parsed_env = {
   env_input : base_ty var_decls;
   env_output : base_ty var_decls;
   env_variables : base_ty var_decls;
 }
 
-(** program memory environment, after typechecking *)
 type 'ty env = {
   env_variables : 'ty Bindings.t;
 }

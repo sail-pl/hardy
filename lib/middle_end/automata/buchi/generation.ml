@@ -1,20 +1,12 @@
 open FrontParser
 open ProgramSyntax
 open HardyFrontEnd
-(* open MiddleParser *)
 open HardyMisc.Utils
 open SharedSyntax
 module SSyn = Syntax.Shared
 module Hist = Syntax.Instant
 
-(** 
-  Temporal formulas are converted to automatas after proposification of their atoms and combined using automata product
- 
-  - [TempSpec] is the temporal specification
-  - AtomStore is in charge of the proposification, [AtomStore.atom] 
- 
- 
-  *)
+
 module M
   (LocalSpec : SIMP_TYPE)
   (AtomStore : Atom.S  with type 'a t := 'a  (* effectful version for simplicity *) )

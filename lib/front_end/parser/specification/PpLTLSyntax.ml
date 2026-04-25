@@ -1,8 +1,6 @@
 open HardyMisc.Utils
 open SharedSyntax
 
-(* PLTL *)
-
 
 type pltl_unary =
   | PLTL_StdUnary of standard_logic_uop
@@ -33,7 +31,6 @@ let rec fold_pltl (j: 'acc -> 'a pltl -> 'acc) (pj : 'acc -> 'a -> 'acc)  (init:
 | PLTL_Binary (f1,_, f2) -> j (fold_pltl j pj (fold_pltl j pj init f1) f2) form 
 
 
-(** [map_ltl_pred m f] applies [m] to every predicates making up the formula [f]*)
 let rec map_pltl_pred : type a b. (a -> b) -> a pltl -> b pltl =
  fun m form ->
   match form.value with

@@ -36,12 +36,10 @@ module type S = sig
   val get_vdata : V.t -> vdata
 end
 
-(** Buchi-specific graph utilities *)
 module type UtilsSig = functor (G : S) -> sig
   val get_all_init_nodes : G.t -> G.vertex list
 end
 
-(** Generation of dot file *)
 module type DotSig = functor (G : S) -> sig
   val fprint_graph : Format.formatter -> G.t -> unit
   val output_graph : out_channel -> G.t -> unit

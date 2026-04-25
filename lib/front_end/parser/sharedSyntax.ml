@@ -1,9 +1,5 @@
 open HardyMisc.Utils
 
-(** {1 Types shared between programs and logics} *)
-
-(** Types *)
-
 type base_ty = Ty_Int | Ty_Real | Ty_Bool | Ty_String | Ty_Array of base_ty * int option | Ty_Prod of base_ty list
 type cat_ty = State | Input | Output | Local
 type ty = cat_ty * (base_ty option)

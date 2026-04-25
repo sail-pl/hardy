@@ -11,7 +11,6 @@ open HardyMisc.Utils
 open Program
 
 open Common
-open Ltl_spec
 
 
 let rec translate_term (e : (instant option * ty) expr) : P.term =
@@ -62,33 +61,38 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
     tapp ~loc (qualid [Ident.op_get ""]) [translate_term a.array ; translate_term a.idx]
   | Prod l -> let l  = List.map translate_term l in term ~loc (Ttuple l)
 
-
-let pterm_of_inv = pterm_of_inv translate_term 
 let pterm_of_fol = pterm_of_fol translate_term  
 
+let pterm_of_inv = pterm_of_fol 
+
 module
-  M
+  M(T: Types.T with 
+    type ('ty,'qty) fol_t = ('ty Program.expr, 'qty option) Fol.pred_fol and
+    type base_spec_t = ((instant option * Shared.ty) Program.expr, Shared.base_ty option) Fol.pred_fol and
+    type triple_data = (triple_id : string * invariants : ((instant option * Shared.ty) Program.expr, Shared.base_ty option) Fol.pred_fol list * nb_instants : Instant.min_nb_instants) and
+    type formula_data = min_nb_instants
+  )
   : BackSig.S with 
-  type in_fun = cnf_data and
-  type triple_data = triple_data and
-  type local_spec = base_spec_t and
-  type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) temp_spec_t, FrontSig.temp_f_prop)  labeled  and
-  type in_spec = ((instant option * Shared.ty, Shared.base_ty) fol_t, formula_data) labeled cnf and
+  type in_fun = T.cnf_data Types.cnf_data and
+  type triple_data = T.triple_data Types.triple_data and
+  type local_spec = T.base_spec_t and
+  type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) T.temp_spec_t, FrontSig.temp_f_prop)  labeled  and
+  type in_spec = ((instant option * Shared.ty, Shared.base_ty) T.fol_t, T.formula_data Types.formula_data) labeled cnf and
   type out_pgrm = P.mlw_file 
 = struct
 
-  type local_spec = base_spec_t
-  type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) temp_spec_t, FrontSig.temp_f_prop) labeled
+  type local_spec = T.base_spec_t
+  type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) T.temp_spec_t, FrontSig.temp_f_prop) labeled
 
-  type formula = ((instant option * Shared.ty, Shared.base_ty) fol_t, formula_data) U.labeled
+  type formula = ((instant option * Shared.ty, Shared.base_ty)  T.fol_t, T.formula_data Types.formula_data) U.labeled
 
-  type in_pgrm = (temp_spec, unit, base_spec_t, ty, ty env) program
-  type in_setup = (base_spec_t, ty) setup
-  type in_body = (base_spec_t, ty) stmt list
+  type in_pgrm = (temp_spec, unit, T.base_spec_t, ty, ty env) program
+  type in_setup = (T.base_spec_t, ty) setup
+  type in_body = (T.base_spec_t, ty) stmt list
   type in_spec = formula cnf
-  type in_fun = cnf_data
+  type in_fun = T.cnf_data Types.cnf_data
 
-  type nonrec triple_data = triple_data
+  type triple_data = T.triple_data Types.triple_data
 
   type out_body = P.expr
   type out_pgrm = P.mlw_file
@@ -240,6 +244,8 @@ module
 
   (** generates WhyML logical expression to represent specification *)
   let generate_spec (spec : in_spec hoare_pair) (d: triple_data) : out_spec =
+    let (~invariants, ~nb_instants,..) = d.triple_data in 
+
     (* spec.data.min.nb_instants is None iff spec is not temporal (e.g. generating setup spec) *)
     let open PH in
 
@@ -266,7 +272,7 @@ module
             why3_and state_eq_head (length_assert inst)
           else 
             length_assert inst
-        ) (Some d.nb_instants)
+        ) (Some nb_instants)
 
       and inv = 
         (* if the current node is the first node with no incoming transition, i.e. there is no history, 
@@ -287,15 +293,15 @@ module
                 else v
                 )) 
               inv)
-            ) d.invariants
-        ) (Some d.nb_instants)
+            ) invariants
+        ) (Some nb_instants)
       in
       history :: List.fold_left
         (fun acc (f: formula disjunction) -> match f with
         | {disjuncts=[f]} -> 
             pterm_of_fol f.value :: acc
         | d ->
-            let f = fold_mjoin (fun f -> 
+            let f = fold_mjoin (fun (f:( ((instant option * ty) expr predicate, base_ty option) fol, min_nb_instants Types.formula_data ) labeled) -> 
                 why3_and (pterm_of_fol f.value) (length_assert f.label.formula_data) 
             ) why3_or (term Ttrue) d.disjuncts
             in f::acc 
@@ -311,18 +317,20 @@ module
             in 
              (Loc.dummy_position,[pat Pwild ,f]) :: l 
           )
-           (List.map (fun inv -> Loc.dummy_position,[pat Pwild , pterm_of_fol inv]) d.invariants)
+           (List.map (fun inv -> Loc.dummy_position,[pat Pwild , pterm_of_fol inv]) invariants)
         spec.ensures.conjuncts  |> List.rev
     in
     { empty_spec with sp_pre; sp_post }
 
 
   let generate_function (t: ((in_spec, out_body) hoare_triple, triple_data) labeled) =
+    let (~triple_id,..) = t.label.triple_data in 
+
     let open P in
     let open PH in
     let spec = generate_spec t.value.value t.label in
     Efun ([], None, pat Pwild, Ity.MaskVisible, spec, t.value.label) |> expr |> fun m ->
-    Dlet (ident t.label.triple_id, false, Expr.RKnone, m)
+    Dlet (ident triple_id, false, Expr.RKnone, m)
 
   let generate_setup (s: in_setup) : out_setup  =
     let open P in

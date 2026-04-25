@@ -1,5 +1,4 @@
 open HardyFrontEnd
-open HardyMiddleEnd.Automata
 open HardyMisc.Utils
 open Why3
 open Syntax
@@ -8,38 +7,22 @@ module P = Why3.Ptree
 module Why3Utils = HardyBackEnd.Why3_back.Utils 
 
 
-module M(B : Buchi.BuchiSig.S)(T: SIMP_TYPE )(TriplesType : SIMP_TYPE)(BaseSpec : SIMP_TYPE)
+module M(BaseSpec : SIMP_TYPE)(T: SIMP_TYPE )(TriplesType : SIMP_TYPE)
   : Sig.S with 
     type program = (T.t, unit, BaseSpec.t, Shared.ty, Shared.ty env) program * P.mlw_file and 
     type triples = TriplesType.t
 
 
   = struct
-  module BU = Buchi.BuchiSig.Utils (B)
+  (* module BU = Buchi.BuchiSig.Utils (B) *)
 
   type nonrec program = (T.t, unit, BaseSpec.t, Shared.ty, Shared.ty env) program * P.mlw_file
   type proof_result = Success | Failure of string
-  type automaton = B.t
-  type node = B.vertex
+  (* type automaton = B.t
+  type node = B.vertex *)
   type proof_state = int
 
   type triples = TriplesType.t
-  
-  (* ------------ MIDDLE END INTERACTION ----------- *)
-
-  (* let triple_eq (t1: triple) (t2 : triple) = String.equal (fst t1).triple_id (fst t2).triple_id
-
-  let triple_hash (t:triple) = String.hash (fst t).triple_id
-  let node_eq = fun _ -> failwith "todo"
-  let get_next_node = fun _ -> failwith "todo"
-
-
-  let get_init_node =
-    BU.get_all_init_nodes >> List.hd *)
-
-
-
-  (* ----------- BACKEND INTERACTION --------------- *)
 
   type backend_state = {
     prover : Whyconf.config_prover;

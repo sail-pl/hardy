@@ -1,9 +1,6 @@
 open HardyFrontEnd
 open Syntax.Program
-(* open Syntax.Shared *)
 open Syntax.Instant
-(* open MiddleParser.SyntaxCommon *)
-
 
 type 'a arc_data = {
     arc_f : 'a hoare_pair;
@@ -114,9 +111,7 @@ module Make(G : BuchiSig.S)
   (** Given two Buchi automata A and B, [create A B] returns a Buchi automaton C
       that is the synchronous parallel composition of A and B. Thus, a word is
       recognized by C iff it is recognized by both A and B. We make sure to keep
-      the labels and remember their origin as it is crucial for our purposes
-
-      fixme: correctly implement to support liveness (see my notes) *)
+      the labels and remember their origin as it is crucial for our purposes *)
   let create (rely_a, guarantee_a) : t =  
 
     let product_g =

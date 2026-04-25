@@ -6,18 +6,11 @@ open Buchi
 open Hoa2ba
 open HardyMisc.Utils
 open Program
-open Pltl_spec
+open Ppltl_spec
 
 
-(* atoms are FOL formulas *)
 module AtomicFormula = struct 
   type t = ((Instant.instant option * Shared.ty, Shared.base_ty) fol_t, FrontSig.temp_f_prop) labeled
-
-    
-  let pp_atom : Format.formatter -> _ -> unit =  fun fmt a ->
-      Printer.( pp_fol 
-          (pp_pred @@ pp_exp (fun fmt (id,_) -> Format.pp_print_text fmt id)) 
-          (Format.pp_print_option pp_base_ty)) fmt a
 
   let pp : Format.formatter -> t -> unit = fun fmt f -> 
     Printer.(pp_fol (pp_pred (pp_exp (fun fmt (s,_) -> Format.pp_print_string fmt s))) (Format.pp_print_option pp_base_ty)) fmt f.value
@@ -56,14 +49,13 @@ module Label : FrontParser.SharedSyntax.BoolA with type 'a t = AtomicFormula.t
 
 end
 
-(* High-level program specification *)
-module PPLTLSpec : FrontParser.SharedSyntax.BoolA 
-  with type 'a t = 'a Pltl.pltl Ltl.ltl
+module PpLTLSpec : FrontParser.SharedSyntax.BoolA 
+  with type 'a t = 'a Ppltl.pltl Ltl.ltl
 = struct
   open Ltl
-  open PLTLSyntax
+  open PpLTLSyntax
 
-  type 'a t = 'a Pltl.pltl ltl
+  type 'a t = 'a Ppltl.pltl ltl
   type atom = {t : 'a. 'a}
   let conj = and_ltl
   let disj = disj_ltl
@@ -90,15 +82,14 @@ module Parsing : Parsing.S with
 end
 
 
-
 module Typing = HardyFrontEnd.Pltl_typing.M
 module B = Make(Atom)(Label)
 module BProd = BaProduct.Make(B)
 
-module Middle = Generation.M(struct type t = base_spec_t end)(Atom)(PPLTLSpec)(PpLTLHoaOutput)(B)(BProd)
+module Middle = Generation.M(struct type t = base_spec_t end)(Atom)(PpLTLSpec)(PpLTLHoaOutput)(B)(BProd)
 
-module Triples = Triples_pltl.M(Atom)(B)(BProd)
+module Triples = Triples_ltl.M(Ppltl_spec)(Atom)(B)(BProd)
 
-module Interactive(Cli : Cli.CliSig) = ExternalProver.M(B)(struct type t = Typing.out_temp_spec end)(Triples(Cli))(struct type t = base_spec_t end)
+module Interactive(Cli : Cli.CliSig) = Why3Prover.M(struct type t = base_spec_t end)(struct type t = Typing.out_temp_spec end)(Triples(Cli))
 
-module Back = HardyBackEnd.Why3_back.Pltl.M
+module Back = HardyBackEnd.Why3_back.Ltl.M(Ppltl_spec)

@@ -1,9 +1,5 @@
-(** {1 Terms for (Propositional) Linear Temporal Logic} *)
-
 open HardyMisc.Utils
 open SharedSyntax
-
-(* LTL *)
 
 type ltl_unary =
   | LTL_StdUnary of standard_logic_uop
@@ -18,7 +14,6 @@ type ltl_binary =
   | Release
   | StrongRelease
 
-(** Linear Temporal Logic formulas parameterized by predicates *)
 
 type 'a ltl = 'a ltl_ locatable
 
@@ -37,7 +32,6 @@ let rec fold_ltl (j: 'acc -> 'a ltl -> 'acc) (pj : 'acc -> 'a -> 'acc)  (init: '
 | LTL_Binary (f1,_, f2) -> j (fold_ltl j pj (fold_ltl j pj init f1) f2) form 
 
 
-(** [map_ltl_pred m f] applies [m] to every predicates making up the formula [f]*)
 let rec map_ltl_pred : type a b. (a -> b) -> a ltl -> b ltl =
  fun m form ->
   match form.value with
@@ -52,8 +46,6 @@ let rec map_ltl_pred : type a b. (a -> b) -> a ltl -> b ltl =
       { form with value }
   | (LTL_True | LTL_False) as value -> { form with value }
 
-
-(** {2 Helpers to build locatable formulas} *)
 
 let and_ltl (f1 : 'a ltl) (f2 : 'a ltl) : 'a ltl =
   mk_dummy_loc (LTL_Binary (f1, LTL_StdBinary LAnd, f2))

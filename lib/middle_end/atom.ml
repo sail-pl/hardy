@@ -1,11 +1,7 @@
 open HardyFrontEnd.Syntax
 open Program
-(* open HardyFrontEnd.Printer *)
-(* open Shared *)
 open HardyMisc.Utils
 
-(** maintains a correspondance between an atom and its associated unique
-    identifier *)
 module type S = sig
   include MONADIC
 
@@ -13,42 +9,24 @@ module type S = sig
   type atom 
 
   val get_atom : string t -> (string * atom) t
-  (** [get_atom i] returns the short name and the atom corresponding to the identifier [i] *)
-
   val subst : string t -> string t
-  (** [subst f ty_to_str] replaces each atoms in formula [f] by a
-      printing-friendly string where the types inside the atoms are replaced by
-      [f_ty_to_str] *)
-
   val register_atom : atom t -> (string * string) t
-  (** [register_atom a] returns the short and long identifier corresponding to the
-      atom [a], creating fresh ones if they do not exist  *)
-
   val get_atom_ids : atom t -> (string * string) t
-  (** [get_atom_ids a] returns the short and long identifier corresponding to the
-      atom [a], that is required to have been previously registered *)
-
   val get_data : string -> data t
   val set_data : string -> data -> unit t
-
 end
 
-(** [sub_atom_in_str subst s] matches all atoms inside string [s]. Each atom [a]
-    is then replaced by [subst a] *)
 let sub_atom_in_str subst =
   let open Str in
   let r = regexp {|p\([0-9]+\)|} in
   global_substitute r (fun m -> matched_string m |> subst)
 
-(** [atom_of_atom_id a] extracts the atom from the identifier [a]*)
 let atom_of_atom_id s : int = 
     try int_of_string s with 
     | Failure _ -> 
       try String.(sub s 1 (length s - 1)) |> int_of_string with 
       | Invalid_argument err | Failure err -> failwith @@ Format.sprintf "%s (couldn't extract atom '%s')" err s
 
-
-(** [remove_exp_loc e] replaces all locations of expression [e] with None *)
 let rec remove_exp_loc (e : 't expr) : 't expr =
   let value =
     match e.value with
@@ -113,7 +91,8 @@ end
 *)
 
 
-module Imperative (Data: SIMP_TYPE) (Atom: PRETTY_SIMP_TYPE (* atom type *)) : S with type atom = Atom.t with 
+module Imperative (Data: SIMP_TYPE) (Atom: PRETTY_SIMP_TYPE (* atom type *)) : S 
+  with type atom = Atom.t and
   type 'a t = 'a and
   type data = Data.t and
   type atom = Atom.t

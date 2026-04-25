@@ -9,7 +9,7 @@
  (flags --only-tokens))
 
 (menhir
- (modules tokens specification/ltl specification/pltl program/pltl_spec program/parser)
+ (modules tokens specification/ltl specification/pltl program/ppltl/ppltl_spec program/common)
  (merge_into pgrmPltlParser)
  (flags
   --external-tokens Tokens
@@ -26,7 +26,7 @@
   --explain))
 
 (menhir
- (modules tokens specification/ltl program/ltl_spec program/parser)
+ (modules tokens specification/ltl program/ltl/ltl_spec program/common)
  (merge_into pgrmLtlParser)
  (flags
   --external-tokens Tokens
@@ -36,6 +36,8 @@
   --unused-token ONCE 
   --unused-token YESTERDAY 
   --unused-token HISTORICALLY 
+  --unused-token WEAK_YESTERDAY
+  --unused-token WEAK_SINCE
   --unused-token SINCE 
   --unused-precedence-levels
   --strict
@@ -44,4 +46,5 @@
 (library
  (name frontParser)
  (public_name hardy.front_parser)
- (libraries str hardyMisc menhirLib))
+ (libraries str hardyMisc menhirLib)
+ (modules_without_implementation types))

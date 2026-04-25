@@ -1,5 +1,3 @@
-(** {1 Command Line Interface}*)
-
 type ltl_atom_t = Direct | PastLTL
 
 exception IncorrectAtom
@@ -32,9 +30,7 @@ type info = {
   no_i_a_conj : bool;
   smoke_tests : bool; 
 }
-(** parameters provided by the cli *)
 
-(** Applicative functor because of side-effects inside *)
 module type CliSig =  sig
   val get_info : info
 end

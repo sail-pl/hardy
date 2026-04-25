@@ -270,4 +270,3 @@ let rec pterm_of_fol : type a. (a expr -> P.term) -> (a expr predicate, base_ty 
       remove_bindings (Seq.map fst locals);
       term t ~loc
 
-let pterm_of_inv = pterm_of_fol

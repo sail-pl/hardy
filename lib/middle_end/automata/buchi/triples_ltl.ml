@@ -5,16 +5,23 @@ open Syntax.Fol
 open Syntax.Shared
 open Syntax.Instant
 open HardyMisc.Utils
-open Ltl_spec
-(* open MiddleParser.SyntaxCommon *)
 open Program
 
-(**
-*)
+
 module M 
+      (T : sig 
+          include Types.T with 
+        type transition_data = min_nb_instants and 
+        type formula_data = min_nb_instants and
+        type cnf_data = min_nb_instants and
+        type base_spec_t = ((instant option * ty) expr, base_ty option) pred_fol and
+        type triple_data = (triple_id : string * invariants : ((instant option * ty) expr, base_ty option) pred_fol list * nb_instants : Instant.min_nb_instants) and
+        type ('ty,'qty) fol_t = ('ty expr, 'qty option) pred_fol
+      end
+      )
       (AtomStore : Atom.S  
         with type 'a t = 'a (* imperative version for simplicity *)
-        with type atom = ((Instant.instant option * ty, base_ty) fol_t, temp_f_prop) labeled
+        with type atom = ((Instant.instant option * ty, base_ty) T.fol_t, temp_f_prop) labeled
       ) 
       (B:  BuchiSig.S 
       )
@@ -27,10 +34,10 @@ module M
         ) 
         (Cli :  Cli.CliSig)
         : GenSig.TriplesSig with
-        type local_spec = base_spec_t and
-        type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) temp_spec_t, temp_f_prop) labeled and
+        type local_spec = T.base_spec_t and
+        type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) T.temp_spec_t, temp_f_prop) labeled and
         type automaton = BProd.t  and
-        type t = (( ((Instant.instant option * ty, base_ty) fol_t, formula_data) labeled cnf, cnf_data) hoare_triple, triple_data) labeled conjunction
+        type t = (( ((Instant.instant option * ty, base_ty) T.fol_t, T.formula_data Types.formula_data) labeled cnf, T.cnf_data Types.cnf_data) hoare_triple, T.triple_data Types.triple_data) labeled conjunction
         
   = struct
   module BUtils = BuchiSig.Utils (B)
@@ -38,22 +45,22 @@ module M
   (* triples are generated from the product automaton *)
   type automaton = BProd.t
 
-  type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) temp_spec_t, temp_f_prop) labeled
+  type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) T.temp_spec_t, temp_f_prop) labeled
 
-  type local_spec = base_spec_t
+  type local_spec = T.base_spec_t
 
   (* triples contains formulas with the following type*)
-  type formula = ((Instant.instant option * ty, base_ty) fol_t, formula_data) labeled
+  type formula = ((Instant.instant option * ty, base_ty) T.fol_t, T.formula_data Types.formula_data) labeled
 
 
   (* final form of triples *)
-  type t = ((formula cnf, cnf_data) hoare_triple, triple_data) labeled conjunction
+  type t = ((formula cnf, T.cnf_data Types.cnf_data) hoare_triple, T.triple_data Types.triple_data) labeled conjunction
 
 
   (** [previous_instant_spec in_e init_post] produces the set of state formulas that must hold for a set of (incoming) edges [in_e],
       optionally appending an additional formula [init_post] if the node is initial
   *)
-  let previous_instant_spec (in_e,_v: BProd.edge disjunction * BProd.vdata) (init_post : base_spec_t option) : formula cnf =
+  let previous_instant_spec (in_e,_v: BProd.edge disjunction * BProd.vdata) (init_post : T.base_spec_t option) : formula cnf =
     let replace_i (v, (inst,(cty,bty))) =
         match inst,cty with
         (* no past *)
@@ -83,7 +90,7 @@ module M
         let nb_instant =
           add_nb_instant 1 BProd.(get_vdata (E.src e)).v_min_nb_instants
         in
-        mk_labeled ~label:{transition_data=nb_instant} l.arc_f.ensures)
+        mk_labeled ~label:Types.{transition_data=nb_instant} l.arc_f.ensures)
       in_e
       
     (* if an input led to no restriction on the state, then there is no need
@@ -93,7 +100,7 @@ module M
           *)
     (* if List.exists (fun (f,_) -> BoolA.(DnfBASet.exists (fun a -> a= AtomicBASet.singleton True) f.disjuncts)) l then [] else l *)
 
-    |> fun (disj : (string bool_a, transition_data) labeled disjunction) ->
+    |> fun (disj : (string bool_a, T.transition_data Types.transition_data) labeled disjunction) ->
 
     (* the minimum number of instants of each transition is the maximum of all the minimum of the atoms  *)
     (* assert (List.fold_left (fun acc x -> Int.min acc x.label.transition_data.nb_instant) Int.max_int disj.disjuncts = v.v_min_nb_instants.nb_instant); *)
@@ -104,7 +111,7 @@ module M
           (map_fol_pred @@ map_expr Fun.id replace_i) atom.value  (* adjust temporal quantification *)
         ) d.value 
         |> fol_of_bool_a Fun.id (* flatten boolean algebra into fol *)
-        |> mk_labeled ~label:{formula_data=d.label.transition_data} (* enrich the formula with transition data *)
+        |> mk_labeled ~label:Types.{formula_data=d.label.transition_data} (* enrich the formula with transition data *)
     ) disj
       
     |> fun (disj : formula disjunction) ->
@@ -112,10 +119,10 @@ module M
     (* if the current node is initial, add the setup postcondition to the disjunction *)
     Option.fold init_post
       ~none:disj 
-      ~some:(fun (spec : base_spec_t) -> 
+      ~some:(fun (spec : T.base_spec_t) -> 
         let spec : formula = 
             let pred = spec (* map_fol_pred_ty Fun.id (map_expr Fun.id Fun.id) spec *)
-            and label = {formula_data={ nb_instant = 0; is_max = true }} (* we are at the first instant if we executed the setup just before *)
+            and label = Types.{formula_data={ nb_instant = 0; is_max = true }} (* we are at the first instant if we executed the setup just before *)
             in mk_labeled ~label pred          
         in add_disjunct spec disj
       ) 
@@ -129,7 +136,7 @@ module M
         it is reached for the first time (instant = n) and one where it is reached again (instant > n) ? 
       *)
 
-  let [@warning "-4"] at_current_instant_replace_post (v: BProd.vdata) : ('a,'b) fol_t -> ('a,'b) fol_t =
+  let [@warning "-4"] at_current_instant_replace_post (v: BProd.vdata) : ('a,'b) T.fol_t -> ('a,'b) T.fol_t =
       if v.v_min_nb_instants.is_max then
         map_fol_pred 
           (map_expr Fun.id (fun (id, (inst,t)) ->
@@ -154,8 +161,8 @@ module M
       and (f,g_i) are in out_e and init is there if defined. *)
   let generate_node_spec
       ((in_e, v, out_e) : BProd.edge disjunction * BProd.vertex * BProd.edge disjunction)
-      (init_post : base_spec_t option) :
-      (formula cnf, cnf_data) hoare_triple conjunction =
+      (init_post : T.base_spec_t option) :
+      (formula cnf, T.cnf_data Types.cnf_data) hoare_triple conjunction =
     
     (* a state always has a successor *)
     assert (not (List.is_empty out_e.disjuncts));
@@ -163,12 +170,11 @@ module M
     (* apart from the initial node, a state always has a predecessor *)
     assert ((not (List.is_empty in_e.disjuncts)) || BProd.is_start_node v);
 
-    (* get data from the vertex *)
     let vdata = BProd.get_vdata v in
 
     (* create a map binding the exit-arc rely formula to all its guarantee ones *)
     let module M = Map.Make (struct
-      type t = (string bool_a, transition_data) labeled
+      type t = (string bool_a, T.transition_data Types.transition_data) labeled
 
       let compare (e1 : t) (e2 : t) =
         (* let open Format in  *)
@@ -179,10 +185,10 @@ module M
     let previous_ens : formula cnf = previous_instant_spec (in_e,vdata) init_post 
     in  
 
-    let m : (string bool_a, transition_data) labeled disjunction M.t =
+    let m : (string bool_a, T.transition_data Types.transition_data) labeled disjunction M.t =
       (* Factorize exit arcs by common first component by buildin a map from
         first components to matching second components *)
-      let add_v_info = mk_labeled ~label:{transition_data=vdata.v_min_nb_instants} in
+      let add_v_info = mk_labeled ~label:Types.{transition_data=vdata.v_min_nb_instants} in
       List.fold_left
         (fun m e ->
           let l = BProd.E.label e in
@@ -195,8 +201,8 @@ module M
 
     (* construct the spec for each first component
     *)
-    let mk_spec (req : (string bool_a, transition_data) labeled) (ens : (string bool_a, transition_data) labeled disjunction) 
-           : (formula cnf, cnf_data) hoare_triple conjunction -> (formula cnf, cnf_data) hoare_triple conjunction =
+    let mk_spec (req : (string bool_a, T.transition_data Types.transition_data) labeled) (ens : (string bool_a, T.transition_data Types.transition_data) labeled disjunction) 
+           : (formula cnf, T.cnf_data Types.cnf_data) hoare_triple conjunction -> (formula cnf, T.cnf_data Types.cnf_data) hoare_triple conjunction =
 
         let requires : formula cnf  =
           (*  predicate on possible states of current node, 
@@ -209,7 +215,7 @@ module M
                 (  at_current_instant_replace_post vdata) atom.value  (* adjust temporal quantification *)
               ) req.value 
               |> fol_of_bool_a Fun.id (* flatten boolean algebra into fol *)
-              |> mk_labeled ~label:{formula_data=req.label.transition_data} (* enrich the formula with transition data *)
+              |> mk_labeled ~label:Types.{formula_data=req.label.transition_data} (* enrich the formula with transition data *)
               |> disj_singleton |> conj_singleton
           in
           let reqs = previous_req.conjuncts@current_req.conjuncts in 
@@ -229,7 +235,7 @@ module M
           in *)
           if Cli.get_info.smoke_tests then
               (* attempt to prove false *)
-              mk_labeled ~label:{formula_data=min_nb_instant_dft} false_fol |> disj_singleton |> conj_singleton 
+              mk_labeled ~label:Types.{formula_data=min_nb_instant_dft} false_fol |> disj_singleton |> conj_singleton 
           else
             map_disjuncts (fun ens ->      
               map_formula (fun a ->
@@ -237,13 +243,13 @@ module M
                 (at_current_instant_replace_post vdata) atom.value  (* adjust temporal quantification *)
               ) ens.value 
               |> fol_of_bool_a Fun.id (* flatten boolean algebra into fol *)
-              |> mk_labeled ~label:{formula_data=ens.label.transition_data} (* enrich the formula with transition data *)
+              |> mk_labeled ~label:Types.{formula_data=ens.label.transition_data} (* enrich the formula with transition data *)
             ) ens |> conj_singleton
         in
         (* if List.for_all (fun d -> List.is_empty d.disjuncts) ensures.conjuncts then
           (* discard when postcondition is true *) s
         else { requires; ensures } :: s *)
-        add_conjunct @@ mk_labeled ~label:{cnf_data=vdata.v_min_nb_instants} { requires; ensures }
+        add_conjunct @@ mk_labeled ~label:Types.{cnf_data=vdata.v_min_nb_instants} { requires; ensures }
     in
     M.fold mk_spec m conj_empty
 
@@ -254,7 +260,7 @@ module M
         we still return [true] in case there is no setup postcondition to ensure the first instant case
         is covered
       *)
-      let extra_req : base_spec_t option =
+      let extra_req : T.base_spec_t option =
         if BProd.is_start_node v then
           Option.(
             fold p.prog_setup 
@@ -272,7 +278,7 @@ module M
       let in_e = BProd.pred_e a v |> mk_disj in
       let out_e = BProd.succ_e a v |> mk_disj in
 
-      let specs : (formula cnf, cnf_data) hoare_triple conjunction =
+      let specs : (formula cnf, T.cnf_data Types.cnf_data) hoare_triple conjunction =
         generate_node_spec (in_e, v, out_e) extra_req
       in
 
@@ -283,7 +289,7 @@ module M
           let open Format in
           let index = if i <> 0 then sprintf "_%i" i else "" in
           let id = BProd.(id_of_vertex v) ^ index in
-          let label = { triple_id = id ; invariants = p.prog_main.main_loop_inv; nb_instants = s.label.cnf_data } in
+          let label = Types.{triple_data = (~triple_id:id,~invariants:p.prog_main.main_loop_inv, ~nb_instants:s.label.cnf_data)} in
           mk_labeled ~label s)
         specs.conjuncts |> mk_conj
     in

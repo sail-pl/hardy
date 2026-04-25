@@ -1,9 +1,9 @@
 open FrontParser
-open Pltl_spec
+open Ppltl_spec
 open HardyMisc.Utils
 open Syntax.Shared
 open Syntax.Ltl
-open Syntax.Pltl
+open Syntax.Ppltl
 open Syntax.Fol
 
 let reserved_words = ["result" ; "old" ;  "list" ; "int"] (* todo: add more*)

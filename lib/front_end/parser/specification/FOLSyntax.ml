@@ -1,10 +1,8 @@
-(** {1 Terms for First Order Logic} *)
 
 open HardyMisc.Utils
 open SharedSyntax
 
 type ('a, 'qty) fol = ('a, 'qty) fol_ locatable
-(** First order Logic formulas parameterized by atomic propositions *)
 
 and ('a, 'qty) fol_ =
   | FOL_True
@@ -42,7 +40,6 @@ type ('a, 'qty) pred_fol = ('a predicate, 'qty) fol
 
 type 'qty pred_decl = {name: string; params: string list; body: (string,'qty) fol }
 
-(* open recursion style *)
 let map_fol : type a b ty_a ty_b.
     ((a, ty_a) fol -> (b, ty_b) fol) ->
     (a -> b) ->
@@ -89,12 +86,10 @@ let rec fold_fol : type a b t.
   | Forall (_, f) | Exists (_, f) -> j (fold_fol j pj init f) form
   (* | ExistsPrev q | ForallPrev q -> j (fold_fol j pj init q.f) form *)
 
-(** [map_fol_ty m f] replaces every quantifer [Exists (l,e)] and [Forall (l,e)]
-    of [f] by [X (List.map m l,e)] *)
+
 let rec map_fol_ty m = map_fol (map_fol_ty m) Fun.id m
 
-(** [map_fol_pred m f] replaces every atom [x] of [f] by [m x]
-*)
+
 let map_fol_pred_ty (type a b ty_a ty_b) 
   (fty : ty_a -> ty_b)  (m : a -> b) 
   = let rec aux (f: (a predicate, ty_a) fol) : (b predicate, ty_b) fol =
@@ -103,7 +98,6 @@ let map_fol_pred_ty (type a b ty_a ty_b)
 
 let map_fol_pred = fun x -> map_fol_pred_ty (Fun.id) x
 
-(** {2 Helpers to build locatable formulas} *)
 
 let true_fol : ('a, 'b) fol = mk_dummy_loc FOL_True
 let false_fol : ('a, 'b) fol = mk_dummy_loc FOL_False

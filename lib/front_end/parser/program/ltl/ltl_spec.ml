@@ -1,20 +1,15 @@
 module Program = ProgramSyntax
 module Fol = FOLSyntax
 module Ltl = LTLSyntax
-module Pltl = PLTLSyntax
+module Ppltl = PpLTLSyntax
 module Shared = SharedSyntax
 module Instant = InstantSyntax
 module U = HardyMisc.Utils
 
 
-(* todo simplify with pltl_spec *)
 
-
-(* let fol_vars (f : ('a Program.expr, 'ty) Fol.fol) : (string * 'ty) list =
-  Fol.fold_fol (fun _ acc -> acc) Program.expr_vars [] f *)
 
 (** {2 type instantiation} *)
-
 
 type ('ty,'qty) fol_t = ('ty Program.expr, 'qty option) Fol.pred_fol
 
@@ -35,17 +30,11 @@ type parsed_spec_t = (unit,Shared.base_ty) fol_t
 
 type base_spec_t = (Instant.instant option * Shared.ty,Shared.base_ty) fol_t
 
+type cnf_data = Instant.min_nb_instants
+
+type triple_data = (triple_id : string * invariants : base_spec_t list * nb_instants : Instant.min_nb_instants)
+
+type formula_data = Instant.min_nb_instants
 
 (* data of the product automaton transitions *)
-type transition_data = {transition_data : Instant.min_nb_instants }
-
-(* type fol_data = {fol_data : unit } *)
-
-(* data of first-order logic formulas *)
-type formula_data = {formula_data : Instant.min_nb_instants }
-
-(* data of the conjunction of formulas *)
-type cnf_data = {cnf_data : Instant.min_nb_instants}
-
-
-type triple_data = { triple_id : string ; invariants : base_spec_t list; nb_instants : Instant.min_nb_instants}
+type transition_data = Instant.min_nb_instants

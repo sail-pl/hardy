@@ -19,7 +19,6 @@ let join_temp_f_prop p1 p2 =
   {mentions_input ; mentions_output; mentions_state; mentions_history}
 
 
-
 module type Typing = sig
     type in_local_spec
     type in_temp_spec

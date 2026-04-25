@@ -11,7 +11,7 @@ module Make
    BuchiSig.S with 
     type init_val = neverclaim
     (* and type 'a FAtom.t = 'a  *)
-    (* and type FAtom.atom = (Shared.base_ty, Shared.ty) fol_t Pltl.pltl *)
+    (* and type FAtom.atom = (Shared.base_ty, Shared.ty) fol_t Ppltl.pltl *)
     (* and type _ FAtom.data = Instant.min_nb_instants *)
   =
 struct

@@ -4,17 +4,6 @@ open Shared
 open HardyMisc.Utils
 open Program
 
-(** The back-end requires:
-
-    _ generation of program declarations from the environment
-    - generation of the initialization routine
-    - generation of program specification
-    - generation of a function's body
-    - generation of a function from the body and its specification
-    - generation of the program from the declarations, initialization procedure
-      and functions *)
-
-(* type spec_info = {loop_invariant: }  *)
 
 module type S = sig
   type local_spec

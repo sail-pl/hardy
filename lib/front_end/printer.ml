@@ -3,7 +3,7 @@ open HardyMisc.Utils
 open SharedSyntax
 open FOLSyntax
 open LTLSyntax
-open PLTLSyntax
+open PpLTLSyntax
 open ProgramSyntax
 open InstantSyntax
 open Format

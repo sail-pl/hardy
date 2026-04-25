@@ -1,5 +1,5 @@
 %{
-    open PLTLSyntax
+    open PpLTLSyntax
 %}
 %%
 

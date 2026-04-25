@@ -1,11 +1,6 @@
-(** Evolution of a variable value across instants. The initial instant is [At 0]
-    and last instant is [Previous 1]. The current instant is [Previous 0]
-    Negative values have no semantics *)
 type instant = At of int | Previous of int
 
 type min_nb_instants = { nb_instant : int; is_max : bool }
-(** approximation of the number of instants *)
-
 
 let pp_min_nb_instant : Format.formatter -> min_nb_instants -> unit = fun fmt inst -> 
   Format.fprintf fmt "insts %s %i" (if inst.is_max then "=" else "≥") inst.nb_instant
