@@ -233,7 +233,7 @@ module M
               []
             else fol_of_dnf_boola_replace ens
           in *)
-          if Cli.get_info.smoke_tests then
+          if Cli.get_config.smoke_tests then
               (* attempt to prove false *)
               mk_labeled ~label:Types.{formula_data=min_nb_instant_dft} false_fol |> disj_singleton |> conj_singleton 
           else

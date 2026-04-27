@@ -8,5 +8,5 @@
 (executable
  (public_name hardy)
  (name main)
- (libraries hardyFrontEnd hardyBackEnd  lwd progress)
+ (libraries hardyFrontEnd hardyBackEnd  progress)
  (modules_without_implementation sig))

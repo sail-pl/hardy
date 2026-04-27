@@ -3,7 +3,6 @@ open Syntax
 open HardyMiddleEnd
 open Automata
 open Buchi
-open Hoa2ba
 open HardyMisc.Utils
 open Program
 open FrontSig
@@ -88,6 +87,10 @@ module Parsing : Parsing.S with
 end
 
 
+open Hoa2ba 
+(*
+  todo: change automata type using aut_format 
+*)
 
 module Typing = HardyFrontEnd.Ltl_typing.M
 module B = Make(Atom)(Label)

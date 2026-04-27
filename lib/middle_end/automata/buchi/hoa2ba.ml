@@ -1,8 +1,7 @@
 open HardyFrontEnd.Syntax
 open FrontParser.SharedSyntax
-open MiddleParser.Labeling
+(* open MiddleParser.Labeling *)
 open MiddleParser.HoaSyntax
-(* open HardyMisc.Utils *)
 
 
 
@@ -27,7 +26,7 @@ module Make
     (* and type 'a FAtom.data = 'a FAtom.data  *)
   =
 struct
-  module TAtom = TAtom
+  (* module TAtom = TAtom *)
 
   type hoa_vdata = {acceptant: bool; start:bool}
 
@@ -155,20 +154,24 @@ module SpinHoaOutput : AutSig.ToolSig with
   type input = string HardyFrontEnd.Syntax.Ltl.ltl
   type output = hoa
 
-    let call (i : Cli.info) (hoa_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
-      let open Format in
-      let hoa_file = hoa_file ".hoa" in
+  let call (i : Cli.config) (hoa_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
+    let open Format in
+    let hoa_file = hoa_file ".hoa" in
+    let stderr = if i.verbose then Some (hoa_file ^ ".err") else None in
     let to_spin = Printer.(pp_ltl pp_print_string pp_ltl_binop_spin pp_ltl_unnop_spin) in
     let cmd =
       Filename.quote_command "ltl2tgba"
         [ "-B" ; "-D"; "-x sat-minimize" ; asprintf "%a" to_spin f]
-        ~stdout:hoa_file ~stderr:(hoa_file ^ ".err")
+        ~stdout:hoa_file ?stderr
     in
     if i.verbose then printf "ltl2tgba command line : %s@." cmd;
     let ret = Sys.command cmd in
     if ret <> 0 then
       failwith (sprintf "non-0 exit-code (%i) from ltl2tgba@." ret)
-    else MiddleParser.HoaParsing.parse_automaton hoa_file
+    else 
+      let a = MiddleParser.HoaParsing.parse_automaton hoa_file in 
+      if not i.dump_automata then Sys.remove hoa_file;
+      a
 end
 
 
@@ -181,24 +184,27 @@ module PpLTLHoaOutput : AutSig.ToolSig with
   type input = string Ppltl.pltl HardyFrontEnd.Syntax.Ltl.ltl
   type output = hoa
 
-  let call (_i : Cli.info) (hoa_file : string -> string) (f : string Ppltl.pltl Syntax.Ltl.ltl) : output =
+  let call (i : Cli.config) (hoa_file : string -> string) (f : string Ppltl.pltl Syntax.Ltl.ltl) : output =
     let open Format in
     let hoa_file = hoa_file ".hoa" in
     
     let to_spin = Printer.(pp_ltl (pp_pltl_default pp_print_string) pp_ltl_binop_spin pp_ltl_unnop_spin) in
     
     
-     let proc = Shexp_process.(Let_syntax.(
+    let proc = Shexp_process.(Let_syntax.(
         find_executable_exn "pltl2tgba" >>= fun pltl2tgba ->
         run pltl2tgba [ "-f" ; asprintf "%a" to_spin f ] 
         |- run "autfilt" ["-D" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
         |> stdout_to hoa_file
-        |> stderr_to (hoa_file ^ ".err")
+        |> if i.verbose then stderr_to (hoa_file ^ ".err") else Fun.id
       )
       )
     in
     Shexp_process.eval proc;
     (* if i.verbose then  
-      print_string @@ "command output: " ^ Shexp_process.eval proc; *)
-    MiddleParser.HoaParsing.parse_automaton hoa_file
+    print_string @@ "command output: " ^ Shexp_process.eval proc; *)
+    let a = MiddleParser.HoaParsing.parse_automaton hoa_file in     
+    if not i.dump_automata then Sys.remove hoa_file;   
+    a
+
 end

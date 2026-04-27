@@ -16,7 +16,7 @@ val aut_format_t_of_string : string -> aut_format_t
 
 val string_of_aut_format_t : aut_format_t -> string
 
-type info = {
+type config = {
     ltl_atom : ltl_atom_t;
     aut_format : aut_format_t;
     file : string;
@@ -24,10 +24,11 @@ type info = {
     outdir : string;
     no_i_a_conj : bool;
     smoke_tests : bool;
+    dump_automata : bool;
 }
 (** parameters provided by the cli *)
 
-module type CliSig = sig val get_info : info end
+module type CliSig = sig val get_config : config end
 
 (** Applicative functor because of side-effects inside *)
 module Init : () -> CliSig

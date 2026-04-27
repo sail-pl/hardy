@@ -58,16 +58,16 @@ let main
   
   let translate_spec = HardyMiddleEnd.MidSig.translate_spec (module Middle) (module Triples) in
 
-  let info = Cli.get_info in
-  if not Sys.(file_exists info.outdir) then Sys.mkdir info.outdir 0o755;
-  let output_file = Filename.(concat info.outdir @@ basename info.file) in
+  let config = Cli.get_config in
+  if not Sys.(file_exists config.outdir) then Sys.mkdir config.outdir 0o755;
+  let output_file = Filename.(concat config.outdir @@ basename config.file) in
 
-  Format.printf "Parsing program and spec... (%s flavor)@." (CliM.string_of_ltl_atom_t info.ltl_atom);
-  Front.Parsing.parse_file (module Parsing) info.file |> fun p -> 
+  Format.printf "Parsing program and spec... (%s flavor)@." (CliM.string_of_ltl_atom_t config.ltl_atom);
+  Front.Parsing.parse_file (module Parsing) config.file |> fun p -> 
   Format.printf "Typing program and spec...@.";
   Typing.type_pgrm p |> fun t_pgrm ->
   Format.printf "Translating spec...@.";
-  translate_spec info t_pgrm |> fun triples ->
+  translate_spec config t_pgrm |> fun triples ->
   Format.printf "Translating program...@.";
   Back.translate_program t_pgrm triples |> fun pgrm ->
   Format.printf "Writing program...@.";
@@ -77,7 +77,7 @@ let main
 
 let () =
   let module Cli = CliM.Init () in
-  match Cli.get_info.ltl_atom with
+  match Cli.get_config.ltl_atom with
   | Direct -> 
     let open ClassicLtl in 
     main 

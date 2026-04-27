@@ -41,7 +41,7 @@ struct
 
   let proposify = TempSpec.map AtomStore.(register_atom >> map snd)
 
-  let spec_to_input (cli : Cli.info) (spec : (AtomStore.atom TempSpec.t, 'a) labeled list hoare_pair) : tool_input =
+  let spec_to_input (cli : Cli.config) (spec : (AtomStore.atom TempSpec.t, 'a) labeled list hoare_pair) : tool_input =
     let print_formula (name, spec : string * _ ) =
       if cli.verbose then
         Format.(printf "%s formula: %a@." name (TempSpec.pp (fun fmt -> AtomStore.(get_atom_ids >> map snd >> (map (pp_print_string fmt))) >> ignore)) spec)
@@ -70,10 +70,10 @@ struct
     print_formula guarantee;
     { requires = rely_spec; ensures = guarantee_spec}
 
-  let output_file (cli : Cli.info) name ext =
+  let output_file (cli : Cli.config) name ext =
     Filename.(concat cli.outdir (name ^ ext))
 
-  let exec (cli : Cli.info) (i : tool_input) : tool_output =
+  let exec (cli : Cli.config) (i : tool_input) : tool_output =
     let call_tool ((name, spec) : string * Tool.input) :
         string * Tool.output =
       let file = output_file cli name in
@@ -89,15 +89,21 @@ struct
     Out_channel.with_open_text (output_file cli name ".dot") (fun o ->
         D.output_graph o auto)
 
-  let output_to_automaton (cli : Cli.info) (o : tool_output) : automaton =
+  let output_to_automaton (cli : Cli.config) (o : tool_output) : automaton =
     let rely_a = pair_map (Right B.create) o.requires
     and guarantee_a = pair_map (Right B.create) o.ensures in
-    automaton_to_dot (module B) cli rely_a;
-    automaton_to_dot (module B) cli guarantee_a;
+    if cli.dump_automata then 
+    begin
+      automaton_to_dot (module B) cli rely_a;
+      automaton_to_dot (module B) cli guarantee_a;
+    end;
     (* create synchronized product automaton *)
     let prod_a =
       ("product", BProd.create (snd rely_a, snd guarantee_a))
     in
+    if cli.dump_automata then 
+    begin
     automaton_to_dot (module BProd) cli prod_a;
+    end;
     snd prod_a
 end

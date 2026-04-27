@@ -21,7 +21,7 @@ let string_of_aut_format_t = function HOA -> "HOA format" | Neverclaim -> "Never
 
 
 
-type info = {
+type config = {
   ltl_atom: ltl_atom_t;
   aut_format: aut_format_t;
   file : string;
@@ -29,10 +29,11 @@ type info = {
   outdir : string;
   no_i_a_conj : bool;
   smoke_tests : bool; 
+  dump_automata : bool;
 }
 
 module type CliSig =  sig
-  val get_info : info
+  val get_config : config
 end
 
 module Init : functor () -> CliSig =
@@ -53,11 +54,13 @@ functor
     let cwd = Sys.getcwd ()
     let ltl_atom = ref ""
     let aut_format = ref ""
+    let dump_automata = ref false
 
     let speclist =
       [
         ("-s", Set_string ltl_atom, "what is inside an LTL specification : direct (default) or ppltl for pure past ltl");
         ("-a", Set_string aut_format, "automaton format: hoa (uses spot's ltl2tgba, default) or neverclaim (uses ltl2ba) ");
+        ("-da", Set dump_automata, "Dump specification automata used to generate triples, including their dot representation");
         ("-v", Set verbose, "debug output");
         ( "-noiaconj",
           Set no_i_a_conj,
@@ -80,7 +83,7 @@ functor
     (* drop generated files in $cwd/<filename>_gen/ *)
     let output_path = Filename.(concat cwd dir)
 
-    let get_info : info =
+    let get_config : config =
       try {
         ltl_atom = ltl_atom_t_of_string !ltl_atom;
         aut_format = aut_format_t_of_string !aut_format;
@@ -89,6 +92,7 @@ functor
         outdir = output_path;
         no_i_a_conj = !no_i_a_conj;
         smoke_tests = !smoke_tests;
+        dump_automata = !dump_automata;
       } with
       | IncorrectAtom -> failwith @@ Format.sprintf "incorrect atom '%s'" !ltl_atom
       | IncorrectAutFormat -> failwith @@ Format.sprintf "incorrect automaton format '%s'" !aut_format

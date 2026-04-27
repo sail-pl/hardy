@@ -3,6 +3,7 @@
 # dune	
 _opam
 _build
+dune-workspace
 
 .vscode
 
@@ -11,3 +12,5 @@ _build
 # ignore why3 sessions
 samples/*/ 
 
+#rocq
+_RocqProject

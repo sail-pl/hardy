@@ -97,20 +97,24 @@ module Ltl2baNcOutput : AutSig.ToolSig with
     type input = string HardyFrontEnd.Syntax.Ltl.ltl
     type output = neverclaim
 
-    let call (i : Cli.info) (never_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
+    let call (i : Cli.config) (never_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
     let open Format in
     let never_file = never_file ".never" in
+    let stderr = if i.verbose then Some (never_file ^ ".err") else None in 
     let to_spin = Printer.(pp_ltl pp_print_string pp_ltl_binop_spin pp_ltl_unnop_spin) in
     let cmd =
       Filename.quote_command "ltl2ba"
         [ "-f"; asprintf "%a" to_spin f ]
-        ~stdout:never_file ~stderr:(never_file ^ ".err")
+        ~stdout:never_file ?stderr
     in
     if i.verbose then printf "ltl2ba command line : %s@." cmd;
     let ret = Sys.command cmd in
     if ret <> 0 then
       failwith (sprintf "non-0 exit-code (%i) from ltl2ba@." ret)
-    else MiddleParser.NcParsing.parse_automaton never_file
+    else 
+      let a = MiddleParser.NcParsing.parse_automaton never_file in 
+      if not i.dump_automata then Sys.remove never_file;
+      a
 end
 
 
@@ -122,18 +126,22 @@ module SpinNcOutput : AutSig.ToolSig with
     type input = string HardyFrontEnd.Syntax.Ltl.ltl
     type output = neverclaim
 
-    let call (i : Cli.info) (never_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
+    let call (i : Cli.config) (never_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
     let open Format in
     let never_file = never_file ".never" in
+    let stderr = if i.verbose then Some (never_file ^ ".err") else None in 
     let to_spin = Printer.(pp_ltl pp_print_string pp_ltl_binop_spin pp_ltl_unnop_spin) in
     let cmd =
       Filename.quote_command "ltl2tgba"
         [ "-s"; asprintf "%a" to_spin f ]
-        ~stdout:never_file ~stderr:(never_file ^ ".err")
+        ~stdout:never_file ?stderr
     in
     if i.verbose then printf "ltl2tgba command line : %s@." cmd;
     let ret = Sys.command cmd in
     if ret <> 0 then
       failwith (sprintf "non-0 exit-code (%i) from ltl2tgba@." ret)
-    else MiddleParser.NcParsing.parse_automaton never_file
+    else
+      let a = MiddleParser.NcParsing.parse_automaton never_file in 
+      if not i.dump_automata then Sys.remove never_file;
+      a
 end
