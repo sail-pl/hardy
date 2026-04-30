@@ -3,12 +3,12 @@ output o : int;
 
 
 // malformed spec
-assumes {{o=3}}
+assumes {o=3}
 
 // but output can still be mentionned as a way for the input to depend on it, particularly useful, for composition
 
 
-guarantees G {{o=3}}
+guarantees G {o=3}
 
 loop :
 // malformed program

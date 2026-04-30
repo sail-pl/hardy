@@ -3,12 +3,12 @@ output ok : bool;
 
 var good : bool;
 
-assumes G {{ i >= 0 }}
-assumes G {{ bound >= 0 }}
+assumes G { i >= 0 }
+assumes G { bound >= 0 }
 
-guarantees {{ ok }}
-guarantees X G ( {{!ok}} -> X {{!ok}} )                // once false, always false
-guarantees X G ({{ ok }} -> {{forall_prev i as p, p <= bound}} )  // if ok, any past value <= bound
+guarantees { ok }
+guarantees X G ( {!ok} -> X {!ok} )                // once false, always false
+guarantees X G ({ ok } -> {forall_prev i as p, p <= bound} )  // if ok, any past value <= bound
 
 setup:
   ensures { good = true }

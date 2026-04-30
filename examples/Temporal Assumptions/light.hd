@@ -3,11 +3,11 @@ output light : bool;
 var curr_light : bool;
 
 
-assumes G ({!{on}} || {!{off}})
+assumes G ({!on} || {!off})
 
-guarantees {{on}}  R ({{on}} || {!{light}})
-guarantees G ({{on}} -> {{off}} R ({{off}} || {{light}}))
-guarantees G ({{off}} -> {{on}} R ({{on}} || {!{light}}))
+guarantees ({!light}) W {on}
+guarantees G ({on} -> {light} W {off})
+guarantees G ({off} -> {!light} W {on})
 
 setup : 
 	ensures { !curr_light  }

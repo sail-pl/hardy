@@ -2,7 +2,7 @@ input i : int;
 output o : int;
 var x : int;
 
-guarantees X G {forall x, {o =x} ->  Y {i=x}}
+guarantees X G {forall x, {o =x} ->  Y {i=x}
 
 setup :
     ensures { x = 0 }

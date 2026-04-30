@@ -11,7 +11,7 @@ let is_output (c,_ : ty) : bool = c = Output
 
 (** Standard Logic Operators *)
 
-type standard_logic_bop =  Equiv | Arrow | LAnd | LOr 
+type standard_logic_bop =  Equiv | Arrow | LAnd | LOr | Program of string
 type standard_logic_uop = LNot
 
 

@@ -16,15 +16,15 @@ var
 ;
 
 // global spec
-guarantees {{armed} => {y = 0}}
-//guarantees X G ({{armed}} => G {{y = prev x}})
+guarantees {armed} => {y = 0}
+//guarantees X G ({armed} => G {y = prev x})
 
 // before being armed, we allow anything to be emited
 // here, we choose to emit what we just received
 
 
 // local spec
-guarantees X G {{z = x}}
+guarantees X G {z = x}
 
 setup: 
   ensures {state = 0}

@@ -8,6 +8,21 @@ open SharedSyntax
 type expr_uop = ENot
 type expr_binop = Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr
 
+let string_of_pgrm_op : expr_binop -> string = function 
+  | Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+  | Gt -> ">"
+  | Lt -> "<"
+  | Gte -> ">="
+  | Lte -> "<="
+  | Eq -> "="
+  | Neq -> "<>"
+  | EOr -> "||"
+  | EAnd -> "&&"
+
+
 type 't expr = 't expression_ locatable
 
 and 't expression_ =

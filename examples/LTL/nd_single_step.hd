@@ -2,8 +2,8 @@ input x : int;
 output y z : int;
 var s_x_0 s_x_2 : bool;
 
-guarantees {{x > 0}} -> X {{z = 0}}
-guarantees {{ x > 2 }} -> X {{ y >= 0 }}
+guarantees {x > 0} -> X {z = 0}
+guarantees { x > 2 } -> X { y >= 0 }
 
 
 

@@ -3,7 +3,7 @@ output o : bool;
 var prev_i : bool;
 
 
-guarantees X G {{o} <-> {(!(prev i)) && i}}
+guarantees X G ({o} <-> {(!(prev i)) && i})
 
 setup :
     ensures { prev_i = false }

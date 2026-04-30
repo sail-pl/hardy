@@ -228,13 +228,15 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
   tr_seq s
 
 
-let get_bop = 
+let get_bop t1 t2 = 
+  let open Ptree in
   let open Dterm in 
   function
-  | Arrow -> DTimplies
-  | Equiv -> DTiff
-  | LAnd -> DTand
-  | LOr -> DTor
+  | Arrow -> Tbinnop (t1, DTimplies, t2)
+  | Equiv -> Tbinnop (t1, DTiff, t2)
+  | LAnd -> Tbinnop (t1, DTand, t2)
+  | LOr -> Tbinnop (t1, DTor, t2)
+  | Program s -> Tinnfix (t1, PH.ident @@ Ident.op_infix s, t2)
 
   
 
@@ -253,10 +255,10 @@ let rec pterm_of_fol : type a. (a expr -> P.term) -> (a expr predicate, base_ty 
   | FOL_StdBinary (t1, bop, t2) -> (
       let t1 = pterm_of_fol t1 in
       let t2 = pterm_of_fol t2 in
-      Tbinnop (t1, get_bop bop, t2) |> term ~loc
+      get_bop t1 t2 bop |> term ~loc
   )
-  | FOL_StdNary (op,l) -> let op = get_bop op in 
-    fold_mjoin pterm_of_fol (fun f1 f2 -> Tbinnop (f1,op,f2) |> term) (term ~loc Ttrue) l 
+  | FOL_StdNary (op,l) ->
+    fold_mjoin pterm_of_fol (fun f1 f2 -> get_bop f1 f2 op |> term) (term ~loc Ttrue) l 
   | Forall (v, f) ->
       let locals = List.to_seq v in
       add_local_bindings locals;

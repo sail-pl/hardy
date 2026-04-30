@@ -4,19 +4,19 @@ output o : int;
 var max : int;
 
 // for simplicity, because we don't have a -inf value to set by default
-assumes G {{i>=0}}
+assumes G {i>=0}
 
 //high-level public spec : at any moment, the output is greater than or equal to any previous inputs
 
 // our constraint guarantees the first output will be the first input
-guarantees {{i=o}}
+guarantees {i=o}
 // forall_prev and exists_prev require a non-empty history
-guarantees X G {{forall_prev i as p_i, p_i <= o}}
+guarantees X G {forall_prev i as p_i, p_i <= o}
 // the output is a previous input
-guarantees X G ({{o = i}} || {{exists_prev i as p_i, p_i = o}})
+guarantees X G ({o = i} || {exists_prev i as p_i, p_i = o})
 
-guarantees X G {{forall_prev i as p_i, p_i <= max}}
-guarantees {{max = i}} && X G ({{max = i}} || {{exists_prev i as p_i, p_i = max}})
+guarantees X G {forall_prev i as p_i, p_i <= max}
+guarantees {max = i} && X G ({max = i} || {exists_prev i as p_i, p_i = max})
 
 setup:
 	ensures {max = 0}

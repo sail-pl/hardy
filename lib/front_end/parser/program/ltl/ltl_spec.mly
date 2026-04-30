@@ -9,7 +9,7 @@
 %%
 
 %public
-let tq_expr := expr(
+let tq_expr := spec_expr(
     | id = ID ; {id,None}
     | id = ID ; endrule(AT|SYMB_AT) ; n = INT ; {id,Some (At n)}
     | endrule(PREV | LAST) ; n = endrule(n = option(INT); {Option.value ~default:1 n}) ; id = ID ;  {id,Some (Previous n)}
@@ -30,6 +30,6 @@ let fol_h(atom) ==
 
 
 %public
-let inst_spec == fol(braced(expr_with_pred))
+let inst_spec == braced(fol(spec_expr_with_pred))
 %public
-let temporal_spec == ltl(braced(fol(braced(tq_expr_with_pred))))
+let temporal_spec == ltl(braced(fol(tq_expr_with_pred)))

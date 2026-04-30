@@ -1,8 +1,8 @@
-input i : bool;
+input i : int;
 output o : int;
 
-relies on F {i = 5}.
-guarantees F {o = 5}.
+assumes F {i = 5}
+guarantees F {o = 5}
 
 setup :
 

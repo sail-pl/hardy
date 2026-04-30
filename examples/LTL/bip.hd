@@ -2,13 +2,13 @@ input i : bool;
 
 output o : bool;
 
-//assumes {{i}} 
-assumes G ({{i}} -> X !{{i}})
-assumes G ((!{{i}}) -> X {{i}})
+//assumes {i} 
+assumes G ({i} -> X !{i})
+assumes G ((!{i}) -> X {i})
 
-guarantees X G {{o = !prev o}}
+guarantees X G {o = !prev o}
 
-guarantees X G {{i = !prev i}}
+guarantees X G {i = !prev i}
 
 loop :
     invariant { o = !i }

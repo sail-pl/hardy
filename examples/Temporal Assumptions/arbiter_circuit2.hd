@@ -3,8 +3,8 @@ output g1 g2 g3 : bool;
 var curr_req : int;
 
 // assume each client does not send additional request until it has been granted access 
-assumes G ({{r1}} -> X ({{prev g1}} R ({{prev g1}} || {!{r1}})))
-assumes G ({{r2}} -> X ({{prev g2}} R ({{prev g2}} || {!{r2}})))
+assumes G ({r1} -> X ( !{r1} W {prev g1}))
+assumes G ({r2} -> X ( !{r2} W {prev g2}))
 
 
 //assumes G !{r2}
@@ -13,9 +13,9 @@ assumes G ({{r2}} -> X ({{prev g2}} R ({{prev g2}} || {!{r2}})))
 //assumes G ({r3} -> X ({g3} R ({g3} || !{r3})))
 
 // mutual exclusion 
-guarantees G !({{g1}} && {{g2}})
-//guarantees G !({{g2}} && {{g3}})
-//guarantees G !({{g1}} && {{g3}})
+guarantees G !({g1} && {g2})
+//guarantees G !({g2} && {g3})
+//guarantees G !({g1} && {g3})
 
 // bounded response 
 //guarantees G ({r1} -> ({g1} || X {g1})) 
@@ -27,25 +27,25 @@ guarantees G !({{g1}} && {{g2}})
 
 
 // if there is a pending request, it will be granted at the next instant 
-guarantees G ({!{curr_req = 0}} -> X (({{g1}} || {{g2}}) && {{r1}} -> {{curr_req = 1}}))
+guarantees G ((!{curr_req = 0}) -> X (({g1} || {g2}) && {r1} -> {curr_req = 1}))
 
 
-guarantees G ({{curr_req = 0}} -> (({{r1}} && {{r2}}) R (({{r1}} && {{r2}}) || {{curr_req = 0}})))
-guarantees G ({{curr_req = 0}} -> X ( ({{r1}} || {{r2}}) R (({{r1}} || {{r2}}) || ({!{g1}} && {!{g2}}))) )
+guarantees G ({curr_req = 0} -> (({r1} && {r2}) R (({r1} && {r2}) || {curr_req = 0})))
+guarantees G ({curr_req = 0} -> X ( ({r1} || {r2}) R (({r1} || {r2}) || ((!{g1}) && (!{g2})))))
 
-guarantees XG ({{curr_req = 1}} -> {{r1}} && {!{prev curr_req = 0}} && X {{g1}} )
-guarantees XG ({{curr_req = 2}} -> (({{r1}} && {{r2}} && {{prev curr_req = 0}}) || ({!{r1}} && {{r2}})) && X {{g2}} )
+guarantees XG ({curr_req = 1} -> {r1} && (!{prev curr_req = 0}) && X {g1} )
+guarantees XG ({curr_req = 2} -> (({r1} && {r2} && {prev curr_req = 0}) || ((!{r1}) && {r2})) && X {g2} )
 
-guarantees ({{r1}} && {!{r2}} -> {{g1}})  
-guarantees XG ({!{r1}} && {!{r2}} && {{prev curr_req = 1}} -> {{g1}})
-guarantees ({{r2}} && {!{r1}} -> {{g2}}) 
-guarantees XG ({!{r1}} && {!{r2}} && {{prev curr_req = 2}} -> {{g2}})
+guarantees ({r1} && (!{r2}) -> {g1})  
+guarantees XG ((!{r1}) && (!{r2}) && {prev curr_req = 1} -> {g1})
+guarantees ({r2} && (!{r1}) -> {g2}) 
+guarantees XG ((!{r1}) && (!{r2}) && {prev curr_req = 2} -> {g2})
 
 
-guarantees G ({{r1}} && {{prev curr_req = 0}} -> {{g1}})
-guarantees G ({{r2}} && {!{r1}} && {{prev curr_req = 0}} -> {{g2}})
-guarantees G ({{g1}} -> ({{prev curr_req = 1}} || {{r1}}))
-guarantees G ({{g2}} -> ({{prev curr_req = 2}} || {{r2}}))
+guarantees G ({r1} && {prev curr_req = 0} -> {g1})
+guarantees G ({r2} && (!{r1}) && {prev curr_req = 0} -> {g2})
+guarantees G ({g1} -> ({prev curr_req = 1} || {r1}))
+guarantees G ({g2} -> ({prev curr_req = 2} || {r2}))
 
 
 setup:

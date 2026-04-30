@@ -7,11 +7,11 @@ var err1 err2: bool;
 // the program must enable the flag as soon as both error1 and error2 have occured
 guarantees G {
     (
-        O {{err = 1}} &&
-        O {{err = 2}} &&
-        WY H {{!flag12}}
+        O {err = 1} &&
+        O {err = 2} &&
+        WY H {!flag12}
     ) 
-    <=> {{ flag12 }}
+    <=> { flag12 }
 }
  
 

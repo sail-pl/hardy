@@ -13,7 +13,7 @@ var
 ;
 
 
-guarantees G { {{alarm}} -> {{problem}} }
+guarantees G { {alarm} -> {problem} }
 
 setup:
 	exists_pb := false;

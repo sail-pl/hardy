@@ -7,14 +7,14 @@ var
     init last_o : bool
 ;
 
-//global spec
-guarantees {{o = i}}
-guarantees G ({{o}} -> X {{!o}})
-guarantees G (!{{o}} -> X {{o}})
+//public spec
+guarantees {o = i}
+guarantees G ({o} -> X {!o})
+guarantees G (!{o} -> X {o})
 
 
-//local spec
-guarantees {{last_o = !i}}
+//private spec
+guarantees {last_o = !i}
 
 
 setup:

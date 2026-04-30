@@ -14,11 +14,11 @@ var
 ;
 
 //global
-guarantees G ({{req}} => G {{ack}})
+guarantees G ({req} => G {ack})
 
 
 //local
-guarantees G ({{req}} => G {{triggered}})
+guarantees G ({req} => G {triggered})
 
 setup:
   ensures {!triggered}

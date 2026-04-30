@@ -3,11 +3,11 @@ output mode : bool;
 var started : bool;
 
 //global spec
-guarantees {{start_}} R ({{start_}} || {{!mode}})
+guarantees {start_} R ({start_} || {!mode})
 
 
 //local spec
-guarantees {{start_}} R ({{start_}} || {{!started}})
+guarantees {start_} R ({start_} || {!started})
 
 
 setup:

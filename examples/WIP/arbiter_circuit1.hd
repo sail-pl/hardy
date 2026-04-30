@@ -3,25 +3,25 @@ output g1 g2 g3 : bool;
 
 
 // assume each client does not send additional request until it has been granted access 
-assumes G ({{r1}} -> X ({{prev g1}} R ({{prev g1}} || {!{r1}})))
-assumes G ({{r2}} -> X ({{prev g2}} R ({{prev g2}} || {!{r2}})))
-//assumes G ({{r3}} -> X ({{prev g3}} R ({{prev g3}} || {!{r3}})))
+assumes G ({r1} -> X ({prev g1} R ({prev g1} || {!{r1})))
+assumes G ({r2} -> X ({prev g2} R ({prev g2} || {!{r2})))
+//assumes G ({r3} -> X ({prev g3} R ({prev g3} || {!{r3})))
 
 // just to test, assume only 1 request at a time can be made 
-assumes G !({{r1}} && {{r2}})
-//assumes G !({{r2}} && {{r3}})
-//assumes G !({{r1}} && {{r3}})
+assumes G !({r1} && {r2})
+//assumes G !({r2} && {r3})
+//assumes G !({r1} && {r3})
 
 
 // mutual exclusion 
-guarantees G !({{g1}} && {{g2}})
-//guarantees G !({{g2}} && {{g3}})
-//guarantees G !({{g1}} && {{g3}})
+guarantees G !({g1} && {g2})
+//guarantees G !({g2} && {g3})
+//guarantees G !({g1} && {g3})
 
 // immediate response (realizable because of the second assumption)
-guarantees G ({{r1}} -> {{g1}}) 
-guarantees G ({{r2}} -> {{g2}}) 
-//guarantees G ({{r3}} -> {{g3}}) 
+guarantees G ({r1} -> {g1}) 
+guarantees G ({r2} -> {g2}) 
+//guarantees G ({r3} -> {g3}) 
 
 // no spurious grant: there exists in the history a request such that no grant has been given until this instant
 // version with past operator Since

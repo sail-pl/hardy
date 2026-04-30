@@ -2,7 +2,7 @@ input i : int;
 output o : int;
 var x : int;
 
-guarantees X G {{o = last i}}
+guarantees X G {o = last i}
 
 setup :
     ensures { x = 0 }

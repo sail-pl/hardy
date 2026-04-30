@@ -28,27 +28,15 @@ let pp_unop fmt (op : standard_logic_uop) =
   match op with LNot -> fprintf fmt "!"
 
 let pp_expr_binop fmt (op : expr_binop) =
-  fprintf fmt
-    (match op with
-    | Add -> "+"
-    | Sub -> "-"
-    | Mul -> "*"
-    | Div -> "/"
-    | Gt -> ">"
-    | Lt -> "<"
-    | Gte -> ">="
-    | Lte -> "<="
-    | Eq -> "="
-    | Neq -> "<>"
-    | EOr -> "||"
-    | EAnd -> "&&")
+  fprintf fmt "%s" (string_of_pgrm_op op)
 
 let pp_common_logic_binary fmt (op: standard_logic_bop) : unit = 
-  fprintf fmt (match op with
+  pp_print_string fmt (match op with
   | Equiv -> "<->"
   | Arrow -> "->"
   | LOr ->  "||"
   | LAnd ->  "&&"
+  | Program s -> s
   )
 
 let pp_hist fmt (v, h) =
@@ -153,6 +141,7 @@ let pp_ltl_binop_spin fmt ( op: ltl_binary) : unit =
   | LTL_StdBinary Equiv -> "<->"
   | WeakUntil -> "W"
   | StrongRelease -> "M"
+  | LTL_StdBinary (Program _) -> failwith "bad format"
   in pp_print_string fmt op 
 
 let pp_ltl_unnop_spin fmt ( op: ltl_unary) : unit =

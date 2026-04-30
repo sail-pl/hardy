@@ -87,6 +87,7 @@ rule tokenize = parse
   | "}"                     { RBRACE }
   | "["                     { LSQBRACE }
   | "]"                     { RSQBRACE }
+  | "||"                    { OR }
   | "|"                     { SEP }
   | ";"                     { SEMI }
   | ":="                    { ASSIGN }
@@ -126,7 +127,6 @@ rule tokenize = parse
   | "->" | "=>"             { ARROW }
   | "<->" | "<=>"           { DARROW }
   | "&&"                    { AND }
-  | "||"                    { OR }
   | '"'                     { read_string (Buffer.create 17) lexbuf }
   | digit+ as lxm           { INT (int_of_string lxm) }
   

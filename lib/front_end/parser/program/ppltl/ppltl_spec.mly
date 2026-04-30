@@ -3,6 +3,6 @@
 %%
 
 %public
-let inst_spec == fol(braced(expr_with_pred))
+let inst_spec == braced(fol(spec_expr_with_pred))
 %public
-let temporal_spec == ltl(braced(pltl(braced(inst_spec))))
+let temporal_spec == ltl(braced(pltl(braced(fol(spec_expr_with_pred)))))

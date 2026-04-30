@@ -4,8 +4,12 @@ output
 ;
 var curr_beat : int;
 
-guarantees G ( {{beat = 1}} -> X {{beat = 2}} && X X {{beat = 3}} && X X X {{beat = 1}} )
 
+guarantees {beat = 1} || {beat = 2} || {beat = 3}
+// 1 2 3 1 2 3 ...
+guarantees G ( {beat = 1} -> X {beat = 2} && X X {beat = 3} && X X X {beat = 1} )
+// _1_ 2 3 _1_ 2 3 ...
+guarantees G ( {beat = 1} <-> {accent} )
 
 setup : 
 	ensures { curr_beat = 1}
@@ -15,7 +19,6 @@ setup :
 loop:
     invariant {curr_beat = beat}
     invariant {beat > 0}
-    invariant {beat = 1} <-> {accent}
     
     if curr_beat = 3 then
         curr_beat := 1;

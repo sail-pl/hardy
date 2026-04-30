@@ -20,7 +20,7 @@ val is_input : ty -> bool
 
 val is_output : ty -> bool
 
-type standard_logic_bop = Equiv | Arrow | LAnd | LOr
+type standard_logic_bop = Equiv | Arrow | LAnd | LOr | Program of string
 
 type standard_logic_uop = LNot
 

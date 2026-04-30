@@ -3,10 +3,10 @@ output o : int;
 var x : int init : bool;
 
 // public spec 
-guarantees G {{o = first i}}
+guarantees G {o = first i}
 
 // private spec
-guarantees G {{x = first i}}
+guarantees G {x = first i}
 
 
 setup :

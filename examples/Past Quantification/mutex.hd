@@ -3,8 +3,8 @@ output lockA lockB : bool;
 
 var turn : bool;
 
-guarantees {{ !(lockA && lockB) }}
-guarantees X G {{ !(lockA && lockB) }}
+guarantees { !(lockA && lockB) }
+guarantees X G { !(lockA && lockB) }
 
 guarantees X G { {lockA} -> ({a} || {exists_prev a as p_a, p_a}) }
 guarantees X G { {lockB} -> ({b} || {exists_prev b as p_b, p_b}) }

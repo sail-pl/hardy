@@ -1,8 +1,8 @@
 input i : int;
 output o : int;
 
-assumes X {{i=1}} || X {{i=2}}
-guarantees X ({{o=1}} || {{o=2}})
+assumes X {i=1} || X {i=2}
+guarantees X ({o=1} || {o=2})
 
 
 loop :

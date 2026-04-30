@@ -1,0 +1,15 @@
+input : 
+    tick_i : int
+;
+
+output 
+    tick_o : int
+;
+
+assumes {tick_i = 1} || {tick_i = 2} || {tick_i = 3}
+assumes G ( {tick_i = 1} -> X {tick_i = 2} && X X {tick_i = 3} && X X X {tick_i = 1} )
+
+// should be deduced from the previous two guarantees
+guarantees G {tick_i > 0 } && {tick_i <= 3}
+
+loop:

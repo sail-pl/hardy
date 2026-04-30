@@ -1,7 +1,7 @@
 input i : bool;
 output o : int;
 
-guarantees ({{o=1}} && X {{false && i}}) || ({{o=1}} && X {{true || i}})
+guarantees ({o=1} && X {false && i}) || ({o=1} && X {true || i})
 
 setup :
 

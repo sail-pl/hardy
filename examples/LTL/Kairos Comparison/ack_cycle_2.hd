@@ -8,7 +8,7 @@ output
 
 
 //global
-guarantees G ({{req}} => G {{ack}})
+guarantees G ({req} => G {ack})
 
 
 loop:

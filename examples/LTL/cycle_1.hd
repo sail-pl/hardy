@@ -1,0 +1,29 @@
+input 
+    tick_i : int
+;
+
+output 
+    tick_o : int
+;
+
+// fixme: too many states without noiaconj
+
+assumes {tick_i > 0} && {tick_i <= 3}
+
+assumes G ( {tick_i = 1} -> X {tick_i = 2} )
+assumes G ( {tick_i = 2} -> X {tick_i = 3} )
+assumes G ( {tick_i = 3} -> X {tick_i = 1} )
+
+
+guarantees G ( {tick_i = 1} -> X {tick_i = 2} && X X {tick_i = 3} && X X X {tick_i = 1} )
+
+
+// should be deduced from the previous two guarantees
+//guarantees X G { {tick_i = 1} -> {prev tick_i = 3}
+
+
+//guarantees G {tick_o > 0 } && {tick_o <= 3}
+
+loop:
+    invariant {tick_o = tick_i}
+    emit tick_i to tick_o

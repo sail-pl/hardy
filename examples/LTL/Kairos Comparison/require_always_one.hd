@@ -2,8 +2,8 @@ input i : int;
 
 output o : int;
 
-assumes G {{i = 3}}
-guarantees G {{o = 3}}
+assumes G {i = 3}
+guarantees G {o = 3}
 
 loop: 
   emit i to o;

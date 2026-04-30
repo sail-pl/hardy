@@ -24,6 +24,10 @@ and 't expression_ =
   | String of string
   | Prod of 't expr list
 
+val string_of_pgrm_op : expr_binop -> string  
+(** convert program binary operators to strings *)
+
+
 (** [private_var x] renames variable id [x] to a name that cannot have been
     declared by the user *)
 val pp_private : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit

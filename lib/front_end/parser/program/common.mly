@@ -22,7 +22,7 @@ let setup_ensures == ENSURES ;  ~ = inst_spec ;  <>
 
 let invariant == preceded(INVARIANT, inst_spec) 
 
-let variant == ~ = preceded(VARIANT, braced(basic_expr)); <mk_variant>
+let variant == ~ = preceded(VARIANT, braced(pgrm_expr)); <mk_variant>
 
 // end specification ---------
 
@@ -83,14 +83,14 @@ let ty :=
     | t = ty ; TY_ARRAY ;  {Ty_Array (t,None)}
 
 let stmt := located (
-    | e1 = basic_expr ; ":=" ; e2 = basic_expr ; {Assign (e1,e2)}
+    | e1 = pgrm_expr ; ":=" ; e2 = pgrm_expr ; {Assign (e1,e2)}
     | EMIT ; id = ID  ; {Emit ({label=None;value=Prod []}, id) }
-    | EMIT ; ~ = basic_expr  ; TO ; ~ = ID ; <Emit>
+    | EMIT ; ~ = pgrm_expr  ; TO ; ~ = ID ; <Emit>
 )
 
 let controle_stmt := located(
-    | IF ; ~ = basic_expr ; THEN ; ~ = seq_stmt ; ~ = midrule(ELSE ; seq_stmt)? ; END ; <If>
-    | WHILE ; ~ = basic_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = seq_stmt ; DONE ; <While>
+    | IF ; ~ = pgrm_expr ; THEN ; ~ = seq_stmt ; ~ = midrule(ELSE ; seq_stmt)? ; END ; <If>
+    | WHILE ; ~ = pgrm_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = seq_stmt ; DONE ; <While>
 )
 
 let seq_stmt := 
@@ -112,27 +112,38 @@ let simpl_expr(var_e) :=
 )
 
 %public
-let expr(var_e) := 
-    | simpl_expr(var_e)
-    | ~=delimited("(", expr(var_e), ")") ; <>
+let pgrm_expr := 
+    | simpl_expr(id = ID ; {id,()})
+    | ~=delimited("(", pgrm_expr, ")") ; <>
     | located (
-        | array = simpl_expr(var_e) ; "[" ; idx = expr(var_e) ; "]" ; {ArrayCell {idx;array}}
-        | EMARK ;  e = expr(var_e) ; %prec UNARY {UnOp (ENot,e)}
-        | "[" ; "|" ; l = separated_nonempty_list(";", expr(var_e)) ; "|" ; "]" ; {Array (Iarray.of_list l)} (* array litterals cannot be empty *)
-        | left = expr(var_e) ; op = binExpOp ; right = expr(var_e) ; {BinOp {left;op;right}}
-        | ~=tuple(var_e) ; %prec below_COMMA <Prod>
+        | array = simpl_expr(id = ID ; {id,()}) ; "[" ; idx = pgrm_expr ; "]" ; {ArrayCell {idx;array}}
+        | EMARK ;  e = pgrm_expr ; %prec UNARY {UnOp (ENot,e)}
+        | "[" ; "|" ; l = separated_nonempty_list(";", pgrm_expr) ; "|" ; "]" ; {Array (Iarray.of_list l)} (* array litterals cannot be empty *)
+        | left = pgrm_expr ; op = pgrmBinExpOpFull ; right = pgrm_expr ; {BinOp {left;op;right}}
+        | ~=tuple(pgrm_expr) ; %prec below_COMMA <Prod>
     )
 
-let reversed_tuple_body(var_e) :=
-    | t = reversed_tuple_body(var_e) ; "," ; e = expr(var_e) ; { e::t }
-    | e1 = expr(var_e) ; "," ; e2 = expr(var_e) ; { [e2;e1] }
+%public
+// same as pgrm_expr except operators shared with the fol layer are removed
+let spec_expr(var_e) := 
+    | simpl_expr(var_e)
+    | located (
+        | array = simpl_expr(var_e) ; "[" ; idx = spec_expr(var_e) ; "]" ; {ArrayCell {idx;array}}
+        | "[" ; "|" ; l = separated_nonempty_list(";", spec_expr(var_e)) ; "|" ; "]" ; {Array (Iarray.of_list l)} (* array litterals cannot be empty *)
+        | left = spec_expr(var_e) ; op = pgrmBinExpOp ; right = spec_expr(var_e) ; {BinOp {left;op;right}}
+        | ~=tuple(spec_expr(var_e)) ; %prec below_COMMA <Prod>
+    )
 
-let tuple(var_e) == rev(reversed_tuple_body(var_e))
+let reversed_tuple_body(e) :=
+    | t = reversed_tuple_body(e) ; "," ; e = e ; { e::t }
+    | e1 = e ; "," ; e2 =e ; { [e2;e1] }
 
-let basic_expr == expr(id = ID ; {id,()})
+let tuple(e) == rev(reversed_tuple_body(e))
+
+
 
 %public
-let expr_with_pred == ~= basic_expr ; <Atom>
+let spec_expr_with_pred == ~= spec_expr(id = ID ; {id,()}) ; <Atom>
 
 
 %public
@@ -142,6 +153,7 @@ let fol(atom) :=
         | FALSE ; {FOL_False} 
         | ~=atom; <FOL_Atom>
         | ~ = common_logic_unary ; ~ = fol(atom) ; %prec UNARY <FOL_StdUnary>
+        | ~ = fol(atom) ; ~ = endrule(c = comparator; {Program (string_of_pgrm_op c)}) ; ~ = fol(atom) ; <FOL_StdBinary>
         | ~ = fol(atom) ; ~ = common_logic_binary ; ~ = fol(atom) ; <FOL_StdBinary>
         | FORALL ; ~ = typed_decl_id_opt+ ; COMMA ; ~ = fol(atom)  ; <Forall>
         | EXISTS ; ~ = typed_decl_id_opt+ ; COMMA ; ~ = fol(atom) ; <Exists>
@@ -159,19 +171,30 @@ let common_logic_binary ==
     | AND ; {LAnd}
 
 
-let binExpOp ==
-    | OR ; {EOr}
-    | AND ; {EAnd}
+let pgrmBinExpOp ==
     | "+" ; {Add} 
     | "-" ; {Sub}
     | "*" ; {Mul}
     | "/" ; {Div}
+
+let comparator == 
+    | "=" ; {Eq}
     | "<" ; {Lt}
     | "<=" ; {Lte}
     | ">" ; {Gt}
     | ">=" ; {Gte}
-    | "=" ; {Eq}
     | "<>" ; {Neq}
+
+let pgrmBinExpOpFull ==
+    | ~ = comparator; <> 
+    | OR ; {EOr}
+    | AND ; {EAnd}
+    | ~ = pgrmBinExpOp; <>
+
+
+
+
+
 
 
 %public
