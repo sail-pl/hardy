@@ -1,6 +1,6 @@
 (** The back-end requires:
 
-    _ generation of program declarations from the environment
+    - generation of program declarations from the environment
     - generation of the initialization routine
     - generation of program specification
     - generation of a function's body

@@ -2,6 +2,7 @@ open HardyFrontEnd.Syntax
 open FrontParser.SharedSyntax
 (* open MiddleParser.Labeling *)
 open MiddleParser.HoaSyntax
+open MiddleParser.HoaHelpers
 
 
 
@@ -58,28 +59,38 @@ struct
   let is_start_node (v : V.t) = (snd v).start
 
   let create (hoa : hoa) : t =
-    let () = 
-      let [@warning "-4"] props = List.filter_map (function Properties n -> Some n | _ -> None) hoa.header.items |> List.flatten in
-      if not @@ List.mem "deterministic" props then
-        failwith "non-deterministic automaton";
+    (* failsafe: automaton must be deterministic *)
+    if not @@ List.mem "deterministic" @@ get_props hoa then
+      failwith "non-deterministic automaton"
+    ; 
+    (* failsafe: automaton must have all states acceptant or have a trivial acceptance condition *)
+    (match get_acceptance hoa with 
+      | (1, SetCond c) when not c.fin_occur && List.for_all (fun (st,_) -> List.mem c.set_number st.state_acc_sets) hoa.body -> ()
+      | (0, BoolAccept true) -> ()
+      | _ -> failwith "incorrect acceptance condition"
+    )   
+    ;
+    
+    let start = match get_start hoa with 
+      | [x] -> x 
+      | [] -> failwith "no starting node" 
+      | _ -> failwith "more than one starting node"
+  
     in
-    let [@warning "-4"] start = List.find_map (function Start [x] -> Some x | _ -> None ) hoa.header.items |> Option.get in
 
-    let [@warning "-4"] ap_labels = List.find_map (function Atomic (_,l) -> Some l | _ -> None ) hoa.header.items |> Option.get |> List.mapi (fun i x -> (i,x)) in
-
-      let true_atom = Atom.register_atom Label.tt |> snd (*|> TAtom.create *) in
-      let false_atom = Atom.register_atom Label.ff  |> snd (*|> TAtom.create*) in
+    let true_atom = Atom.register_atom Label.tt |> snd (*|> TAtom.create *) in
+    let false_atom = Atom.register_atom Label.ff  |> snd (*|> TAtom.create*) in
 
     let get_edge_label n : string = 
       (* Format.printf "[%a]@." (Format.pp_print_list (fun fmt (i,s) -> Format.fprintf fmt "(%i,%s)" i s)) ap_labels; *) 
-      match List.assoc_opt n ap_labels with
+      match List.assoc_opt n @@ get_atoms hoa with
       | Some id -> (* TAtom.create*) id
       | None -> 
           (* no label, make the atom map to true *)
           Format.printf "no label for atom: %i, mapping to 'true'\n" n;
           true_atom 
     in
-    let [@warning "-4"] g = create ~size:(List.find_map (function States n -> Some n | _ -> None) hoa.header.items |> Option.get) () in
+    let [@warning "-4"] g = create ?size:(get_num_states hoa) () in
     List.iter
       (fun (state,edges) ->
         List.iter (fun edge ->

@@ -90,14 +90,22 @@ struct
         D.output_graph o auto)
 
   let output_to_automaton (cli : Cli.config) (o : tool_output) : automaton =
-    let rely_a = pair_map (Right B.create) o.requires
-    and guarantee_a = pair_map (Right B.create) o.ensures in
+    let rely_a = 
+      if cli.verbose then
+        Format.printf "Creating assumptions automaton...@.";
+      pair_map (Right B.create) o.requires
+    and guarantee_a = 
+      if cli.verbose then
+        Format.printf "Creating guarantees automaton...@.";
+      pair_map (Right B.create) o.ensures in
     if cli.dump_automata then 
     begin
       automaton_to_dot (module B) cli rely_a;
       automaton_to_dot (module B) cli guarantee_a;
     end;
-    (* create synchronized product automaton *)
+    if cli.verbose then
+      Format.printf "Creating synchronized product...@."
+    ;
     let prod_a =
       ("product", BProd.create (snd rely_a, snd guarantee_a))
     in

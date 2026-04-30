@@ -57,10 +57,11 @@ module M
   type t = ((formula cnf, T.cnf_data Types.cnf_data) hoare_triple, T.triple_data Types.triple_data) labeled conjunction
 
 
-  (** [previous_instant_spec in_e init_post] produces the set of state formulas that must hold for a set of (incoming) edges [in_e],
+  (** [previous_instant_spec (in_e,v) init_post] produces the set of state formulas that must hold for a set of (incoming) edges [in_e] to the vertex [v],
       optionally appending an additional formula [init_post] if the node is initial
   *)
-  let previous_instant_spec (in_e,_v: BProd.edge disjunction * BProd.vdata) (init_post : T.base_spec_t option) : formula cnf =
+  let previous_instant_spec (in_e,v: BProd.edge disjunction * BProd.vertex) (init_post : T.base_spec_t option) : formula cnf =
+    let vdata = (BProd.get_vdata v).v_min_nb_instants in
     let replace_i (v, (inst,(cty,bty))) =
         match inst,cty with
         (* no past *)
@@ -102,8 +103,17 @@ module M
 
     |> fun (disj : (string bool_a, T.transition_data Types.transition_data) labeled disjunction) ->
 
-    (* the minimum number of instants of each transition is the maximum of all the minimum of the atoms  *)
-    (* assert (List.fold_left (fun acc x -> Int.min acc x.label.transition_data.nb_instant) Int.max_int disj.disjuncts = v.v_min_nb_instants.nb_instant); *)
+    let in_e_min = List.fold_left Types.(fun acc x -> Int.min acc x.label.transition_data.nb_instant) Int.max_int disj.disjuncts in    
+    assert (
+      (* v the initial node and has no incoming transitions, so min instant is exactly 0 *)
+      (BProd.is_start_node v && vdata.nb_instant = 0 && in_e_min = Int.max_int && vdata.is_max)  
+      || 
+      (* v the initial node and has some incoming transitions, so min instant is >= 0 *)
+      (BProd.is_start_node v && vdata.nb_instant = 0 && in_e_min < Int.max_int && (not vdata.is_max))  
+      ||
+      (* apart from the initial node, the minimum number of instants is the maximum of all the minimum of the incoming transitions  *)
+      in_e_min = vdata.nb_instant
+    );
 
     map_disjuncts (fun d ->  
         map_formula (fun a ->
@@ -182,7 +192,7 @@ module M
     end) in
 
     (* adapt previous ensures to the current instant *)
-    let previous_ens : formula cnf = previous_instant_spec (in_e,vdata) init_post 
+    let previous_ens : formula cnf = previous_instant_spec (in_e,v) init_post 
     in  
 
     let m : (string bool_a, T.transition_data Types.transition_data) labeled disjunction M.t =

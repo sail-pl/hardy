@@ -68,4 +68,3 @@ type body = (state * (edge list)) list
 
 
 type hoa = {header: header ; body : body}
-
