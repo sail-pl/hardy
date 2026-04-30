@@ -58,16 +58,16 @@ functor
 
     let speclist =
       [
-        ("-s", Set_string ltl_atom, "what is inside an LTL specification : direct (default) or ppltl for pure past ltl");
-        ("-a", Set_string aut_format, "automaton format: hoa (uses spot's ltl2tgba, default) or neverclaim (uses ltl2ba) ");
+        ("-s", Set_string ltl_atom, "What is inside an LTL specification : direct (default) or ppltl for pure past ltl");
+        ("-a", Set_string aut_format, "Automaton format: hoa (uses spot's ltl2tgba, default) or neverclaim (uses ltl2ba) ");
         ("-da", Set dump_automata, "Dump specification automata used to generate triples, including their dot representation");
-        ("-v", Set verbose, "debug output");
+        ("-v", Set verbose, "Debug output");
         ( "-noiaconj",
           Set no_i_a_conj,
-          "do not add the rely the formula to the guarantee one" );
+          "Do not add the rely the formula to the guarantee one" );
 
         ("-smoketests", Set smoke_tests,
-        "replace all ensures with false to detect inconsistent specification")
+        "Replace all ensures with false to detect inconsistent specification")
       ]
 
     let get_input_file f =

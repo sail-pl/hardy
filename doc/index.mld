@@ -1,0 +1,7 @@
+{0 Hardy}
+
+- Parsing and typechecking: {!module-hardyFrontEnd}
+
+- Specification processing: {!module-hardyMiddleEnd}
+
+- WhyML Program Output: {!module-hardyBackEnd}

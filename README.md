@@ -33,11 +33,48 @@ will:
 
 ## Writing Specification
 
-### Linear Temporal Logic
+For now, only (temporal) safety specification are accepted for the high-level specification.
+
+The low-level specification consists of local invariants written in first-order logic.
+
+There are two specification modes: LTL with past instrumentation at the propositional level and pure-past LTL. The default one is LTL and can be changed using the `-s` flag
+
+### Linear Temporal Logic with Past Instrumentation
+
+
+
+Syntax:
+
+
 
 ### Pure-past Linear Temporal Logic
 
+Past disappears from the temporal formulas atoms, but at the cost of limited expressivity (only propositions are supported).
 
+Syntax:
+
+
+
+
+
+## Code Documentation
+
+With `odig` (via `opam install odig`), and after having installed `hardy`, use `odig doc hardy`.
+
+
+## CLI Options
+
+```plain
+Usage : hardy <file> [-v]
+  -s What is inside an LTL specification : direct (default) or ppltl for pure past ltl
+  -a Automaton format: hoa (uses spot's ltl2tgba, default) or neverclaim (uses ltl2ba) 
+  -da Dump specification automata used to generate triples, including their dot representation
+  -v Debug output
+  -noiaconj Do not add the rely the formula to the guarantee one
+  -smoketests Replace all ensures with false to detect inconsistent specification
+  -help  Display this list of options
+  --help  Display this list of options
+```
 
 
 <!-- Hardy can be decomposed into 3 parts:
