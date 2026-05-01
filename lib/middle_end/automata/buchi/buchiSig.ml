@@ -84,6 +84,8 @@ functor
         ]
 
       let vertex_attributes v =
-        if acceptant v then [ `Shape `Doublecircle ] else []
+        []
+        |> fun x -> if acceptant v then List.cons (`Shape `Doublecircle) x else x
+        |> fun x -> if is_start_node v then List.cons (`Style `Filled ) x else x
     end)
   end

@@ -64,12 +64,11 @@ struct
       failwith "non-deterministic automaton"
     ; 
     (* failsafe: automaton must have all states acceptant or have a trivial acceptance condition *)
-    (match get_acceptance hoa with 
+    let [@warning "-4"] () = match get_acceptance hoa with 
       | (1, SetCond c) when not c.fin_occur && List.for_all (fun (st,_) -> List.mem c.set_number st.state_acc_sets) hoa.body -> ()
       | (0, BoolAccept true) -> ()
       | _ -> failwith "incorrect acceptance condition"
-    )   
-    ;
+    in
     
     let start = match get_start hoa with 
       | [x] -> x 
