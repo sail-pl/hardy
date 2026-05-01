@@ -9,6 +9,8 @@ type temp_f_prop = {
     mentions_history : bool;
 }
 
+val mentions_temp_f_prop : cat_ty -> temp_f_prop
+
 val is_static_prop : temp_f_prop -> bool
 
 val dft_temp_f_prop : temp_f_prop

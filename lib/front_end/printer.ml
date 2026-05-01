@@ -98,10 +98,10 @@ let rec pp_fol : 'a. (formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -> _ =
       fprintf fmt "forall %a. %a" pp_id_ty idty pp_fol' f
   | Exists (idty, f) ->
       fprintf fmt "exists %a. %a" pp_id_ty idty pp_fol' f
-  (* | ExistsPrev q ->
+  | ExistsPrev q ->
       fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_fol' q.f
   | ForallPrev q ->
-      fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_fol' q.f *)
+      fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_fol' q.f
 
   let pp_pred pp_atom fmt = 
     let open Format in

@@ -17,7 +17,7 @@ var
 // a size 1 buffer
 
 assumes G { data_in >= 0 } 
-assumes G {!{push && pop}
+assumes G !({push} && {pop})
 
 
 //public spec
@@ -28,7 +28,7 @@ guarantees G ( {full} -> ({pop} R ({pop} || {full}) ))
 
 
 // buffer is empty until a push is issued
-guarantees G ({!{full} -> ({push} R ({push} || {!{full}) ))
+guarantees G ((!{full}) -> ({push} R ({push} || !{full}) ))
 
 
 // if the buffer holds the current input, either it already had this input or the buffer was not full

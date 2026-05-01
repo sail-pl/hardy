@@ -271,4 +271,43 @@ let rec pterm_of_fol : type a. (a expr -> P.term) -> (a expr predicate, base_ty 
       let t = Tquant (DTexists, get_quant_binders v, [], pterm_of_fol f) in
       remove_bindings (Seq.map fst locals);
       term t ~loc
+  | ExistsPrev q ->
+      get_binding_type q.h_var (fun (cat, bty) ->
+          let local_v = (q.binder, (Local, bty)) in
+          (* for now, easier to make a local decl and mask the variable *)
+          add_bindings Seq.(cons local_v empty);
+          let e =
+             tapp (qualid [ instant_field cat]) [[ "_inst"]|> qualid |> tvar]
+          in 
+          let e =  PH.(P.Tapply (([q.h_var ] |> qualid |> tvar),e ) |> term) 
+               
+          in
+          let f = Tlet (ident q.binder, e, pterm_of_fol q.f) |> term in
+          remove_bindings Seq.(cons (fst local_v) empty);
+          let f_abs =
+            Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc
+          in
+          let for_some = [ "Quant"; "for_some" ] |> qualid in
+          tapp for_some [ f_abs; tvar (qualid [ history_id ]) ]
+          )
+
+  | ForallPrev q ->
+      get_binding_type q.h_var (fun (cat, bty) ->
+          let local_v = (q.binder, (Local, bty)) in
+          (* for now, easier to make a local decl and mask the variable *)
+          add_bindings Seq.(cons local_v empty);
+          let e =
+             tapp (qualid [ instant_field cat]) [[ "_inst"]|> qualid |> tvar]
+          in 
+          let e =  PH.(P.Tapply (([q.h_var ] |> qualid |> tvar),e ) |> term) 
+               
+          in
+          let f = Tlet (ident q.binder, e, pterm_of_fol q.f) |> term in
+          remove_bindings Seq.(cons (fst local_v) empty);
+          let f_abs =
+            Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc
+          in
+          let for_some = [ "Quant"; "for_all" ] |> qualid in
+          tapp for_some [ f_abs; tvar (qualid [ history_id ]) ]
+          )
 

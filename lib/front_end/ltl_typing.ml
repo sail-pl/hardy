@@ -48,39 +48,42 @@ module M : Typing with
 
     let [@warning "-4"] requires_checks = fun acc (e:(InstantSyntax.instant option*ty) expr ) -> match e.value with 
         | Var (_,(None,(Output,_))) -> 
-            failwith "output variables within temporal assumption cannot mention current output, only past"
-        | Var (_,(inst,(Input,_))) ->
-            {acc with mentions_input = true; mentions_history = Option.is_some inst}
-        | Var (_,(inst,(Output,_))) ->
-            {acc with mentions_output = true; mentions_history = Option.is_some inst}                       
+            failwith "output variables within temporal assumption cannot mention current output, only past"             
         | Var (_,(_,(State,_))) ->
             failwith "temporal assumption cannot mention state variables"
+        | Var (_,(inst,(cat,_))) ->
+            join_temp_f_prop (mentions_temp_f_prop cat) {acc with mentions_history = Option.is_some inst}
+            
         | _ -> acc
 
     and [@warning "-4"] ensures_checks = fun acc e -> match e.value with 
-        | Var (_,(inst,(Input,_))) ->
-            {acc with mentions_input = true; mentions_history = Option.is_some inst}
-        | Var (_,(inst,(Output,_))) ->
-            {acc with mentions_output = true; mentions_history = Option.is_some inst}                       
-        | Var (_,(inst,(State,_))) ->
-            {acc with mentions_state = true; mentions_history = Option.is_some inst}      
+        | Var (_,(inst,(cat,_))) -> 
+            join_temp_f_prop (mentions_temp_f_prop cat) {acc with mentions_history = Option.is_some inst}
         | _ -> acc
 
-          
-    and fold_fol_prop c = fold_fol (fun acc _ -> acc) (fun acc -> function
-        | Atom e -> fold_expr c acc e
+    in
+    let [@warning "-4"] rec fold_fol_prop b acc_f f = match f.value with
+        | ForallPrev q | ExistsPrev q -> 
+            let hvar_cat,hvar_ty = fail_if_no_bindings q.h_var bindings in 
+            let b = Bindings.add q.binder (Local, hvar_ty) b in
+            aux b (fun acc -> acc_f (join_temp_f_prop (mentions_temp_f_prop hvar_cat) {acc with mentions_history = true})) q.f
+        | _ -> aux b acc_f f
+
+        
+    and aux b acc_f = fold_fol (fun acc _ -> acc) (fun acc -> function
+        | Atom e -> acc_f acc e
         | Predicate p -> 
             (*fixme: look up definition:*)
-            List.fold_left c acc p.args
+            List.fold_left acc_f acc p.args
 
     ) dft_temp_f_prop
     in
 
     (* https://ocaml.org/manual/5.2/polymorphism.html#ss:explicit-polymorphism*)
-    let set_expr_type : 'a 'b. ('a -> 'b) -> 'a Program.expr -> ('b * ty) Program.expr = fun f x ->
-        map_expr Fun.id (fun (id,t) -> id,(f t,fail_if_no_bindings id bindings)) x in
+    let set_expr_type : 'a 'b. ('a -> 'b) -> ty Bindings.t -> 'a Program.expr -> ('b * ty) Program.expr = fun f b x ->
+        map_expr Fun.id (fun (id,t) -> id,(f t,fail_if_no_bindings id b)) x in
 
-    let type_prog_spec f = fun x -> map_fol_pred (set_expr_type f) x   in
+    let type_prog_spec f b = fun x -> map_fol_pred (set_expr_type f b) x   in
 
 
     let type_fol_expr : 
@@ -88,21 +91,30 @@ module M : Typing with
         (InstantSyntax.instant option, base_ty) fol_t -> 
         (InstantSyntax.instant option * ty, base_ty) fol_t 
     = 
-        let rec map b  = 
-            map_fol 
-                (fun x -> map b x (* infinite loop if no eta-expension ??? *)) 
-                (map_pred (set_expr_type Fun.id)) 
-                Fun.id
+        let [@warning "-4"] rec aux b = 
+            (fun f -> match f.value with
+            | ForallPrev q -> 
+                let b = Bindings.add q.binder (Local, snd @@ fail_if_no_bindings q.h_var bindings) b in
+                let f = map b q.f in
+                {f with value = ForallPrev {q with f}}
+            | ExistsPrev q -> 
+                let b = Bindings.add q.binder (Local, snd @@ fail_if_no_bindings q.h_var bindings) b in
+                let f = map b q.f in
+                {f with value = ExistsPrev {q with f}}
+
+            | _ -> map b f
+            ) 
+        and map b = map_fol (aux b) (map_pred @@ set_expr_type Fun.id b) Fun.id
         in            
-        map 
+        aux
     in
 
-    let type_fun f =  fun x -> List.map (
+    let type_fun f b =  fun x -> List.map ( (* todo: will need fold when allowing local variables *)
         map_stmt 
             Fun.id 
-            (fun (id,()) -> id,(fail_if_no_bindings id bindings)) 
-            (fun id -> fail_if_no_bindings id bindings |> ignore; id) 
-            (type_prog_spec f)
+            (fun (id,()) -> id,(fail_if_no_bindings id b)) 
+            (fun id -> fail_if_no_bindings id b |> ignore; id) 
+            (type_prog_spec f b)
     ) x in
 
     let prog_spec : (out_temp_spec list, unit) hoare_triple = 
@@ -111,9 +123,10 @@ module M : Typing with
                 let f_ltl : (temp_f_prop, (InstantSyntax.instant option * ty), base_ty) temp_spec_t = 
                     map_ltl_pred (fun f_fol : ((InstantSyntax.instant option * ty, base_ty) fol_t, temp_f_prop) labeled -> 
                         let fol = type_fol_expr bindings f_fol in
-                        let prop = fold_fol_prop checks fol in 
+                        let prop = fold_fol_prop bindings checks fol
+                        in 
                         if is_static_prop prop then 
-                            Format.asprintf "temporal formula %a does not contain any program variables" 
+                            Format.asprintf "temporal formula '%a' does not contain any program variables" 
                                 Printer.(pp_fol (pp_pred (pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t)))) (Format.pp_print_option pp_base_ty)) fol |> failwith
                         ;
                         mk_labeled ~label:prop fol                                                
@@ -130,14 +143,14 @@ module M : Typing with
 
     and prog_setup : (base_spec_t, ty) setup option = 
         Option.map (fun (s : (in_local_spec,unit) setup)  -> 
-        let setup_ensures : base_spec_t list = List.map (type_prog_spec (fun () -> None)) s.setup_ensures
-        and setup_body : (base_spec_t, ty) stmt list = type_fun (fun () -> None) s.setup_body in
+        let setup_ensures : base_spec_t list = List.map (type_prog_spec (fun () -> None) bindings) s.setup_ensures
+        and setup_body : (base_spec_t, ty) stmt list = type_fun (fun () -> None) bindings s.setup_body in
         {setup_ensures; setup_body}
 
         ) p.prog_setup 
     and prog_main = 
-        let main_body = type_fun (fun () -> None) p.prog_main.main_body
-        and main_loop_inv = List.map (type_prog_spec (fun () -> None)) p.prog_main.main_loop_inv in
+        let main_body = type_fun (fun () -> None) bindings p.prog_main.main_body
+        and main_loop_inv = List.map (type_prog_spec (fun () -> None) bindings) p.prog_main.main_loop_inv in
         {main_body; main_loop_inv}
     in
     {prog_setup; prog_main; prog_spec; prog_decls={env_variables=bindings}}

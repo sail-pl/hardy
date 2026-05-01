@@ -15,6 +15,9 @@ and ('a, 'qty) fol_ =
   | FOL_StdNary of SharedSyntax.standard_logic_bop * ('a, 'qty) fol list
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
+  | ForallPrev of  ('a, 'qty) prev_quant (* temporal universal quantification *)
+  | ExistsPrev of('a, 'qty) prev_quant (* temporal existential quantification *)
+
 and ('a, 'qty) prev_quant = {
   h_var : string;
   binder : string;

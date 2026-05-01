@@ -14,15 +14,12 @@ and ('a, 'qty) fol_ =
   (* convention: 
     LAnd [] <=> LOr []  <=> True 
   *)
-  | FOL_StdNary of standard_logic_bop * ('a, 'qty) fol list
-  
-  
+  | FOL_StdNary of standard_logic_bop * ('a, 'qty) fol list  
   | Forall of (string * 'qty) list * ('a, 'qty) fol
   | Exists of (string * 'qty) list * ('a, 'qty) fol
-  (*
-  | ForallPrev of  ('a, 'qty) prev_quant (* temporal universal quantification *)
-  | ExistsPrev of('a, 'qty) prev_quant (* temporal existential quantification *)
-  *)
+  | ForallPrev of  ('a, 'qty) prev_quant
+  | ExistsPrev of('a, 'qty) prev_quant 
+
 and ('a, 'qty) prev_quant = {h_var: string; binder: string; f:  ('a, 'qty) fol}
 
 
@@ -65,14 +62,14 @@ let map_fol : type a b ty_a ty_b.
   | Exists (l, f) ->
       let value = Exists (List.map m_ty l, m f) in
       { form with value }
-  (* | ForallPrev q ->
+  | ForallPrev q ->
       let f = m q.f in
       let value = ForallPrev {q with f} in
       { form with value }
   | ExistsPrev q ->
       let f = m q.f in
       let value = ExistsPrev {q with f} in
-      { form with value } *)
+      { form with value }
 
 let rec fold_fol : type a b t.
     (b -> (a, t) fol  -> b) -> (b -> a -> b) -> b -> (a, t) fol -> b =
@@ -84,7 +81,7 @@ let rec fold_fol : type a b t.
   | FOL_StdBinary (f1, _, f2) -> j (fold_fol j pj (fold_fol j pj init f1) f2) form
   | FOL_StdNary (_,l) -> j (List.fold_left (fold_fol j pj) init l) form
   | Forall (_, f) | Exists (_, f) -> j (fold_fol j pj init f) form
-  (* | ExistsPrev q | ForallPrev q -> j (fold_fol j pj init q.f) form *)
+  | ExistsPrev q | ForallPrev q -> j (fold_fol j pj init q.f) form
 
 
 let rec map_fol_ty m = map_fol (map_fol_ty m) Fun.id m

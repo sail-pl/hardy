@@ -3,17 +3,20 @@ output o : int;
 
 var last_nz : int;
 
-assumes G { i >= 0 }
+assumes {i = 0} && X G { i >= 0 }
 
+//public
 guarantees { o = 0 }
-guarantees X G { {o = 0} || {o = i} || {exists_prev i as p, p = o} }
+guarantees G ( {o = 0} || {o = i} || {exists_prev i as p, p = o} )
+
 
 setup:
   ensures { last_nz = 0 }
   last_nz := 0;
 
 loop:
-  if i != 0 then
+  invariant {o = last_nz}
+  if i <> 0 then
     last_nz := i;
   end
   emit last_nz to o;

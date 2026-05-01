@@ -59,15 +59,22 @@ struct
   let is_start_node (v : V.t) = (snd v).start
 
   let create (hoa : hoa) : t =
-    (* failsafe: automaton must be deterministic *)
     if not @@ List.mem "deterministic" @@ get_props hoa then
-      failwith "non-deterministic automaton"
+      Format.printf "WARNING: automaton not labeled as deterministic@."
     ; 
     (* failsafe: automaton must have all states acceptant or have a trivial acceptance condition *)
     let [@warning "-4"] () = match get_acceptance hoa with 
-      | (1, SetCond c) when not c.fin_occur && List.for_all (fun (st,_) -> List.mem c.set_number st.state_acc_sets) hoa.body -> ()
+      | (1, SetCond c) when not c.fin_occur ->
+        begin
+          match List.filter_map (fun (st,_) -> if List.mem c.set_number st.state_acc_sets then None else Some st.state_number) hoa.body with
+          | [] -> ()
+          | l -> 
+            Format.(printf "WARNING: automaton state(s) %a are not marked acceptant. @, Ensure no self-loops for those states@."
+            (pp_print_list ~pp_sep:(fun fmt () -> pp_print_string fmt " ") pp_print_int) l)
+        end
       | (0, BoolAccept true) -> ()
-      | _ -> failwith "incorrect acceptance condition"
+      | _ -> failwith "unknown acceptance condition"
+
     in
     
     let start = match get_start hoa with 

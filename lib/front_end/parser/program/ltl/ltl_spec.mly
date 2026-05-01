@@ -1,5 +1,6 @@
 %{
     open InstantSyntax
+    open FOLSyntax
 
 %}
 
@@ -24,12 +25,14 @@ let tq_expr_with_pred ==
 
 
 let fol_h(atom) ==
+    located(
     | FORALL_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ForallPrev {h_var;binder;f}}
     | EXISTS_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ExistsPrev {h_var;binder;f}}
+    )
     | fol(atom)
 
 
 %public
 let inst_spec == braced(fol(spec_expr_with_pred))
 %public
-let temporal_spec == ltl(braced(fol(tq_expr_with_pred)))
+let temporal_spec == ltl(braced(fol_h(tq_expr_with_pred)))
