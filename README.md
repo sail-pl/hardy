@@ -31,7 +31,8 @@ will:
 2. Reduce the program and its temporal specification into a WhyML program `file.hd.mlw` together with local {pre,post}-conditions, inside a directory called `file_gen`
 3. Attempt an automatic proof using alt-ergo via the Why3 API.
 
-## Writing Specification
+
+## Specification
 
 For now, only (temporal) safety specification are accepted for the high-level specification.
 
@@ -39,27 +40,145 @@ The low-level specification consists of local invariants written in first-order 
 
 There are two specification modes: LTL with past instrumentation at the propositional level and pure-past LTL. The default one is LTL and can be changed using the `-s` flag
 
+### Shared (Parameterized) Grammar
+
+```bnf
+<LTL(atom)> ::= <atom>                                ; atomic formula
+            | '(' <LTL(atom)> ')'
+            | "tt"                                    ; TRUE
+            | "ff"                                    ; FALSE
+            | 'X' <LTL(atom)>                         ; Next
+            | 'F' <LTL(atom)>                         ; Eventually    
+            | 'G' <LTL(atom)>                         ; Globally
+            | <logic_un_op> <LTL(atom)>               ; Common unary boolean operator
+            | <LTL(atom)> 'U' <LTL(atom)>             ; Until
+            | <LTL(atom)> 'W' <LTL(atom)>             ; Weak Until
+            | <LTL(atom)> 'R' <LTL(atom)>             ; Release
+            | <LTL(atom)> 'V' <LTL(atom)>             ; Release (alias)
+            | <LTL(atom)> 'M' <LTL(atom)>             ; Strong Release
+            | <LTL(atom)> <logic_bin_op> <LTL(atom)>  ; Common binary boolean operator 
+
+
+
+<FOL(atom)> ::= <atom>
+            | '(' <FOL(atom)> ')'
+            | "tt" 
+            | "ff"
+            | <logic_un_op> <FOL(atom)>          
+            | <FOL(atom)> <comparison> <FOL(atom)>   
+            | <FOL(atom)> <logic_bin_op> <FOL(atom)>
+            | "forall"  (  <ID> (':' ty)?   )+        ; universal
+            | "exists"  (  <ID> (':' ty)?   )+        ; existential
+
+
+<logic_bin_op> ::= "->" | "=>" | "<->" | "<=>" | "&&" | "||"
+
+<logic_un_op> ::= '!' ; Not
+
+<comparison> ::= "=" | "<" | "<=" | ">" | ">=" | "<>"
+
+<expr(v)> ::=   v                                     ; program variable   
+            | "true" | "false"  
+            | '(' expr ')'
+            | <INT>                                
+            | <REAL>                                  
+            | '"' <STRING> '"'
+            | '(' ( expr ',' )* ')'                   ; tuple
+            | '!' <expr(v)>                           ; negation
+            | <expr(v)> <logic_bin_op> <expr(v)>
+            | <expr(v)> <comparison> <expr(v)> 
+            | <expr(v)>  '[' <expr(v)> ']'            ; array access
+            | "[|" (<expr(v)> ';')+ "|]"              ; array literal
+```
+
 ### Linear Temporal Logic with Past Instrumentation
 
+LTL atoms consists of first-order formulas over program expressions where past values of variables can be referenced and quantified upon:
+
+```bnf
+
+<spec> ::= <LTL(<FOL_h>)> ; high-level program specification
+
+<FOL_h> ::=   "forall_prev" <ID> "as" <ID> ',' <FOL_h>
+            | "exists_prev" <ID> "as" <ID> ',' <FOL_h>
+            | <FOL(  '{' expr(past_var) '}' )>
 
 
-Syntax:
+past_var ::=  <ID>
+            | <ID> ('@' | "at" ) <INT> 
+            | ("prev" | "last") <INT>? <ID> 
+            | <ID> '#' <INT>
+            | ("start" | "first" | '$') <ID>
+```
 
+| Syntax                        | Semantics                                                   |
+| ----------------------------- | ----------------------------------------------------------- |
+| `x at n`, `x@n`               | `x` value at instant `n`                                    |
+| `start x`, `first x`, `$x`    | first value of `x` (equivalent to `x@0`)                    |
+| `prev n x`, `last n x`, `x#n` | `x` value `n` instants before the current one (`x#0` ⟺ `x`) |
+| `prev x`, `last x`            | `x` value at the last instant (equivalent to `x#1`)         |
+| `forall_prev x as x_t, f`     | `f` must hold for all past values of `x`, bound to `x_t` in f |
+| `exists_prev x as x_t, f`     | `f` must hold for at least one past value of `x`, bound to `x_t` in f |
+
+[Link to examples](examples/LTL/)
 
 
 ### Pure-past Linear Temporal Logic
 
-Past disappears from the temporal formulas atoms, but at the cost of limited expressivity (only propositions are supported).
+Past disappears from the temporal formulas atoms, but at the cost of limited expressivity (only propositions are supported at the temporal level).
 
 Syntax:
 
+```bnf
+
+<spec> ::= <LTL('{' <ppLTL> '}')>
+
+<ppLTL> ::=   '{' <FOL(<expr(<ID>)>)> '}'     ; FOL with no past quantification over program variables 
+            | 'H' <ppLTL>                     ; Historically
+            | 'O' <ppLTL>                     ; Once
+            | 'Y' <ppLTL>                     ; Yesterday
+            | 'T' <ppLTL>                     ; Weak Yesterday
+            | <logic_un_op> <ppLTL>           ; Common unary operators
+            | <ppLTL> 'S' <ppLTL>             ; Since
+            | <ppLTL> 'Z' <ppLTL>             ; Weak Since
+            | <ppLTL> <logic_bin_op> <ppLTL>  ; Common binary operator 
+```
+
+[Link to examples](examples/ppLTL/)
+
+## Program Syntax
+
+As the focus is the specification of code and not the code itself, programs in hardy are very basic: they are reactive as they must continuously receive input and produce output, but also synchronous: time is discretized as a list of instants, where one input is *synchronized to one output* and no there input is consumed until the current one leads to the production of an output.
+
+Programs thus consists of a `setup` procedure that is run once at the very beginning of execution and used to initialize memory and a main `loop` that runs indefinitely. The code inside is a simplified imperative language with a specific syntax to distinguish writing variables and emitting to an output.
+
+Program composition is not possible currently but is our next priority.
+
+Example
+
+```raw
+input 
+    value : int
+    set : bool
+;
+output o : int;
+var x : int;
 
 
+setup :
+    x := 0;
 
+loop :
+    emit x to o;
+
+    if set then
+        x := value;
+    end
+```
 
 ## Code Documentation
 
-With `odig` (via `opam install odig`), and after having installed `hardy`, use `odig doc hardy`.
+With `odig` (via `opam install odig`), and after installing `hardy`, use `odig doc hardy`.
 
 
 ## CLI Options
@@ -75,10 +194,3 @@ Usage : hardy <file> [-v]
   -help  Display this list of options
   --help  Display this list of options
 ```
-
-
-<!-- Hardy can be decomposed into 3 parts:
-
-- the frontend is a parser for a simple imperative synchronous reactive language annotated by first-order and linear temporal logic formulas. Accepted programs are written in a setup-loop format akin to Arduino where the setup procedure is executed once at the beginning, followed by the loop procedure, the latter repeated indefinitely. At each instant, which corresponds to one execution of the loop procedure, a program consumes an input and produces an output. The temporal specification is parameterized by the inputs and outputs, forming the program's contract. It consists of a *guarantee* and *rely* pair of formulas that describes the expected behaviour of the output across time according to a well-behaved input.
-- the middle-end takes such programs and performs transformation based on automata representation of the temporal specification to obtain a set of hoare triples.
-- the backend converts the hoare triples to an mlw file that will be fed to Why3 to perform deductive verification. -->
