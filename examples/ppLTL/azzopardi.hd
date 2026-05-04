@@ -9,7 +9,7 @@ guarantees G {
     (
         O {err = 1} &&
         O {err = 2} &&
-        WY H {!flag12}
+        Z H {!flag12}
     ) 
     <=> { flag12 }
 }

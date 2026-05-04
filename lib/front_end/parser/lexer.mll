@@ -120,8 +120,8 @@ rule tokenize = parse
   | "M"                     { SRELEASE }
   | "F"                     { EVENTUALLY }
   | "G"                     { ALWAYS }
-  | "WY"                    { WEAK_YESTERDAY }
-  | "WS"                    { WEAK_SINCE }
+  | "T"                    { WEAK_YESTERDAY }
+  | "Z"                    { WEAK_SINCE }
   | "W"                     { WEAK_UNTIL }
   | "Y"                     { YESTERDAY }
   | "O"                     { ONCE }

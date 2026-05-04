@@ -13,6 +13,6 @@ assumes G ( {{tick_i = 1}} -> X {{tick_i = 2}} && X X {{tick_i = 3}} && X X X {{
 // fixme: too many states without noiaconj
 
 // should be deduced from the previous two guarantees
-guarantees G ( {{tick_i = 1}} -> {WY {tick_i = 3}})
+guarantees G ( {{tick_i = 1}} -> {Z {tick_i = 3}})
 
 loop:

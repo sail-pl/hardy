@@ -10,7 +10,7 @@
  (explain false))
 
 (menhir
- (modules tokens specification/ltl specification/pltl program/ppltl/ppltl_spec program/common)
+ (modules tokens specification/ltl specification/ppltl program/ppltl/ppltl_spec program/common)
  (merge_into pgrmPltlParser)
  (flags
   --external-tokens Tokens
