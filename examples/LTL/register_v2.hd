@@ -12,12 +12,11 @@ var x : int;
 
 
 // every output corresponds to 0 until set is enabled
-guarantees {set} R ({set} || {o = 0})
+guarantees {o = 0} W {set}
 
 // whenever set is enabled, every following outputs are the input received at the previous instant until 
 // set is disabled
-guarantees G ({set} -> {!{set} R ({!{set} || X {o = prev value}))
-
+guarantees G ({set} -> (X {o = prev value}) W !{set})
 // whenever set is disabled, every following outputs are the last input received when set was disabled until
 // it is enabled again
 // NOT POSSIBLE TO STATE CURRENTLY 
@@ -27,7 +26,7 @@ guarantees G ({set} -> {!{set} R ({!{set} || X {o = prev value}))
 
 
 // x is 0 as long as set is not enabled
-guarantees {set} R ({set} || {x = 0})
+guarantees {x = 0} W {set}
 
 
 // while set is enabled, x is the current input until it is disabled

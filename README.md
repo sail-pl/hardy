@@ -19,10 +19,16 @@ dune build @install
 
 ## Basic Usage
 
+Hardy programs are suffixed by `.hd`. Examples can be found in [examples](examples) and are divided in three folders:
+
+- [LTL](examples/LTL/) : examples specified with LTL
+- [ppLTL](examples/ppLTL/) examples specified with pure-past LTL
+- [WIP](examples/WIP/) : examples not yet working
+
 Executing
 
 ```sh
-hardy <file.hd>
+hardy examples/LTL/<file.hd>
 ```
 
 will:
@@ -31,6 +37,7 @@ will:
 2. Reduce the program and its temporal specification into a WhyML program `file.hd.mlw` together with local {pre,post}-conditions, inside a directory called `file_gen`
 3. Attempt an automatic proof using alt-ergo via the Why3 API.
 
+To execute ppLTL examples, `-s ppltl` must be appended to the above command.
 
 ## Specification
 
@@ -38,7 +45,7 @@ For now, only (temporal) safety specification are accepted for the high-level sp
 
 The low-level specification consists of local invariants written in first-order logic.
 
-There are two specification modes: LTL with past instrumentation at the propositional level and pure-past LTL. The default one is LTL and can be changed using the `-s` flag
+As hinted at earlier, there are two specification modes: LTL with past instrumentation at the propositional level and pure-past LTL. The default one is LTL and can be changed using the `-s <spec>` flag (supported modes are `ltl`or `ppltl`)
 
 ### Shared (Parameterized) Grammar
 
@@ -120,14 +127,18 @@ past_var ::=  <ID>
 | `forall_prev x as x_t, f`     | `f` must hold for all past values of `x`, bound to `x_t` in f |
 | `exists_prev x as x_t, f`     | `f` must hold for at least one past value of `x`, bound to `x_t` in f |
 
-[Link to examples](examples/LTL/)
+#### Example
 
+```raw
+G ( {o = 0} || {o = i} || {exists_prev i as p, p = o} )
+```
+
+[LTL-specified program examples](examples/LTL/)
 
 ### Pure-past Linear Temporal Logic
 
-Past disappears from the temporal formulas atoms, but at the cost of limited expressivity (only propositions are supported at the temporal level).
+Past disappears from the temporal formulas' atoms, but at the cost of limited expressivity (only propositions are supported at the temporal level).
 
-Syntax:
 
 ```bnf
 
@@ -144,7 +155,20 @@ Syntax:
             | <ppLTL> <logic_bin_op> <ppLTL>  ; Common binary operator 
 ```
 
-[Link to examples](examples/ppLTL/)
+#### Example
+
+```raw
+guarantees G {
+    (
+        O {err = 1} &&
+        O {err = 2} &&
+        Z H {!flag12}
+    ) 
+    <=> { flag12 }
+}
+```
+
+[ppLTL-specified program examples](examples/ppLTL/)
 
 ## Program Syntax
 
@@ -185,7 +209,7 @@ With `odig` (via `opam install odig`), and after installing `hardy`, use `odig d
 
 ```plain
 Usage : hardy <file> [-v]
-  -s What is inside an LTL specification : direct (default) or ppltl for pure past ltl
+  -s What is inside an LTL specification : ltl (default) or ppltl for pure past ltl
   -a Automaton format: hoa (uses spot's ltl2tgba, default) or neverclaim (uses ltl2ba) 
   -da Dump specification automata used to generate triples, including their dot representation
   -v Debug output

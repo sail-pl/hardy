@@ -2,7 +2,7 @@ type ltl_atom_t = Direct | PastLTL
 
 exception IncorrectAtom
 let ltl_atom_t_of_string = function
-  | "Direct" | "direct" | "" (*default*) -> Direct
+  | "Direct" | "direct" | "" | "ltl" | "LTL" (*default*) -> Direct
   | "Pure-PastLtl" | "pure-pastltl" | "ppltl" -> PastLTL
   | _ -> raise IncorrectAtom
 

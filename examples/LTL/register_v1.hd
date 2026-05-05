@@ -24,11 +24,11 @@ guarantees X {o = first value}
 //guarantees X X {x = x@2}
 
 // every output corresponds to the first input until set is enabled
-guarantees X ({set} R ({set} ||  {o = first value}))
+guarantees X ({o = first value} W {set})
 
 // whenever set is enabled, every following outputs are the input received at the previous instant until 
 // set is disabled
-guarantees G ({set} -> {!{set} R ({!{set} || X {o = prev value}))
+guarantees G ({set} -> (X {o = prev value}) W !{set})
 
 // whenever set is disabled, every following outputs are the last input received when set was disabled until
 // it is enabled again
@@ -38,11 +38,11 @@ guarantees G ({set} -> {!{set} R ({!{set} || X {o = prev value}))
 //----- private spec -----
 
 guarantees {x = value}
-guarantees X ({set} R ({set} ||  {x = first value}))
+guarantees X ({x = first value} W {set})
 
 
 // while set is enabled, x is the current input until it is disabled
-guarantees G ({set} -> !{set} R ({!{set} || {x = value}))
+guarantees G ({set} -> ({x = value} W !{set}))
 
 
 
