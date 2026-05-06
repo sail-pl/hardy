@@ -3,7 +3,7 @@ open FrontParser.SharedSyntax
 (* open MiddleParser.Labeling *)
 open MiddleParser.HoaSyntax
 open MiddleParser.HoaHelpers
-
+open HardyMisc.Utils
 
 
 module Make
@@ -21,6 +21,7 @@ module Make
   BuchiSig.S  
     with type init_val = hoa  
     and type E.label = string bool_a
+    and type vdata = (name: string * acceptant: bool * start:bool)
     (* and type TAtom.t = TAtom.t *)
     (* and type 'a FAtom.t = 'a  *)
     (* and type FAtom.atom = FAtom.atom *)
@@ -29,12 +30,10 @@ module Make
 struct
   (* module TAtom = TAtom *)
 
-  type hoa_vdata = {acceptant: bool; start:bool}
-
   module State = struct
 
     (* states are just labels and whether they are acceptant *)
-    type t = string * hoa_vdata
+    type t = string * (name: string * acceptant: bool * start:bool)
 
 
     let compare s1 s2 = String.compare (fst s1) (fst s2)
@@ -53,31 +52,36 @@ struct
   include Graph.Imperative.Digraph.ConcreteLabeled (State) (Transition)
 
   type init_val = hoa
-  type vdata = hoa_vdata
+  type vdata = (name: string * acceptant: bool * start:bool)
 
-  let acceptant v = (snd v).acceptant
-  let is_start_node (v : V.t) = (snd v).start
+  let acceptant (_,(~acceptant,..) : V.t) = acceptant
+  let is_start_node (_,(~start,..) : V.t) = start
 
   let create (hoa : hoa) : t =
     if not @@ List.mem "deterministic" @@ get_props hoa then
       Format.printf "WARNING: automaton not labeled as deterministic@."
     ; 
-    (* failsafe: automaton must have all states acceptant or have a trivial acceptance condition *)
-    let [@warning "-4"] () = match get_acceptance hoa with 
+    (* automaton must have a supported acceptance condition  *)
+    let [@warning "-4"] hoa = match get_acceptance hoa with 
       | (1, SetCond c) when not c.fin_occur ->
-        begin
-          match List.filter_map (fun (st,_) -> if List.mem c.set_number st.state_acc_sets then None else Some st.state_number) hoa.body with
-          | [] -> ()
-          | l -> 
-            Format.(printf "WARNING: automaton state(s) %a are not marked acceptant. @, Ensure no self-loops for those states@."
-            (pp_print_list ~pp_sep:(fun fmt () -> pp_print_string fmt " ") pp_print_int) l)
-        end
-      | (0, BoolAccept true) -> ()
-      | _ -> failwith "unknown acceptance condition"
+        List.iter (fun (st,_) -> 
+          if not @@ List.mem c.set_number st.state_acc_sets then match st.state_acc_sets with
+            | [] -> () (* non-acceptant set *)
+            | h::_ ->
+              failwith @@ Format.sprintf "malformed hoa: state %i has an incorrect acceptance set (got %i, expected %i)" 
+                st.state_number 
+                h
+                c.set_number
+        ) hoa.body; 
+        hoa
+      | (0, BoolAccept true) -> 
+        (* any word is recognized, make all states acceptant *)
+        let body = List.map (pair_map (Left (fun st -> {st with state_acc_sets=[0]}))) hoa.body in 
+        {hoa with body}
+      | _ -> failwith "unsupported acceptance condition"
 
     in
-    
-    let start = match get_start hoa with 
+    let starting_node = match get_start hoa with 
       | [x] -> x 
       | [] -> failwith "no starting node" 
       | _ -> failwith "more than one starting node"
@@ -96,11 +100,14 @@ struct
           Format.printf "no label for atom: %i, mapping to 'true'\n" n;
           true_atom 
     in
-    let [@warning "-4"] g = create ?size:(get_num_states hoa) () in
+    let g = create ?size:(get_num_states hoa) () in
     List.iter
       (fun (state,edges) ->
         List.iter (fun edge ->
-          let src = V.create  (string_of_int state.state_number, {start=state.state_number = start; acceptant=state.state_acc_sets <> []}) 
+          let start,acceptant = state.state_number = starting_node, state.state_acc_sets <> [] in 
+          let src = 
+            let name = string_of_int state.state_number in
+            V.create  (string_of_int state.state_number, (~name,~acceptant,~start)) 
           and label = edge.edge_label |> Option.get |> map_formula (function 
             | BoolLabel true -> true_atom
             | BoolLabel false -> false_atom
@@ -113,7 +120,11 @@ struct
                 workaround: lookup the next vertex to get its data right away
               *)
               List.find (fun ({state_number;_},_) -> state_number = List.hd edge.edge_dst) hoa.body |> fst in 
-            V.create (string_of_int state.state_number, {start=state.state_number = start; acceptant=state.state_acc_sets <> []}) in
+            let name,start,acceptant = 
+              string_of_int state.state_number,
+              state.state_number = starting_node, 
+              state.state_acc_sets <> [] in 
+            V.create (string_of_int state.state_number, (~name,~acceptant,~start)) in
           
           let e =
             E.create
@@ -126,7 +137,6 @@ struct
         )
       hoa.body;
     g
-
   let pp_vertex fmt s = Format.pp_print_string fmt (fst s)
 
   let id_of_vertex = Format.asprintf "%a" pp_vertex
@@ -174,21 +184,32 @@ module SpinHoaOutput : AutSig.ToolSig with
   let call (i : Cli.config) (hoa_file : string -> string) (f : string Syntax.Ltl.ltl) : output =
     let open Format in
     let hoa_file = hoa_file ".hoa" in
-    let stderr = if i.verbose then Some (hoa_file ^ ".err") else None in
     let to_spin = Printer.(pp_ltl pp_print_string pp_ltl_binop_spin pp_ltl_unnop_spin) in
-    let cmd =
-      Filename.quote_command "ltl2tgba"
-        [ "-B" ; "-D"; "-x sat-minimize" ; asprintf "%a" to_spin f]
-        ~stdout:hoa_file ?stderr
+    let f = asprintf "%a" to_spin f in
+
+    let proc = Shexp_process.(Let_syntax.(
+        find_executable_exn "ltlfilt" >>= fun ltlfilt ->
+        (* ensure this is a safety formula *)
+        (
+          run_exit_code ltlfilt [ "--safety" ; "-f" ; f ] >>| function 
+          | 0 -> ()
+          | _ -> failwith @@ Format.asprintf "'%s' is not a safety formula" f
+        )
+        (* get the automaton *)
+        |- (find_executable_exn "ltl2tgba" >>= fun ltl2tgba ->
+              run ltl2tgba  [ "-B" ; "-D"; "-x sat-minimize" ; f])
+        (* ensure it is deterministic *)
+        |- run "autfilt" ["-D" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
+        |> stdout_to hoa_file
+        |> if i.verbose then stderr_to (hoa_file ^ ".err") else Fun.id
+      )
+      )
     in
-    if i.verbose then printf "ltl2tgba command line : %s@." cmd;
-    let ret = Sys.command cmd in
-    if ret <> 0 then
-      failwith (sprintf "non-0 exit-code (%i) from ltl2tgba@." ret)
-    else 
-      let a = MiddleParser.HoaParsing.parse_automaton hoa_file in 
-      if not i.dump_automata then Sys.remove hoa_file;
-      a
+    let eval x = if i.verbose then Shexp_process.Logged.eval x else Shexp_process.eval x in
+    eval proc;
+    let a = MiddleParser.HoaParsing.parse_automaton hoa_file in 
+    if not i.dump_automata then Sys.remove hoa_file;
+    a
 end
 
 
@@ -206,18 +227,29 @@ module PpLTLHoaOutput : AutSig.ToolSig with
     let hoa_file = hoa_file ".hoa" in
     
     let to_spin = Printer.(pp_ltl (pp_pltl_default pp_print_string) pp_ltl_binop_spin pp_ltl_unnop_spin) in
+    let f = asprintf "%a" to_spin f in
     
     
     let proc = Shexp_process.(Let_syntax.(
-        find_executable_exn "pltl2tgba" >>= fun pltl2tgba ->
-        run pltl2tgba [ "-f" ; asprintf "%a" to_spin f ] 
+        find_executable_exn "ltlfilt" >>= fun ltlfilt ->
+        (* ensure this is a safety formula *)
+        (
+          run_exit_code ltlfilt [ "--safety" ; "-f" ; f ] >>| function 
+          | 0 -> ()
+          | _ -> failwith @@ Format.asprintf "'%s' is not a safety formula" f
+        )
+        (* get the automaton *)
+        |- (find_executable_exn "pltl2tgba" >>= fun pltl2tgba ->
+              run pltl2tgba [] )
+        (* ensure it is deterministic *)
         |- run "autfilt" ["-D" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
         |> stdout_to hoa_file
         |> if i.verbose then stderr_to (hoa_file ^ ".err") else Fun.id
       )
       )
     in
-    Shexp_process.eval proc;
+    let eval x = if i.verbose then Shexp_process.Logged.eval x else Shexp_process.eval x in
+    eval proc;
     (* if i.verbose then  
     print_string @@ "command output: " ^ Shexp_process.eval proc; *)
     let a = MiddleParser.HoaParsing.parse_automaton hoa_file in     

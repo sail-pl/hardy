@@ -15,6 +15,7 @@ module M
   (B: BuchiSig.S 
             with type init_val = Tool.output
             and type E.label = string bool_a
+            and type vdata = (name: string * acceptant: bool * start:bool)
   )
   (BProd : BuchiSig.S with type init_val = B.t * B.t
   )
@@ -89,20 +90,44 @@ struct
     Out_channel.with_open_text (output_file cli name ".dot") (fun o ->
         D.output_graph o auto)
 
+  (* let check_safety (name,g) =
+    let module U = BuchiSig.Utils(B) in   
+    match U.get_nonacc_states g with
+    | [] -> ()
+    | l -> failwith Format.(asprintf "unsafe automaton caused by cycles %a" 
+      (pp_print_list 
+        ~pp_sep:(fun fmt () -> pp_print_string fmt " ") 
+        (fun fmt -> fprintf fmt "[%a]" 
+          (pp_print_list 
+            ~pp_sep:(fun fmt () -> pp_print_string fmt "-") 
+            (fun fmt v -> let (~name,..) = B.get_vdata v in pp_print_string fmt name)
+          )
+        )
+      ) 
+      l
+    ) *)
+
+
+
   let output_to_automaton (cli : Cli.config) (o : tool_output) : automaton =
     let rely_a = 
       if cli.verbose then
         Format.printf "Creating assumptions automaton...@.";
       pair_map (Right B.create) o.requires
-    and guarantee_a = 
+    in
+    if cli.dump_automata then 
+      automaton_to_dot (module B) cli rely_a;
+    (* check_safety rely_a; *)
+
+    let guarantee_a = 
       if cli.verbose then
         Format.printf "Creating guarantees automaton...@.";
-      pair_map (Right B.create) o.ensures in
+      pair_map (Right B.create) o.ensures 
+    in
     if cli.dump_automata then 
-    begin
-      automaton_to_dot (module B) cli rely_a;
       automaton_to_dot (module B) cli guarantee_a;
-    end;
+    (* check_safety guarantee_a; *)
+  
     if cli.verbose then
       Format.printf "Creating synchronized product...@."
     ;

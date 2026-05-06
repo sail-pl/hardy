@@ -16,7 +16,9 @@ module M :
 (Tool : AutSig.ToolSig with type input = string TempSpec.t)
 (B : BuchiSig.S 
             with type init_val = Tool.output
-            and type E.label = string bool_a)
+            and type E.label = string bool_a
+            and type vdata = (name: string * acceptant: bool * start:bool)
+)
 (BProd : BuchiSig.S with type init_val = B.t * B.t) -> GenSig.S with   
     type local_spec = LocalSpec.t and 
     type temp_spec = (AtomStore.atom TempSpec.t, FrontSig.temp_f_prop) labeled and

@@ -26,15 +26,18 @@ module type S = sig
 end
 
 (** Buchi-specific graph utilities *)
-module type UtilsSig = (G : S) -> sig 
-    val get_all_init_nodes : G.t -> G.vertex list 
+module Utils(G:S) : sig
+    val get_all_init_states : G.t -> G.vertex list 
+    
+    val get_nonacc_states : G.t -> G.V.t list list
+    (** [get_nonacc_states g] returns the list of non-acceptant cicles, that is, 
+        if this list is not empty and the automaton is complete and deterministic, it is not a safety automaton because there exists a loop that only consists of non-accepting states,
+        so that can produce an infinite word not part of the language
+    *)
 end
 
 (** Generation of dot file *)
-module type DotSig = (G : S) -> sig
+module Dot(G:S) : sig
     val fprint_graph : Format.formatter -> G.t -> unit
     val output_graph : out_channel -> G.t -> unit
 end
-
-module Utils : UtilsSig
-module Dot : DotSig

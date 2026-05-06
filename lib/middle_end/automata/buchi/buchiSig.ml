@@ -36,27 +36,58 @@ module type S = sig
   val get_vdata : V.t -> vdata
 end
 
-module type UtilsSig = functor (G : S) -> sig
-  val get_all_init_nodes : G.t -> G.vertex list
-end
 
-module type DotSig = functor (G : S) -> sig
-  val fprint_graph : Format.formatter -> G.t -> unit
-  val output_graph : out_channel -> G.t -> unit
-end
 
-module Utils : UtilsSig =
+
+module Utils =
 functor
   (G : S)
   ->
   struct
-    let get_all_init_nodes g =
+
+  open HardyMisc.Utils
+
+    let get_all_init_states g =
       G.fold_vertex
         (fun v acc -> if G.is_start_node v then v :: acc else acc)
         g []
+  
+
+    (*
+      two possibilities :
+      - current node is acceptant -> skip
+      - there exists a successor that is non-acceptant ->
+         recurse until we loop back to the current node via a path of non-accepting-paths
+    *)
+    let get_nonacc_states g = 
+      let rec aux first = function
+      | [] ->  
+        check (G.succ g first |> List.filter (G.acceptant >> not)) first []
+      | h::t as path -> 
+        if List.mem h t then path
+        else
+          check (G.succ g h |> List.filter (G.acceptant >> not)) first path
+          
+      and check succs first path =          
+        List.fold_left (fun acc s -> 
+          if acc <> [] then
+            (* we found it, skip *)
+            acc
+          else
+            aux first (s::path)
+        ) [] succs
+  
+      in
+    
+      G.fold_vertex (fun v acc -> 
+        if acc <> [] then (* skip *)  acc else
+        match aux v [] with [] -> acc | l -> l::acc
+      ) 
+    g []
+
   end
 
-module Dot : DotSig =
+module Dot =
 functor
   (G : S)
   ->

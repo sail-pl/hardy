@@ -128,7 +128,7 @@ module Make(G : BuchiSig.S)
     (* we assume there is only one init node *)
     let init_r, init_g =
       let open BuchiSig.Utils (G) in
-      match (get_all_init_nodes rely_a, get_all_init_nodes guarantee_a) with
+      match (get_all_init_states rely_a, get_all_init_states guarantee_a) with
       | h1 :: [], h2 :: [] -> (h1, h2)
       | _ -> failwith "no or more than one initial state"
     in
