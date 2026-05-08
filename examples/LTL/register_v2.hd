@@ -30,7 +30,7 @@ guarantees {x = 0} W {set}
 
 
 // while set is enabled, x is the current input until it is disabled
-guarantees G ({set} -> {!{set} R ({!{set} || {x = value}))
+guarantees G ({set} -> {x = value} W !{set})
 
 
 
