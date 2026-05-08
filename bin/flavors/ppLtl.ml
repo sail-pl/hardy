@@ -60,7 +60,7 @@ module PpLTLSpec : FrontParser.SharedSyntax.BoolA
   let conj = and_ltl
   let disj = disj_ltl
   let map m = map_ltl_pred (map_pltl_pred m)
-  let pp f = Printer.(pp_ltl_default (pp_pltl_default f))
+  let pp f = Printer.(pp_ltl_default (fun fmt f' -> Format.fprintf fmt "{%a}" (pp_pltl_default f) f'))
   let tt = true_ltl
   let ff = false_ltl
   let atomic a = atom_ltl (atom_pltl a.t)

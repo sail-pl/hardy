@@ -30,6 +30,7 @@ type config = {
   no_i_a_conj : bool;
   smoke_tests : bool; 
   dump_automata : bool;
+  ignore_unsafe : bool;
 }
 
 module type CliSig =  sig
@@ -55,6 +56,8 @@ functor
     let ltl_atom = ref ""
     let aut_format = ref ""
     let dump_automata = ref false
+    let ignore_unsafe = ref false
+
 
     let speclist =
       [
@@ -67,7 +70,10 @@ functor
           "Do not add the rely the formula to the guarantee one" );
 
         ("-smoketests", Set smoke_tests,
-        "Replace all ensures with false to detect inconsistent specification")
+        "Replace all ensures with false to detect inconsistent specification");
+
+        ("-ignore-unsafe", Set ignore_unsafe,
+        "Don't stop when a formula is not a safety property")
       ]
 
     let get_input_file f =
@@ -93,6 +99,7 @@ functor
         no_i_a_conj = !no_i_a_conj;
         smoke_tests = !smoke_tests;
         dump_automata = !dump_automata;
+        ignore_unsafe = !ignore_unsafe;
       } with
       | IncorrectAtom -> failwith @@ Format.sprintf "incorrect atom '%s'" !ltl_atom
       | IncorrectAutFormat -> failwith @@ Format.sprintf "incorrect automaton format '%s'" !aut_format

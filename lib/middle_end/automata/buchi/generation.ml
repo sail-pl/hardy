@@ -45,7 +45,7 @@ struct
   let spec_to_input (cli : Cli.config) (spec : (AtomStore.atom TempSpec.t, 'a) labeled list hoare_pair) : tool_input =
     let print_formula (name, spec : string * _ ) =
       if cli.verbose then
-        Format.(printf "%s formula: %a@." name (TempSpec.pp (fun fmt -> AtomStore.(get_atom_ids >> map snd >> (map (pp_print_string fmt))) >> ignore)) spec)
+        Format.(printf "%s formula: %a@." name (TempSpec.pp (fun fmt -> AtomStore.(get_atom_ids >> map snd >> (map (pp_print_string fmt))))) spec)
     in
 
     (* flatten the conjunction of formulas to a single formula *)

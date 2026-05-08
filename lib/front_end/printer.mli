@@ -5,6 +5,8 @@ open SharedSyntax
 
 (** {1 Pretty-printing of program types, expressions and specifications} *)
 
+val pp_lowercase : (formatter -> 'a -> unit ) -> formatter -> 'a -> unit
+
 val pp_cat_ty : formatter -> cat_ty -> unit
 
 val pp_base_ty : formatter -> base_ty -> unit
@@ -21,24 +23,11 @@ val pp_hist :
   formatter ->
   string * InstantSyntax.instant option -> unit
 
-val pp_paren_exp :
-  (formatter ->
-   ('a expression_, 'b) HardyMisc.Utils.labeled ->
-   unit) ->
-  formatter ->
-  ('a expression_, 'b) HardyMisc.Utils.labeled ->
-  unit
-
   val pp_exp :
   (formatter -> string * 't -> unit) ->
   formatter ->
   ('t expression_, HardyMisc.Utils.loc option)
   HardyMisc.Utils.labeled -> unit
-
-val pp_paren_fol :
-  (formatter -> ('a, 'b) FOLSyntax.fol -> unit) ->
-  (formatter -> 'a -> unit) ->
-  formatter -> ('a, 'b) FOLSyntax.fol -> unit
 
 val pp_fol :
   (formatter -> 'a -> unit) ->

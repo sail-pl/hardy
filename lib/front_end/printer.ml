@@ -8,6 +8,8 @@ open ProgramSyntax
 open InstantSyntax
 open Format
  
+let pp_lowercase f = (fun fmt x -> pp_print_string fmt (String.lowercase_ascii (asprintf "%a" f x)))  
+
 let pp_cat_ty fmt = function
   | Input -> fprintf fmt "inputs"
   | Output -> fprintf fmt "outputs"
@@ -47,61 +49,60 @@ let pp_hist fmt (v, h) =
 
 (* let pp_nohist fmt (id,_) = pp_print_string fmt id *)
 
-let [@warning "-4"] pp_paren_exp f fmt e =
-  match e.value with BinOp _ -> fprintf fmt "(%a)" f e | _ -> f fmt e
-
-let rec pp_exp (print_var : _ -> _ * _ -> unit) fmt (e : 't expr) =
-  let pp_exp = pp_paren_exp (pp_exp print_var) in
-  match e.value with
-  | Int n -> fprintf fmt "%i" n
-  | Real r -> fprintf fmt "%s.%s%a" r.num r.frac (pp_print_option pp_print_string) r.exp
-  | True -> fprintf fmt "true"
-  | False -> fprintf fmt "false"
-  | Var (s, i) -> print_var fmt (s, i)
-  | UnOp (ENot,e) -> fprintf fmt "!%a" pp_exp e
-  | BinOp v ->
-      fprintf fmt "%a %a %a" pp_exp v.left pp_expr_binop v.op pp_exp v.right
-  | String s -> Format.fprintf fmt "%s" s
-  | Array l -> Format.(fprintf fmt "[%a]" (pp_print_array ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_exp) (Iarray.to_array l))
-  | ArrayCell v -> Format.fprintf fmt "%a[%a]" pp_exp v.array pp_exp v.idx
-  | Prod [x] -> Format.fprintf fmt "%a" pp_exp x
-  | Prod l -> Format.(fprintf fmt "(%a)" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ",@ ") pp_exp) l)
-  
-let [@warning "-4"] pp_paren_fol pp_fol pp_atom fmt (p : _ fol) =
-  match p.value with
-  | FOL_StdBinary _ -> fprintf fmt "(%a)" pp_fol p
-  | FOL_Atom e -> pp_atom fmt e
-  | _ -> pp_fol fmt p
-  
+let pp_exp (print_var : _ -> _ * _ -> unit) =
+  let [@warning "-4"] rec pp_paren fmt e = match e.value with BinOp _ | UnOp _ -> fprintf fmt "(%a)" aux e | _ -> aux fmt e
+  and aux fmt e = 
+    match e.value with
+    | Int n -> fprintf fmt "%i" n
+    | Real r -> fprintf fmt "%s.%s%a" r.num r.frac (pp_print_option pp_print_string) r.exp
+    | True -> fprintf fmt "true"
+    | False -> fprintf fmt "false"
+    | Var (s, i) -> print_var fmt (s, i)
+    | UnOp (ENot,e) -> fprintf fmt "!%a" pp_paren e
+    | BinOp v ->
+        fprintf fmt "%a %a %a" pp_paren v.left pp_expr_binop v.op pp_paren v.right
+    | String s -> Format.fprintf fmt "%s" s
+    | Array l -> Format.(fprintf fmt "[%a]" (pp_print_array ~pp_sep:(fun fmt () -> fprintf fmt ";@ ") pp_paren) (Iarray.to_array l))
+    | ArrayCell v -> Format.fprintf fmt "%a[%a]" pp_paren v.array pp_paren v.idx
+    | Prod [x] -> Format.fprintf fmt "%a" pp_paren x
+    | Prod l -> Format.(fprintf fmt "(%a)" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ",@ ") pp_paren) l)
+  in 
+  aux   
 
 let rec pp_fol : 'a. (formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -> _ =
-    fun pp_atom pp_ty fmt f ->
+    fun pp_atom pp_ty ->
   let open Format in
   let pp_id_ty =
     pp_print_list
       ~pp_sep:(fun fmt () -> fprintf fmt "@ ")
       (fun fmt (id, ty) -> fprintf fmt "(%s:%a)" id pp_ty ty)
   in
-  let pp_fol' = pp_paren_fol (pp_fol pp_atom pp_ty) pp_atom in
-
-  match f.value with
-  | FOL_True -> fprintf fmt "true"
-  | FOL_False -> fprintf fmt "false"
+  let [@warning "-4"] rec pp_paren fmt (p : _ fol) =
+  match p.value with
+  | FOL_StdBinary _ | FOL_StdUnary _ -> fprintf fmt "(%a)" aux p
   | FOL_Atom e -> pp_atom fmt e
-  | FOL_StdUnary (op, f) -> fprintf fmt "%a %a" pp_unop op pp_fol'  f
-  | FOL_StdBinary (f1, op, f2) ->
-      fprintf fmt "%a %a %a" pp_fol'  f1 pp_common_logic_binary op pp_fol' 
-        f2
-  | FOL_StdNary (op, l) ->
-      pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "%a" pp_common_logic_binary op) (fun fmt arg -> pp_fol' fmt arg) fmt l
-  | Forall (idty, f) ->
-      fprintf fmt "forall %a. %a" pp_id_ty idty pp_fol' f
-  | Exists (idty, f) ->
-      fprintf fmt "exists %a. %a" pp_id_ty idty pp_fol' f
-  | ExistsPrev q ->
-      fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_fol' q.f
-  | ForallPrev q ->
-      fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_fol' q.f
+  | _ -> aux fmt p
+  and aux fmt f = 
+    match f.value with
+    | FOL_True -> fprintf fmt "true"
+    | FOL_False -> fprintf fmt "false"
+    | FOL_Atom e -> pp_atom fmt e
+    | FOL_StdUnary (op, f) -> fprintf fmt "%a%a" pp_unop op pp_paren  f
+    | FOL_StdBinary (f1, op, f2) ->
+        fprintf fmt "%a %a %a" pp_paren  f1 pp_common_logic_binary op pp_paren
+          f2
+    | FOL_StdNary (op, l) ->
+        pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "%a" pp_common_logic_binary op) pp_paren fmt l
+    | Forall (idty, f) ->
+        fprintf fmt "forall %a. %a" pp_id_ty idty pp_paren f
+    | Exists (idty, f) ->
+        fprintf fmt "exists %a. %a" pp_id_ty idty pp_paren f
+    | ExistsPrev q ->
+        fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_paren q.f
+    | ForallPrev q ->
+        fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_paren q.f
+  in
+  aux
 
   let pp_pred pp_atom fmt = 
     let open Format in
@@ -157,16 +158,18 @@ let pp_ltl_unnop_spin fmt ( op: ltl_unary) : unit =
 
 let pp_ltl (pp_atom : formatter -> 'a -> unit)
     (pp_ltl_binop : formatter -> ltl_binary -> unit)
-    (pp_ltl_unop : formatter -> ltl_unary -> unit) : formatter -> 'a ltl -> unit = 
-    let rec aux fmt f = 
+    (pp_ltl_unop : formatter -> ltl_unary -> unit) : formatter -> 'a ltl -> unit =
+    let [@warning "-4"] rec pp_paren fmt f =
+     match f.value with LTL_Binary _ | LTL_Unary _ -> fprintf fmt "(%a)" aux f | _ -> aux fmt f
+    and aux fmt f = 
     match f.value with
       | LTL_True -> pp_print_string fmt "true"
       | LTL_False -> pp_print_string fmt "false"
       | LTL_Atom p -> pp_atom fmt p
       | LTL_Binary (f1, op, f2) ->
-          fprintf fmt "(%a) %a (%a)" aux f1 pp_ltl_binop op aux f2
+          fprintf fmt "%a %a %a" pp_paren f1 pp_ltl_binop op pp_paren f2
       | LTL_Unary (op, f) ->
-          fprintf fmt "%a(%a)" pp_ltl_unop op aux f
+          fprintf fmt "%a%a" pp_ltl_unop op pp_paren f
       in aux 
 
 
@@ -192,15 +195,17 @@ let pp_ltl_default f = pp_ltl f pp_ltl_binop pp_ltl_unop
 let pp_pltl (pp_atom : formatter -> 'a -> unit)
     (pp_pltl_binop : formatter -> pltl_binary -> unit)
     (pp_pltl_unop : formatter -> pltl_unary -> unit) : formatter -> 'a pltl -> unit = 
-    let rec aux fmt f = 
-    match f.value with
+    let [@warning "-4"] rec pp_paren fmt f =
+     match f.value with PLTL_Binary _ | PLTL_Unary _ -> fprintf fmt "(%a)" aux f | _ -> aux fmt f
+    and aux fmt f = 
+      match f.value with
       | PLTL_True -> pp_print_string fmt "true"
       | PLTL_False -> pp_print_string fmt "false"
       | PLTL_Atom p -> pp_atom fmt p
       | PLTL_Binary (f1, op, f2) ->
-          fprintf fmt "(%a) %a (%a)" aux f1 pp_pltl_binop op aux f2
+          fprintf fmt "%a %a %a" pp_paren f1 pp_pltl_binop op pp_paren f2
       | PLTL_Unary (op, f) ->
-          fprintf fmt "%a(%a)" pp_pltl_unop op aux f
+          fprintf fmt "%a %a" pp_pltl_unop op pp_paren f
       in aux 
 
 let pp_pltl_default f = pp_pltl f pp_pltl_binop pp_pltl_unop

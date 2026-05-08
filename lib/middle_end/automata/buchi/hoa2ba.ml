@@ -190,23 +190,24 @@ module SpinHoaOutput : AutSig.ToolSig with
     let proc = Shexp_process.(Let_syntax.(
         find_executable_exn "ltlfilt" >>= fun ltlfilt ->
         (* ensure this is a safety formula *)
-        (
-          run_exit_code ltlfilt [ "--safety" ; "-f" ; f ] >>| function 
-          | 0 -> ()
-          | _ -> failwith @@ Format.asprintf "'%s' is not a safety formula" f
-        )
+        run_exit_status ltlfilt [ "--safety" ; "-f" ; f ]
         (* get the automaton *)
-        |- (find_executable_exn "ltl2tgba" >>= fun ltl2tgba ->
-              run ltl2tgba  [ "-B" ; "-D"; "-x sat-minimize" ; f])
+        |+ (find_executable_exn "ltl2tgba" 
+        >>= fun ltl2tgba ->
+        run ltl2tgba  [ "-B" ; "-D"; "-x sat-minimize" ; f])
         (* ensure it is deterministic *)
-        |- run "autfilt" ["-D" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
+        |+ run_exit_status "autfilt" ["-D" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
         |> stdout_to hoa_file
         |> if i.verbose then stderr_to (hoa_file ^ ".err") else Fun.id
       )
       )
     in
     let eval x = if i.verbose then Shexp_process.Logged.eval x else Shexp_process.eval x in
-    eval proc;
+    (match eval proc |> fst |> fst with
+    | Exited 0 -> ()
+    | _ -> if i.ignore_unsafe then 
+        Format.printf "WARNING: formula '%s' is unsafe@." f 
+       else failwith @@ Format.asprintf "'%s' is not a safety formula" f);
     let a = MiddleParser.HoaParsing.parse_automaton hoa_file in 
     if not i.dump_automata then Sys.remove hoa_file;
     a
@@ -226,30 +227,40 @@ module PpLTLHoaOutput : AutSig.ToolSig with
     let open Format in
     let hoa_file = hoa_file ".hoa" in
     
-    let to_spin = Printer.(pp_ltl (pp_pltl_default pp_print_string) pp_ltl_binop_spin pp_ltl_unnop_spin) in
-    let f = asprintf "%a" to_spin f in
-    
+    let to_spin ppltl = Printer.(pp_ltl ppltl pp_ltl_binop_spin pp_ltl_unnop_spin) in
+    let f_past = asprintf "%a" 
+      Printer.(to_spin @@ fun fmt -> Format.fprintf fmt "(%a)" (pp_pltl_default pp_print_string)) f in
+    let f_nopast = asprintf "%a" 
+      Printer.(to_spin @@ fun fmt x -> fprintf fmt "p%i" (Hashtbl.hash x.value) ) f in
     
     let proc = Shexp_process.(Let_syntax.(
-        find_executable_exn "ltlfilt" >>= fun ltlfilt ->
-        (* ensure this is a safety formula *)
-        (
-          run_exit_code ltlfilt [ "--safety" ; "-f" ; f ] >>| function 
-          | 0 -> ()
-          | _ -> failwith @@ Format.asprintf "'%s' is not a safety formula" f
-        )
-        (* get the automaton *)
-        |- (find_executable_exn "pltl2tgba" >>= fun pltl2tgba ->
-              run pltl2tgba [] )
-        (* ensure it is deterministic *)
-        |- run "autfilt" ["-D" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
+      find_executable_exn "ltlfilt" 
+      >>= fun ltlfilt ->
+      (* ensure this is a safety formula *)
+      run_exit_status ltlfilt [ "--safety" ; "-f" ; f_nopast ] 
+      >>= fun exist_status -> 
+      (* get the automaton *)
+      find_executable_exn "pltl2tgba" 
+      >>= fun pltl2tgba ->
+      run pltl2tgba ["-f" ; f_past] 
+      (* ensure it is deterministic *)
+      |- run_exit_status "autfilt" ["-D" ; "-B" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
         |> stdout_to hoa_file
-        |> if i.verbose then stderr_to (hoa_file ^ ".err") else Fun.id
+        |> (if i.verbose then stderr_to (hoa_file ^ ".err") else Fun.id)
+      |+ return exist_status
       )
       )
     in
     let eval x = if i.verbose then Shexp_process.Logged.eval x else Shexp_process.eval x in
-    eval proc;
+    (match eval proc with
+    | Exited 0,Exited 0 -> ()
+    | Exited 1,_ -> 
+      if i.ignore_unsafe then 
+        Format.printf "WARNING: formula '%s' is unsafe@." f_past
+      else failwith @@ Format.asprintf "'%s' is not a safety formula" f_past
+    | _, _ -> failwith @@ Format.asprintf "autfilt check didn't pass for '%s'" f_past
+
+    );
     (* if i.verbose then  
     print_string @@ "command output: " ^ Shexp_process.eval proc; *)
     let a = MiddleParser.HoaParsing.parse_automaton hoa_file in     

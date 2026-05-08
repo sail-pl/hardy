@@ -25,6 +25,7 @@ type config = {
     no_i_a_conj : bool;
     smoke_tests : bool;
     dump_automata : bool;
+    ignore_unsafe : bool;
 }
 (** parameters provided by the cli *)
 
