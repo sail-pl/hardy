@@ -54,7 +54,7 @@ struct
   type init_val = hoa
   type vdata = (name: string * acceptant: bool * start:bool)
 
-  let acceptant (_,(~acceptant,..) : V.t) = acceptant
+  let is_acceptant (_,(~acceptant,..) : V.t) = acceptant
   let is_start_node (_,(~start,..) : V.t) = start
 
   let create (hoa : hoa) : t =
@@ -109,11 +109,11 @@ struct
             let name = string_of_int state.state_number in
             V.create  (string_of_int state.state_number, (~name,~acceptant,~start)) 
           and label = edge.edge_label |> Option.get |> map_formula (function 
-            | BoolLabel true -> true_atom
-            | BoolLabel false -> false_atom
-            | IntLabel i ->  get_edge_label i
-            | NameLabel _ -> failwith "got labeled name"
-          ) 
+                      | BoolLabel true -> true_atom
+                      | BoolLabel false -> false_atom
+                      | IntLabel i ->  get_edge_label i
+                      | NameLabel _ -> failwith "got labeled name"
+                    ) 
           and dst = 
             let state = 
               (* fixme: once a vertex is added, it cannot be updated (-> use the vdata properly with the lib).
@@ -137,7 +137,7 @@ struct
         )
       hoa.body;
     g
-  let pp_vertex fmt s = Format.pp_print_string fmt (fst s)
+  let pp_vertex fmt (s,_ : vertex) = Format.pp_print_string fmt s
 
   let id_of_vertex = Format.asprintf "%a" pp_vertex
   (* let rec string_of_edge (f : label_expr) = match f with
@@ -203,11 +203,12 @@ module SpinHoaOutput : AutSig.ToolSig with
       )
     in
     let eval x = if i.verbose then Shexp_process.Logged.eval x else Shexp_process.eval x in
-    (match eval proc |> fst |> fst with
+    let [@warning "-4"] () = match eval proc |> fst |> fst with
     | Exited 0 -> ()
     | _ -> if i.ignore_unsafe then 
         Format.printf "WARNING: formula '%s' is unsafe@." f 
-       else failwith @@ Format.asprintf "'%s' is not a safety formula" f);
+       else failwith @@ Format.asprintf "'%s' is not a safety formula" f
+      in
     let a = MiddleParser.HoaParsing.parse_automaton hoa_file in 
     if not i.dump_automata then Sys.remove hoa_file;
     a
@@ -237,8 +238,9 @@ module PpLTLHoaOutput : AutSig.ToolSig with
       find_executable_exn "ltlfilt" 
       >>= fun ltlfilt ->
       (* ensure this is a safety formula *)
-      run_exit_status ltlfilt [ "--safety" ; "-f" ; f_nopast ] 
-      >>= fun exist_status -> 
+      (run_exit_status ltlfilt [ "--safety" ; "-f" ; f_nopast ]
+      |> Shexp_process.capture [Stdout])
+      >>= fun (exit_status,_) -> 
       (* get the automaton *)
       find_executable_exn "pltl2tgba" 
       >>= fun pltl2tgba ->
@@ -247,20 +249,19 @@ module PpLTLHoaOutput : AutSig.ToolSig with
       |- run_exit_status "autfilt" ["-D" ; "-B" ; "--is-deterministic"; "--trust-hoa=false"]  (* ensures the automaton is deterministic *)
         |> stdout_to hoa_file
         |> (if i.verbose then stderr_to (hoa_file ^ ".err") else Fun.id)
-      |+ return exist_status
+      |+ return exit_status
       )
       )
     in
     let eval x = if i.verbose then Shexp_process.Logged.eval x else Shexp_process.eval x in
-    (match eval proc with
+    let [@warning "-4"] () = match eval proc with
     | Exited 0,Exited 0 -> ()
     | Exited 1,_ -> 
       if i.ignore_unsafe then 
         Format.printf "WARNING: formula '%s' is unsafe@." f_past
       else failwith @@ Format.asprintf "'%s' is not a safety formula" f_past
     | _, _ -> failwith @@ Format.asprintf "autfilt check didn't pass for '%s'" f_past
-
-    );
+    in
     (* if i.verbose then  
     print_string @@ "command output: " ^ Shexp_process.eval proc; *)
     let a = MiddleParser.HoaParsing.parse_automaton hoa_file in     

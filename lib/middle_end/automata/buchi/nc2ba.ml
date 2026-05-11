@@ -39,7 +39,7 @@ struct
   type init_val = neverclaim
   type vdata = unit
 
-  let acceptant v = List.hd String.(split_on_char '_' v) = "accept"
+  let is_acceptant v = List.hd String.(split_on_char '_' v) = "accept"
   let is_start_node (v : V.t) = String.ends_with (V.label v) ~suffix:"init"
 
   let create (claim : neverclaim) : t =

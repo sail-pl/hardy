@@ -28,7 +28,7 @@ module type S = sig
 
   val create : init_val -> t
   val is_start_node : V.t -> bool
-  val acceptant : V.t -> bool
+  val is_acceptant : V.t -> bool
   val pp_vertex : Format.formatter -> V.t -> unit
   val id_of_vertex : V.t -> string
   val pp_edge : Format.formatter -> E.label -> unit
@@ -62,11 +62,11 @@ functor
     let get_nonacc_states g = 
       let rec aux first = function
       | [] ->  
-        check (G.succ g first |> List.filter (G.acceptant >> not)) first []
+        check (G.succ g first |> List.filter (G.is_acceptant >> not)) first []
       | h::t as path -> 
         if List.mem h t then path
         else
-          check (G.succ g h |> List.filter (G.acceptant >> not)) first path
+          check (G.succ g h |> List.filter (G.is_acceptant >> not)) first path
           
       and check succs first path =          
         List.fold_left (fun acc s -> 
@@ -116,7 +116,11 @@ functor
 
       let vertex_attributes v =
         []
-        |> fun x -> if acceptant v then List.cons (`Shape `Doublecircle) x else x
-        |> fun x -> if is_start_node v then List.cons (`Style `Filled ) x else x
+        |> (fun x -> if is_acceptant v then List.cons (`Shape `Doublecircle) x else x)
+        |> (fun x -> if is_start_node v then 
+            List.cons (`Style `Filled ) x |> 
+            List.cons (`Fillcolor 12303291) |>
+            List.cons (`Fontcolor 0)
+        else x)
     end)
   end

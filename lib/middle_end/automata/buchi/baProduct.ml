@@ -89,9 +89,9 @@ module Make(G : BuchiSig.S)
         G.pp_edge e.arc_f.requires 
         G.pp_edge e.arc_f.ensures
 
-  let acceptant (v : vertex) : bool =
+  let is_acceptant (v : vertex) : bool =
     let l1, l2 = V.label v in
-    G.acceptant l1 && G.acceptant l2
+    G.is_acceptant l1 && G.is_acceptant l2
 
   let refine_length init_node (a : t) : unit =
     let module Bfs = Graph.Traverse.Bfs (GProd) in

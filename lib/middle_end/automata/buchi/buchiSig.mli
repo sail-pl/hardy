@@ -17,7 +17,7 @@ module type S = sig
 
     val create : init_val -> t
     val is_start_node : V.t -> bool
-    val acceptant : V.t -> bool
+    val is_acceptant : V.t -> bool
     val pp_vertex : Format.formatter -> V.t -> unit
     val id_of_vertex : V.t -> string
     val pp_edge : Format.formatter -> E.label -> unit
