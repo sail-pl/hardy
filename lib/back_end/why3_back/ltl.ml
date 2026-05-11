@@ -34,7 +34,7 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
               | Some (Previous n) ->
                   let n = tconst (n - 1) in
                   (* last value begins at 0 *)
-                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ]
+                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ; tvar (qualid [history_id])]
               | Some (At n) ->
                   let n =
                     Tinnfix
@@ -43,7 +43,7 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
                         tconst (n + 1) )
                     |> term
                   in
-                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ]
+                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ; tvar (qualid [history_id])]
                 end
   | UnOp (ENot,t) -> Tnot (translate_term t) |> term  ~loc
   | BinOp v -> (
@@ -205,22 +205,20 @@ module
       Dlet
         ( ident history_id,
           true,
-          RKfunc,
+          RKnone,
           d 
         )
     in
-    (* (_prev_i n proj) =  (NthNoOpt.nth n _history)._i.proj   *)
+    (* (_prev_i n proj h) =  (NthNoOpt.nth n h)._i.proj   *)
     let create_hist_proj cat  = 
-    let nth_history n =
-      eapp
-        (qualid [ "NthNoOpt"; "nth" ])
-        [ n; evar (qualid [ history_id ]); ] 
+      let nth_history n =
+        eapp
+          (qualid [ "NthNoOpt"; "nth" ])
+          [ n; evar (qualid [ "h" ]); ] 
       in
       let body = eapp (qualid ["proj"]) [eapp ([ instant_field cat ] |> qualid) [ nth_history @@ evar (qualid ["n"]) ]] in
-      let args = List.append (one_binder "n") (one_binder "proj") in
+      let args = (one_binder "n")@(one_binder "proj")@(one_binder "h") in
       let f = Efun (args, None, pat Pwild, Ity.MaskVisible, empty_spec, body) |> expr in
-        
-
       Dlet (ident (nth_h cat),true,RKfunc, f)
     in
 
@@ -256,7 +254,7 @@ module
           to the head of the history, except if we just received our first input, that is, history size is 0
             *)
           Tinnfix
-          ( tapp (qualid [nth_h State]) [ tconst 0; Tquant (Dterm.DTlambda, one_binder "x", [], tvar @@ qualid ["x"]) |> term ],
+          ( tapp (qualid [nth_h State]) [ tconst 0; Tquant (Dterm.DTlambda, one_binder "x", [], tvar @@ qualid ["x"]) |> term ; tvar (qualid [history_id])],
             Ident.op_equ |> ident,
             tvar (qualid [ get_cat_ty State ]) )
         |> term
