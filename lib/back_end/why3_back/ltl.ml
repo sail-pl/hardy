@@ -329,7 +329,7 @@ module
     let open P in
     let open PH in
     let spec = generate_spec t.value.value t.label in
-    Efun ([], None, pat Pwild, Ity.MaskVisible, spec, t.value.label) |> expr |> fun m ->
+    Efun (unit_binder (), None, pat Pwild, Ity.MaskVisible, spec, t.value.label) |> expr |> fun m ->
     Dlet (ident triple_id, false, Expr.RKnone, m)
 
   let generate_setup (s: in_setup) : out_setup  =
@@ -347,7 +347,7 @@ module
           sp_post = [ (Loc.dummy_position, [ (pat Pwild, f) ]) ];
         }
       in
-      Efun ([], None, pat Pwild, Ity.MaskVisible, spec, bdy) |> expr |> fun m ->
+      Efun (unit_binder (), None, pat Pwild, Ity.MaskVisible, spec, bdy) |> expr |> fun m ->
       Dlet (ident "setup", false, Expr.RKnone, m)
 
 
