@@ -80,10 +80,10 @@ rule tokenize = parse
   | "ensures"               { ENSURES }
   | "invariant"             { INVARIANT }
   | "variant"               { VARIANT }
-  | "forall"                { FORALL }
-  | "exists"                { EXISTS }
   | "forall_prev"           { FORALL_PREV }
   | "exists_prev"           { EXISTS_PREV } 
+  | "forall"                { FORALL }
+  | "exists"                { EXISTS }
   | "("                     { LPAREN }
   | ")"                     { RPAREN }
   | "{"                     { LBRACE }

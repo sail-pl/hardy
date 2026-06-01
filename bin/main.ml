@@ -87,7 +87,7 @@ let () =
     (module Middle)
     (module Triples(Cli))
     (module Interactive(Cli))
-    (module Back)
+    (module Back(Cli))
   | PastLTL -> 
     let open PpLtl in
     main 
@@ -97,4 +97,4 @@ let () =
     (module Middle)
     (module Triples(Cli))
     (module Interactive(Cli))
-    (module Back)
+    (module Back(Cli))

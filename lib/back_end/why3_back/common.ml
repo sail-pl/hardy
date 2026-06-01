@@ -51,7 +51,7 @@ let history_id = private_var "history"
 
 let history_length =
   PH.(
-    P.Tapply (tvar (qualid [ "Length"; "length" ]), tvar (qualid [ history_id ]))
+    P.Tapply (tvar (qualid [ "Seq" ; "length" ]), tvar (qualid [ history_id ]))
     |> term)
 
 let instant_field ty = private_var (String.sub (get_pp_string pp_cat_ty ty) 0 1)
@@ -275,39 +275,65 @@ let rec pterm_of_fol : type a. (a expr -> P.term) -> (a expr predicate, base_ty 
       get_binding_type q.h_var (fun (cat, bty) ->
           let local_v = (q.binder, (Local, bty)) in
           (* for now, easier to make a local decl and mask the variable *)
+          (* fixme: there will be shadowing with nesting *)
           add_bindings Seq.(cons local_v empty);
+
+          let inst_v = ["_inst"] |> qualid |> tvar  in
+          let hist_v = [ history_id ] |> qualid |> tvar in 
+          let inst = tapp (qualid [ "Seq"; Ident.op_get "" ]) [ hist_v; inst_v ] in
+
+          (* hist[_inst].proj *)
           let e =
-             tapp (qualid [ instant_field cat]) [[ "_inst"]|> qualid |> tvar]
-          in 
-          let e =  PH.(P.Tapply (([q.h_var ] |> qualid |> tvar),e ) |> term) 
-               
+             tapp (qualid [ instant_field cat]) [inst]
           in
-          let f = Tlet (ident q.binder, e, pterm_of_fol q.f) |> term in
+          (*  (i hist[_inst].proj) *)
+          let e =  PH.(P.Tapply (([q.h_var ] |> qualid |> tvar),e ) |> term) in
+
+          (* let x = i hist[_inst].p in f *)
+          let e = Tlet (ident q.binder, e, pterm_of_fol q.f) |> term in
           remove_bindings Seq.(cons (fst local_v) empty);
-          let f_abs =
-            Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc
-          in
-          let for_some = [ "Quant"; "for_some" ] |> qualid in
-          tapp for_some [ f_abs; tvar (qualid [ history_id ]) ]
+
+
+          (* _inst < length _hist *)
+          let h_length = get_bop inst_v history_length (Program "<") |> term
+          in  
+
+          (* _inst < length _hist /\ _  *)
+          let e = Tbinnop (h_length,DTand,e) |> term in
+          (* exists _inst, _ *)
+          Tquant (DTexists, one_binder "_inst", [], e) |> term
           )
 
   | ForallPrev q ->
       get_binding_type q.h_var (fun (cat, bty) ->
           let local_v = (q.binder, (Local, bty)) in
           (* for now, easier to make a local decl and mask the variable *)
+          (* fixme: there will be shadowing with nesting *)
           add_bindings Seq.(cons local_v empty);
+
+          let inst_v = ["_inst"] |> qualid |> tvar  in
+          let hist_v = [ history_id ] |> qualid |> tvar in 
+          let inst = tapp (qualid [ "Seq"; Ident.op_get "" ]) [ hist_v; inst_v ] in
+
+          (* hist[_inst].proj *)
           let e =
-             tapp (qualid [ instant_field cat]) [[ "_inst"]|> qualid |> tvar]
-          in 
-          let e =  PH.(P.Tapply (([q.h_var ] |> qualid |> tvar),e ) |> term) 
-               
+             tapp (qualid [ instant_field cat]) [inst]
           in
-          let f = Tlet (ident q.binder, e, pterm_of_fol q.f) |> term in
+          (*  (i hist[_inst].proj) *)
+          let e =  PH.(P.Tapply (([q.h_var ] |> qualid |> tvar),e ) |> term) in
+
+          (* let x = i hist[_inst].p in f *)
+          let e = Tlet (ident q.binder, e, pterm_of_fol q.f) |> term in
           remove_bindings Seq.(cons (fst local_v) empty);
-          let f_abs =
-            Tquant (Dterm.DTlambda, PH.one_binder "_inst", [], f) |> term ~loc
-          in
-          let for_some = [ "Quant"; "for_all" ] |> qualid in
-          tapp for_some [ f_abs; tvar (qualid [ history_id ]) ]
+
+
+          (* _inst < length _hist *)
+          let h_length = get_bop inst_v history_length (Program "<") |> term
+          in  
+
+          (* _inst < length _hist -> _  *)
+          let e = Tbinnop (h_length,DTimplies,e) |> term in
+          (* forall _inst, _ *)
+          Tquant (DTforall, one_binder "_inst", [], e) |> term
           )
 

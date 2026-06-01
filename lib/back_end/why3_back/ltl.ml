@@ -66,12 +66,14 @@ let pterm_of_fol = pterm_of_fol translate_term
 let pterm_of_inv = pterm_of_fol 
 
 module
-  M(T: Types.T with 
+  M
+  (T: Types.T with 
     type ('ty,'qty) fol_t = ('ty Program.expr, 'qty option) Fol.pred_fol and
     type base_spec_t = ((instant option * Shared.ty) Program.expr, Shared.base_ty option) Fol.pred_fol and
     type triple_data = (triple_id : string * invariants : ((instant option * Shared.ty) Program.expr, Shared.base_ty option) Fol.pred_fol list * nb_instants : Instant.min_nb_instants) and
     type formula_data = min_nb_instants
   )
+  (Cli : Cli.CliSig)
   : BackSig.S with 
   type in_fun = T.cnf_data Types.cnf_data and
   type triple_data = T.triple_data Types.triple_data and
@@ -199,7 +201,7 @@ module
 
     let hist =
       let ty = (PTtyapp
-               ([ "list" ] |> qualid, [ PTtyapp (qualid [ "instant_t" ], []) ])) in
+               ([ "seq" ] |> qualid, [ PTtyapp (qualid [ "instant_t" ], []) ])) in
       let d = (Eany ([], RKnone, Some ty, pat Pwild, MaskVisible, empty_spec) |> expr) in
 
       Dlet
@@ -213,8 +215,8 @@ module
     let create_hist_proj cat  = 
     let nth_history n =
       eapp
-        (qualid [ "NthNoOpt"; "nth" ])
-        [ n; evar (qualid [ history_id ]); ] 
+        (qualid [Ident.op_get ""]) 
+        [ evar (qualid [ history_id ]); n ] 
       in
       let body = eapp (qualid ["proj"]) [eapp ([ instant_field cat ] |> qualid) [ nth_history @@ evar (qualid ["n"]) ]] in
       let args = List.append (one_binder "n") (one_binder "proj") in
@@ -337,7 +339,7 @@ module
     let open PH in
     let bdy = generate_body s.setup_body in
     let spec =
-      let f =
+      let f = if Cli.get_config.smoke_tests then pterm_of_fol false_fol else 
         fold_mjoin pterm_of_inv why3_and (term Ttrue) s.setup_ensures
       in
       if f.term_desc = Ttrue then empty_spec
@@ -355,24 +357,27 @@ module
 
   (** generates WhyML program expression to represent the setup procedure *)
   let generate_program p =
-    let uses =
+    let helper_uses =
+      [
+        [ "int"; "Int" ];
+        [ "ref"; "Ref" ];
+        [ "seq" ; "Seq"];
+      ]
+      |> List.map (PH.use ~import:false)
+    in
+    let helper_m = (PH.ident "ProgramHelper", helper_uses @ p.processed_decls) 
+    and pgrm_uses =
       [
         [ "int"; "Int" ];
         [ "int"; "EuclideanDivision" ];
         [ "ref"; "Ref" ];
-        [ "list"; "List" ];
-        [ "list"; "Length" ];
-        [ "list"; "HdTlNoOpt" ];
-        [ "list"; "NthNoOpt" ];
-        [ "list"; "Quant" ];
         ["array"; "Init"]
       ]
       |> List.map (PH.use ~import:false)
     in
-    let helper_m = (PH.ident "ProgramHelper", uses @ p.processed_decls) in
     let triples_m =
       ( PH.ident "Program",
-        uses
+        pgrm_uses
         @ PH.use ~import:false [ "ProgramHelper" ]
           :: add_opt_to_list p.processed_setup p.processed_functions )
     in

@@ -95,11 +95,11 @@ module M : Typing with
             (fun f -> match f.value with
             | ForallPrev q -> 
                 let b = Bindings.add q.binder (Local, snd @@ fail_if_no_bindings q.h_var bindings) b in
-                let f = map b q.f in
+                let f = aux b q.f in
                 {f with value = ForallPrev {q with f}}
             | ExistsPrev q -> 
                 let b = Bindings.add q.binder (Local, snd @@ fail_if_no_bindings q.h_var bindings) b in
-                let f = map b q.f in
+                let f = aux b q.f in
                 {f with value = ExistsPrev {q with f}}
 
             | _ -> map b f

@@ -102,4 +102,4 @@ module Triples = Triples_ltl.M(Ltl_spec)(Atom)(B)(BProd)
 
 module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t = base_spec_t end)(struct type t = Typing.out_temp_spec end)(Triples(Cli))
 
-module Back = HardyBackEnd.Why3_back.Ltl.M(Ltl_spec)
+module Back(Cli: Cli.CliSig) = HardyBackEnd.Why3_back.Ltl.M(Ltl_spec)(Cli)

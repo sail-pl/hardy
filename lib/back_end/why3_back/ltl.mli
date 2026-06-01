@@ -11,6 +11,7 @@ module M :
     type triple_data = (triple_id : string * invariants : ((instant option * Shared.ty) Program.expr, Shared.base_ty option) Fol.pred_fol list * nb_instants : Instant.min_nb_instants) and
     type formula_data = min_nb_instants
   )
+  (_ : Cli.CliSig)
     -> BackSig.S with 
         type local_spec = ((instant option * Shared.ty) Program.expr, Shared.base_ty option) Fol.pred_fol and
         type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) T.temp_spec_t, FrontSig.temp_f_prop) labeled and

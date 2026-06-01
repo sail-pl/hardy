@@ -24,10 +24,10 @@ let tq_expr_with_pred ==
     // | name = ID ; args=loption(delimited("(",separated_list(COMMA, tq_expr),")")) ; { Predicate {name;args} } 
 
 
-let fol_h(atom) ==
+let fol_h(atom) :=
     located(
-    | FORALL_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ForallPrev {h_var;binder;f}}
-    | EXISTS_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol(atom) ; {ExistsPrev {h_var;binder;f}}
+    | FORALL_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {ForallPrev {h_var;binder;f}}
+    | EXISTS_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {ExistsPrev {h_var;binder;f}}
     )
     | fol(atom)
 

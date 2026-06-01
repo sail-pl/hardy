@@ -64,7 +64,7 @@ module Interactive : (_ : HardyFrontEnd.Cli.CliSig) -> Sig.S with
     ) labeled cnf, Ltl_spec.cnf_data Types.cnf_data) HardyFrontEnd.Syntax.Program.hoare_triple, Ltl_spec.triple_data Types.triple_data) labeled conjunction
 
 
-module Back : HardyBackEnd.BackSig.S with 
+module Back : (_ : HardyFrontEnd.Cli.CliSig) -> HardyBackEnd.BackSig.S with 
     type in_fun = Ltl_spec.cnf_data Types.cnf_data and
     type in_spec = (
         (InstantSyntax.instant option * ty, base_ty) Ltl_spec.fol_t, 
