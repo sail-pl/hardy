@@ -54,7 +54,6 @@ module M(BaseSpec : SIMP_TYPE)(T: SIMP_TYPE )(TriplesType : SIMP_TYPE)
 
   let prove status (vc : vc) =
     (* Driver.print_task status.driver Format.std_formatter vc; *)
-    let goal = Task.task_goal vc in
     (* Format.printf "checking goal \"%s\"@." goal.pr_name.id_string; *)
     let open Call_provers in
     (* Format.printf "%s" status.prover.Whyconf.command; *)
@@ -66,12 +65,13 @@ module M(BaseSpec : SIMP_TYPE)(T: SIMP_TYPE )(TriplesType : SIMP_TYPE)
            status.driver vc
           : prover_call)
     in
-    let g_m = Format.sprintf "%s: %s" goal.pr_name.id_string in
     match res.pr_answer with
     | Valid -> Success
-    | Invalid -> Failure (g_m "invalid")
-    | Timeout -> Failure (g_m "timeout")
-    | OutOfMemory -> Failure (g_m "Out of Memory")
+    | Invalid -> Failure "invalid"
+    | Timeout -> Failure "timeout"
+    | OutOfMemory -> Failure  "out of memory"
     | StepLimitExceeded -> Failure "max step reached"
-    | Unknown msg | Failure msg | HighFailure msg -> Failure (g_m msg)
+    | Unknown msg | Failure msg | HighFailure msg -> Failure msg
+
+    let get_vc_id (vc : vc) = (Task.task_goal vc).pr_name.id_string
 end

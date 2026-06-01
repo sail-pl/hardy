@@ -11,17 +11,20 @@ module type S = sig
   type backend_state
   type vc
 
-  (* a triple must uniquely identify how it was constructed from the automaton: node_id + in transition id + out transition id  
+  (** a triple must uniquely identify how it was constructed from the automaton: node_id + in transition id + out transition id  
     -> each formula is annoted
     -> possibility to display the triple to tell what to do
   *)
   type triples
 
-  (* prepare the environnement from the program declarations and setup procedure *)
+  (** prepare the environnement from the program declarations and setup procedure *)
   val init_backend : program -> backend_state
   val get_vcs : backend_state -> triples -> vc list
 
-  (* attempt to prove the given triples, returning for each triple if it was proved or not  
+  (** get the verification condition identifier *)
+  val get_vc_id : vc -> string
+
+  (** attempt to prove the given triples, returning for each triple if it was proved or not  
       -> failed triples are reported to the user 
     
   *)
