@@ -1,0 +1,260 @@
+  module Prefix
+    use seq.Seq
+    use seq.FoldRight
+    use seq.Mem
+    use seq.ToList
+    use seq.OfList
+    use list.List
+
+
+
+    (* prefix s1 s2 <-> s1 is a prefix of s2 *)
+    predicate prefix (s1 s2 :  seq 'a) = 
+      exists i. s2[..i] == s1
+
+    (* functionnal version using lists *) 
+    predicate prefix' (s1 s2 :  seq 'a) = 
+    match to_list s1,to_list s2 with
+    | Nil,_ -> true
+    | Cons h1 tl1, Cons h2 tl2 -> h1 = h2 /\ prefix (of_list tl1) (of_list tl2)
+    | _, Nil -> false
+    end 
+
+    inductive prefix'' (_ _ : seq 'a) = 
+    | prefix_nil : forall s : seq 'a. prefix'' empty s
+    | prefix_cons : forall s1 s2 : seq 'a. prefix'' s1 s2 -> forall x. prefix'' (cons x s1) (cons x s2)
+
+
+    axiom prefix_equiv : forall s1 s2 : seq 'a. prefix s1 s2 <-> prefix' s1 s2
+    axiom prefix_equiv' : forall s1 s2 : seq 'a. prefix' s1 s2 <-> prefix'' s1 s2
+
+
+    (* lemma prefix_nil : forall l : seq 'i. prefix empty l *)
+    (* lemma prefix_cons : forall l1 [@induction] l2 : seq 'i. prefix l1 l2 -> forall x. prefix (cons x l1) (cons x l2)  *)
+    (* axiom prefix_inv : forall l1 l2 : seq 'i. prefix l1 l2 -> (l1 = empty \/ (l1[0] = l2[0] /\ prefix l1[1..] l2[1..])) *)
+
+
+    (* all_prefixes [a;b;c] is  [ [a;b;c] ; [a;b] ; [c] ; [] ] *)
+    function all_prefixes  : seq 'a -> seq (seq 'a) = fun l -> 
+      fold_right (fun e acc ->  cons (cons e acc[0]) acc ) l (cons empty empty)
+    
+    axiom all_prefixes_spec : forall l : seq 'i. forall p. mem p (all_prefixes l)  <-> prefix p l
+
+
+    (* axiom all_prefixes_ordered *)
+
+
+
+      (* let rec lemma prefix_spec (l1 l2 : list 'a) : unit
+    ensures {}
+    variant {l1} =
+    match l1 with 
+    | Nil -> ()
+    | Cons _ t -> prefix_spec t (HdTlNoOpt.tl l2)
+    end *)
+    
+end
+
+module SortedPrefix
+  use seq.Seq 
+  use seq.Sorted
+  use Prefix
+  use int.Int
+
+  type el
+
+  clone relations.PartialOrder as PO with
+    type t =  seq el, predicate rel = prefix, axiom .
+
+  (* returns the largest prefix of s satisfying p *)
+  val ghost function sat_pref (p: seq el -> bool) (s: seq el) : seq el
+  ensures {prefix result s}
+  ensures {result = empty || p result} (* asymmetric disjunction, because both part of the disjunction cannot be true at the same time *)
+  ensures {
+    forall pref. 
+      prefix pref s ->
+      p pref ->
+      (length pref < length result ||  pref == result)
+  } (* no larger prefix of s satisfying p exists
+
+    alternative formulation: 
+      forall eps. let ext_pref = result++eps in
+    not (prefix ext_pref s /\ p ext_pref) 
+  
+   *)
+
+end
+
+module Suffix
+  use list.List
+  use list.Quant
+  use list.Reverse
+  use Prefix
+
+  predicate suffix (l1 l2 : list 'a) = prefix (reverse l1) (reverse l2)
+
+  let rec ghost function all_suffixes (curr: 'a) (h: list 'a) : list ('a, list 'a)  = 
+  variant {h}
+  ensures {for_all (fun x -> let (s_curr,s_h) = x in suffix (Cons s_curr s_h) (Cons curr h)) result }
+  match h with 
+  | Nil -> (Cons (curr,Nil) Nil) 
+  | Cons prev h' -> (Cons (curr,h) (all_suffixes prev h')) 
+  end
+
+end
+
+module PLTL
+  use int.Int
+  (* use list.ListRich
+  use list.HdTlNoOpt
+  use list.NthNoOpt
+  use list.Quant
+  use list.Prefix
+  use list.FoldRight *)
+  (* use option.Option *)
+  use seq.Seq
+  use seq.FoldRight
+  use seq.Mem
+  use seq.Sorted
+  use seq.ToList
+  use seq.OfList
+  use list.Quant
+  use Prefix
+  use Suffix
+
+  type instant
+  type hist = seq instant
+
+
+
+  clone SortedPrefix with type el = instant
+
+  
+  type static_pred = instant -> bool
+  
+  (* a temporal predicate is parameterized by an history of instants and the current instant *)
+  type temporal_pred = instant -> hist -> bool
+  
+  
+  (* apply p to the history decomposed into most recent instant and the rest *)
+  let ghost function apply_hist_temp (p: instant -> hist -> 'a) (h: hist) : 'a = 
+    p h[0] h[1..]
+
+ (* apply p to the history h recombined with the most recent instant curr *)
+  let ghost function apply_hist_pred (p: hist -> 'a) (curr: instant) (h: hist) : 'a = 
+    p (cons curr h)
+
+
+  function pltl_T : temporal_pred = fun _ _ -> true
+  function pltl_F : temporal_pred = fun _ _ -> false
+
+
+  (* a PLTL atom only 'looks' at the current instant *)
+  function pltl_atom (a:static_pred) : temporal_pred  = fun curr _ -> a curr
+  
+  (*  yesterday is the first element of the history and the rest *)
+  function pltl_Y (p:temporal_pred) : temporal_pred = fun _ h -> apply_hist_temp p h
+
+  function pltl_Or (p1 p2 : temporal_pred) : temporal_pred = fun curr h -> p1 curr h \/ p2 curr h
+
+  function pltl_And (p1 p2 : temporal_pred) : temporal_pred = fun curr h -> p1 curr h /\ p2 curr h
+
+  function pltl_Not (p : temporal_pred) : temporal_pred = fun curr h -> not p curr h
+
+  function pltl_Imp (p1 p2 : temporal_pred) : temporal_pred = fun curr h -> p1 curr h -> p2 curr h
+
+
+  
+  (* historically: p holds at any point in the past
+    the decomposition into curr and h is useful here because we return 
+    all the prefixes of h, including the empty prefix, then we add the curr so we don't have to 
+    care for the empty list case
+   *)
+  function pltl_H (p: temporal_pred) : temporal_pred = fun curr (h : hist) -> 
+    for_all (p curr) (to_list (all_prefixes h))
+
+  function pltl_S (p1 p2 : temporal_pred) : temporal_pred = fun curr h ->
+    (* greatest satisfying prefix, aka oldest history satisfying p2 *)
+    let gsp = of_list (all_suffixes (p2 curr) h) in
+    gsp <> empty && pltl_H p1 curr gsp[1..]
+
+
+  (* we must check that as soon as p2 is satisfied, p1 must follow right after
+    so, we look for the largest prefix satisfying p2, and ensure p1 holds at the next instant, so by removing the last element of the list 
+  *)
+  
+
+
+  (* let ghost function pltl_S_aux (p1 p2: temporal_pred) : temporal_pred 
+  variant {j}
+  requires {j >= 0}
+
+  ensures {
+    forall curr h. result curr h 
+    -> 
+    (
+      p2 (NthNoOpt.nth j h) (prefix (j+1) h) 
+    ) 
+  }
+  = fun curr h ->
+    for j = 0 to Length.length h do
+      if j = 0 then  
+        (* we looked all the way to the past and p2 is never satisfied *)
+        false 
+      else
+        match Nth.nth j h with
+        | None -> false
+        | Some pre_curr ->
+          let pre_h = prefix (j+1) h in 
+          if p2 pre_curr pre_h then
+            (* p2 holds, now we go back to the present, ensuring p1 holds *)
+            for_all (p1 pre_curr) (all_prefixes pre_h)
+          else
+            (* we go one-step towards the present *)
+            pltl_S_aux p1 p2 (j-1) curr h
+      end 
+    done
+
+  function pltl_S (p1 p2: temporal_pred) : temporal_pred = fun curr h -> pltl_S_aux p1 p2 (Length.length h) curr h
+  
+  function pltl_O (p: temporal_pred) : temporal_pred = pltl_S pltl_T p *)
+
+  (* goal G : pltl_O (pltl_atom (fun x -> x = 2)) 2 (Cons 2 Nil) *)
+
+  
+  (*
+  fun h curr -> 
+    exists j.  0 < j < Length.length h /\ 
+      p2 (prefix (j-1) h) (nth j h) /\
+      forall k. j < k < Length.length h ->
+        p1 (prefix k h) curr *)
+  
+
+  function pltl_O : temporal_pred -> temporal_pred = pltl_S pltl_T
+
+
+  (* some convenient notations *)
+  let ghost function (?$) = pltl_Y
+  let ghost function (!) = pltl_Not
+  let ghost function (?.) p = pltl_O p
+  let ghost function (!@) = pltl_H
+  let ghost function (-->) = pltl_Imp
+  let ghost function (\/') = pltl_Or
+  let ghost function (/\') = pltl_And
+  let ghost function ($) = pltl_S
+
+end
+  
+
+module Example
+  use seq.Seq
+  clone PLTL with type instant = int
+
+
+  goal G1 : ?. (pltl_atom (fun x -> x = 2)) 3 (cons 2 (cons 1 empty))
+
+
+
+  goal G2 : apply_hist_temp (!@ (pltl_atom (fun x -> x = 2))) (cons 2 empty)
+
+end
