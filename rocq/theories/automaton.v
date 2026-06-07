@@ -1,4 +1,4 @@
-From Stdlib Require Import List.
+From Stdlib Require Import List Ensembles.
 
 Section Automata.
 
@@ -43,6 +43,11 @@ Section Automata.
 
     Definition reachable (atm : automaton) (n : node) : Prop :=
         reachable_from atm (init atm) n.
+
+    Definition successor := fun a m l n => transition a n l m.
+
+    Definition predecessor := transition.
+
 
     (** Given a type [Σ] and a predicate [belongs : label -> Σ -> Prop], a finite word 
         w (a list) of elements of type [Σ] is valid for a path p if w and p have the same length
