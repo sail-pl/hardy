@@ -26,6 +26,8 @@ type config = {
     smoke_tests : bool;
     dump_automata : bool;
     ignore_unsafe : bool;
+    otf_arcs_pruning : bool;
+    no_check : bool;
 }
 (** parameters provided by the cli *)
 

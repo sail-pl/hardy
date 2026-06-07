@@ -127,6 +127,7 @@ let pgrm_expr :=
 // same as pgrm_expr except operators shared with the fol layer are removed
 let spec_expr(var_e) := 
     | simpl_expr(var_e)
+    // | ~=delimited("(", spec_expr(var_e), ")") ; <> // fixme: conflicts with fol '(' ')' -> what to do ?
     | located (
         | array = simpl_expr(var_e) ; "[" ; idx = spec_expr(var_e) ; "]" ; {ArrayCell {idx;array}}
         | "[" ; "|" ; l = separated_nonempty_list(";", spec_expr(var_e)) ; "|" ; "]" ; {Array (Iarray.of_list l)} (* array litterals cannot be empty *)

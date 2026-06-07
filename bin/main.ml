@@ -72,29 +72,32 @@ let main
   Back.translate_program t_pgrm triples |> fun pgrm ->
   Format.printf "Writing program...@.";
   Back.write_program output_file pgrm;
-  Format.printf "Attempting automatic proof...@.";
-  I.prove (t_pgrm,pgrm) triples
+  if not Cli.get_config.no_check then 
+    begin
+    Format.printf "Attempting automatic proof...@.";
+    I.prove (t_pgrm,pgrm) triples
+    end
 
 let () =
   let module Cli = CliM.Init () in
   match Cli.get_config.ltl_atom with
   | Direct -> 
-    let open ClassicLtl in 
+    let open ClassicLtl.Make(Cli) in 
     main 
     (module Cli)
     (module Parsing)
     (module Typing)
     (module Middle)
-    (module Triples(Cli))
-    (module Interactive(Cli))
+    (module Triples)
+    (module Interactive)
     (module Back)
   | PastLTL -> 
-    let open PpLtl in
+    let open PpLtl.Make(Cli) in
     main 
     (module Cli)
     (module Parsing)
     (module Typing)
     (module Middle)
-    (module Triples(Cli))
-    (module Interactive(Cli))
+    (module Triples)
+    (module Interactive)
     (module Back)

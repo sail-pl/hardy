@@ -60,17 +60,19 @@ type 'a bool_a =
   | Or : 'a bool_a * 'a bool_a -> 'a bool_a
   | Not : 'a bool_a -> 'a bool_a
 
-let rec pp_boola : type a. ( Format.formatter -> a -> unit) -> Format.formatter -> a bool_a -> unit =
-  fun pp_atom fmt ->
-  let open Format in 
-  function
+let pp_boola :  ( Format.formatter -> 'a -> unit) -> Format.formatter -> 'a bool_a -> unit = 
+  fun pp_atom -> 
+  let open Format in
+  let [@warning "-4"] rec pp_paren fmt f = match f with
+     And _ | Or _ -> fprintf fmt "(%a)" aux f | _ -> aux fmt f
+  and aux fmt= function
   | True -> pp_print_string fmt "true"
   | False -> pp_print_string fmt "false"
   | Atom a -> pp_atom fmt a
-  | And (f1,f2) -> fprintf fmt "(%a & %a)" (pp_boola pp_atom) f1 (pp_boola pp_atom) f2
-  | Or (f1,f2) -> fprintf fmt "(%a || %a)" (pp_boola pp_atom) f1 (pp_boola pp_atom) f2
-  | Not f -> fprintf fmt "~(%a)" (pp_boola pp_atom) f
-
+  | And (f1,f2) -> fprintf fmt "%a & %a" pp_paren f1 pp_paren f2
+  | Or (f1,f2) -> fprintf fmt "%a || %a" pp_paren f1 pp_paren f2
+  | Not f -> fprintf fmt "(~%a)" pp_paren f
+  in aux 
 
 let rec map_formula fa = function
   | True -> True

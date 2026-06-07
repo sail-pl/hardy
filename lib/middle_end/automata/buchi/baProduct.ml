@@ -14,7 +14,7 @@ type 'a arc_data = {
 type vertex_data = { v_min_nb_instants : min_nb_instants }
 
 (* warning: this module is statefull! *)
-module Make(G : BuchiSig.S)
+module Make(Cli: Cli.CliSig)(G : BuchiSig.S)
     :
   BuchiSig.S
     with type init_val = G.t * G.t
@@ -53,6 +53,9 @@ module Make(G : BuchiSig.S)
   let set_vdata = H.replace vertices
 
   type init_val = G.t * G.t
+
+
+  let is_sat_arc _ = true
 
   let is_start_node (v : V.t) =
     let l1, l2 = V.label v in
@@ -158,45 +161,59 @@ module Make(G : BuchiSig.S)
       let next_node_data = { v_min_nb_instants } in
 
       let [@warning "-4"] create_edge (r, g) =
-        let next_node = G.(E.dst r, E.dst g) in
-        (* add it to the list if not already treated 
-        (mem_vertex will only check the label, not the vertex data, which is precisely what we want
-          as any previous entry will have a smaller minimum instant due to the BFS )
-        *)
-        if not (mem_vertex product_g next_node) then (
-          Queue.push next_node workq;
-          add_node next_node next_node_data);
-        (* make the curr_node -> new_node transition *)
         let arc_f = { requires = G.E.label r; ensures = G.E.label g } in
-        let edge =
-          E.create curr_node
-            {
-              arc_f;
-              (* arc_min_nb_instants = curr_node_data.v_min_nb_instants *)
-            }
-            next_node
-        in
-        (match get_edge_type (E.label edge) with
-        | Universal ->
-            (* Format.printf
-              "warning: product automaton contains a universal edge between \
-               node '%s' and '%s' \n"
-              (id_of_vertex curr_node) (id_of_vertex next_node) *)
-            ()
-        | Blocking ->
-            (* Format.printf
-              "warning: product automaton contains a blocking edge between \
-               node '%s' and '%s' \n"
-              (id_of_vertex curr_node) (id_of_vertex next_node) *)
-            ()
-        | _ -> ());
-        add_edge_e product_g edge
+
+        (* if arcs pruning is enabled *)
+        if (not Cli.get_config.otf_arcs_pruning) || G.is_sat_arc arc_f then 
+          let next_node = G.(E.dst r, E.dst g) in
+          (* make the curr_node -> new_node transition *)
+          let arc_f = { requires = G.E.label r; ensures = G.E.label g } in
+
+
+
+          (* add it to the list if not already treated and the transition is satisfiable
+          (mem_vertex will only check the label, not the vertex data, which is precisely what we want
+            as any previous entry will have a smaller minimum instant due to the BFS )
+          *)
+          if not (mem_vertex product_g next_node) then (
+            Queue.push next_node workq;
+            add_node next_node next_node_data
+          );
+
+          let edge =
+            E.create curr_node
+              {
+                arc_f;
+                (* arc_min_nb_instants = curr_node_data.v_min_nb_instants *)
+              }
+              next_node
+          in
+          (match get_edge_type (E.label edge) with
+          | Universal ->
+              (* Format.printf
+                "warning: product automaton contains a universal edge between \
+                node '%s' and '%s' \n"
+                (id_of_vertex curr_node) (id_of_vertex next_node) *)
+              ()
+          | Blocking ->
+              (* Format.printf
+                "warning: product automaton contains a blocking edge between \
+                node '%s' and '%s' \n"
+                (id_of_vertex curr_node) (id_of_vertex next_node) *)
+              ()
+          | _ -> ());
+          add_edge_e product_g edge
+
+        else
+          () (* do nothing *)
       in
 
       (* make the product of the destination node of the transitions *)
-      G.iter_succ_e
-        (fun r -> G.iter_succ_e (fun g -> create_edge (r, g)) guarantee_a g)
-        rely_a r
+      G.iter_succ_e (fun r -> 
+        G.iter_succ_e (fun g -> 
+          create_edge (r, g)
+        ) guarantee_a g
+      ) rely_a r
     done;
     refine_length init_node product_g;
     product_g

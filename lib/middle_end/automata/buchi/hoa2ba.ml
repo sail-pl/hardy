@@ -1,6 +1,7 @@
 open HardyFrontEnd.Syntax
 open FrontParser.SharedSyntax
 (* open MiddleParser.Labeling *)
+open Program
 open MiddleParser.HoaSyntax
 open MiddleParser.HoaHelpers
 open HardyMisc.Utils
@@ -12,7 +13,7 @@ module Make
     (* was used to force formulas into cnf, creating additional predicates to counter exponential size *)
   ) *)
   (Atom : Atom.S with 
-    type 'a t = 'a 
+    type 'a t = 'a
   (* formula level atoms *)
   )
   (Label : BoolA with type 'a t = Atom.atom
@@ -167,10 +168,38 @@ struct
 
   let pp_edge fmt (f : E.label) = 
     let pp_atom = (if formula_depth f > 4 then pp_atom_short else pp_atom_full) in
-    Format.(fprintf fmt "%a" (pp_boola pp_atom) f)
+    Format.(fprintf fmt "%a" (pp_boola (fun fmt -> fprintf fmt "{%a}" pp_atom)) f)
   let get_vdata = snd
 
   let get_edge_type (_ : E.label) = BuchiSig.Unknown
+
+  let is_sat_arc (arc: E.label hoare_pair) : bool = 
+    let module Sat = Msat_sat in
+    let module E = Sat.Int_lit (* expressions *) in
+    let module F = Msat_tseitin.Make (E) in
+
+    let rec create_clause : string bool_a -> F.t = function
+      | True -> F.f_true
+      | False -> F.f_false
+      | Atom a ->  int_of_string (String.sub a 1 @@ String.length a - 1) |> E.make |> F.make_atom
+      | And (b1, b2) -> F.make_and [ create_clause b1; create_clause b2 ]
+      | Or (b1, b2) -> F.make_or [ create_clause b1; create_clause b2 ]
+      | Not b -> F.make_not (create_clause b)
+
+    in
+    let solver = Sat.create () in
+    let c1 = create_clause arc.requires in
+    let c2 = create_clause arc.ensures in
+
+    Sat.assume solver (F.make_cnf c1) ();
+    Sat.assume solver (F.make_cnf c2) ();
+    match Sat.solve solver with
+    | Sat _st -> 
+      Format.printf "%a@." F.pp (F.make_imply c1 c2);
+      (* assumptions is satisfiable *)
+      true
+    | Unsat _st -> false
+
 end
 
 module SpinHoaOutput : AutSig.ToolSig with 

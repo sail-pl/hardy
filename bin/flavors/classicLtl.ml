@@ -74,7 +74,15 @@ module LTLSpec : FrontParser.SharedSyntax.BoolA
 end
 
 
-module Parsing : Parsing.S with 
+
+module Make(Cli: Cli.CliSig) = struct
+
+  open Hoa2ba 
+  (*
+    todo: change automata type using aut_format 
+  *)
+
+  module Parsing : Parsing.S with 
   type local_spec = parsed_spec_t and
   type temp_spec = parsed_temp_spec_t
 
@@ -87,19 +95,15 @@ module Parsing : Parsing.S with
 end
 
 
-open Hoa2ba 
-(*
-  todo: change automata type using aut_format 
-*)
+  module Typing = HardyFrontEnd.Ltl_typing.M
+  module B = Make(Atom)(Label)
+  module BProd= BaProduct.Make(Cli)(B)
 
-module Typing = HardyFrontEnd.Ltl_typing.M
-module B = Make(Atom)(Label)
-module BProd = BaProduct.Make(B)
+  module Middle= Generation.M(struct type t = Typing.out_local_spec end)(Atom)(LTLSpec)(SpinHoaOutput)(B)(BProd)
 
-module Middle = Generation.M(struct type t = Typing.out_local_spec end)(Atom)(LTLSpec)(SpinHoaOutput)(B)(BProd)
+  module Triples = Triples_ltl.M(Ltl_spec)(Atom)(B)(BProd)(Cli)
 
-module Triples = Triples_ltl.M(Ltl_spec)(Atom)(B)(BProd)
+  module Interactive = Why3Prover.M(struct type t = base_spec_t end)(struct type t = Typing.out_temp_spec end)(Triples)
 
-module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t = base_spec_t end)(struct type t = Typing.out_temp_spec end)(Triples(Cli))
-
-module Back = HardyBackEnd.Why3_back.Ltl.M(Ltl_spec)
+  module Back = HardyBackEnd.Why3_back.Ltl.M(Ltl_spec)
+end

@@ -83,10 +83,13 @@ struct
     in
     (* serves as a hint to decide if atoms should be printed in short or full form *)
     let pp_atom = (if nb_lit > 6 then pp_atom_short else pp_atom_full) in
-    Format.(fprintf fmt "%a" (pp_boola pp_atom) f)
+    Format.(fprintf fmt "%a" (pp_boola (fun fmt -> fprintf fmt "(%a)" pp_atom)) f)
   let get_vdata _ = ()
 
   let get_edge_type (_ : E.label) = BuchiSig.Unknown
+
+
+  let is_sat_arc arc = true
 end
 
 module Ltl2baNcOutput : AutSig.ToolSig with 

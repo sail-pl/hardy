@@ -170,6 +170,21 @@ guarantees G {
 
 [ppLTL-specified program examples](examples/ppLTL/)
 
+### Assumptions and Guarantees
+
+The temporal specification is given as a set of preconditions with the `assumes` keyword and postconditions with the `guarantees` keyword.
+
+Special care must be taken when mentioning outputs in preconditions: they must always be about a past output but even then, might be unsatisfiable:
+
+- `assumes {prev o = 2}` is unsatisfiable : no previous output before the first instant.
+- `assumes G {o = 3 }` is unsatisfiable : we cannot make assumption about an output before it happens
+- `assumes X G {i=2 -> prev o = 3 }` is satisfiable : we assume previous output to be 3 if current input is 2
+- `assumes G ({i=2} -> X {prev o = 2})` is also satisfiable : if the input is 2 at the nth instant, we assume the output to be 2 at the nth+1 instant.
+
+We can mention outputs within assumptions in order to state how the environnement reacts to the program's output:
+
+`assumes X G ({prev o <> 0} -> {i = first n / prev o})`
+
 ## Program Syntax
 
 As the focus is the specification of code and not the code itself, programs in hardy are very basic: they are reactive as they must continuously receive input and produce output, but also synchronous: time is discretized as a list of instants, where one input is *synchronized to one output* and no there input is consumed until the current one leads to the production of an output.

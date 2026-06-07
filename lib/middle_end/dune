@@ -3,4 +3,4 @@
 (library
  (name hardyMiddleEnd)
  (public_name hardy.middle_end)
- (libraries middleParser hardyMisc hardyFrontEnd ocamlgraph shexp.process))
+ (libraries middleParser hardyMisc hardyFrontEnd ocamlgraph shexp.process msat.sat msat.tseitin))

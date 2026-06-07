@@ -69,27 +69,29 @@ module PpLTLSpec : FrontParser.SharedSyntax.BoolA
 end
 
 
-module Parsing : Parsing.S with 
-  type local_spec = parsed_spec_t and
-  type temp_spec = parsed_temp_spec_t
+module Make(Cli: Cli.CliSig) = struct
 
-= struct 
-  type temp_spec = parsed_temp_spec_t
-  type local_spec = parsed_spec_t
+  module Parsing : Parsing.S with 
+    type local_spec = parsed_spec_t and
+    type temp_spec = parsed_temp_spec_t
 
-  type t = (temp_spec, unit, local_spec, unit, ProgramSyntax.parsed_env) program
-  include FrontParser.PgrmPltlParser
+  = struct 
+    type temp_spec = parsed_temp_spec_t
+    type local_spec = parsed_spec_t
+
+    type t = (temp_spec, unit, local_spec, unit, ProgramSyntax.parsed_env) program
+    include FrontParser.PgrmPltlParser
+  end
+
+  module Typing = HardyFrontEnd.Pltl_typing.M
+  module B = Make(Atom)(Label)
+  module BProd = BaProduct.Make(Cli)(B)
+  module Middle = Generation.M(struct type t = base_spec_t end)(Atom)(PpLTLSpec)(PpLTLHoaOutput)(B)(BProd)
+  module Triples = Triples_ltl.M(Ppltl_spec)(Atom)(B)(BProd)(Cli)
+  module Interactive = Why3Prover.M(struct type t = base_spec_t end)(struct type t = Typing.out_temp_spec end)(Triples)
+  module Back = HardyBackEnd.Why3_back.Ltl.M(Ppltl_spec)
 end
 
 
-module Typing = HardyFrontEnd.Pltl_typing.M
-module B = Make(Atom)(Label)
-module BProd = BaProduct.Make(B)
 
-module Middle = Generation.M(struct type t = base_spec_t end)(Atom)(PpLTLSpec)(PpLTLHoaOutput)(B)(BProd)
 
-module Triples = Triples_ltl.M(Ppltl_spec)(Atom)(B)(BProd)
-
-module Interactive(Cli : Cli.CliSig) = Why3Prover.M(struct type t = base_spec_t end)(struct type t = Typing.out_temp_spec end)(Triples(Cli))
-
-module Back = HardyBackEnd.Why3_back.Ltl.M(Ppltl_spec)

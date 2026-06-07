@@ -34,6 +34,8 @@ module type S = sig
   val pp_edge : Format.formatter -> E.label -> unit
   val get_edge_type : E.label -> edge_type
   val get_vdata : V.t -> vdata
+
+  val is_sat_arc : E.label HardyFrontEnd.Syntax.Program.hoare_pair -> bool
 end
 
 

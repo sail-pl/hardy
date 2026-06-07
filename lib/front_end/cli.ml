@@ -31,6 +31,8 @@ type config = {
   smoke_tests : bool; 
   dump_automata : bool;
   ignore_unsafe : bool;
+  otf_arcs_pruning : bool;
+  no_check : bool;
 }
 
 module type CliSig =  sig
@@ -57,23 +59,28 @@ functor
     let aut_format = ref ""
     let dump_automata = ref false
     let ignore_unsafe = ref false
-
+    let otf_arcs_pruning = ref false
+    let no_check = ref false
 
     let speclist =
       [
         ("-s", Set_string ltl_atom, "What is inside an LTL specification : direct (default) or ppltl for pure past ltl");
         ("-a", Set_string aut_format, "Automaton format: hoa (uses spot's ltl2tgba, default) or neverclaim (uses ltl2ba) ");
-        ("-da", Set dump_automata, "Dump specification automata used to generate triples, including their dot representation");
+        ("-d", Set dump_automata, "Dump specification automata used to generate triples, including their dot representation");
         ("-v", Set verbose, "Debug output");
-        ( "-noiaconj",
+        ( "--noiaconj",
           Set no_i_a_conj,
           "Do not add the rely the formula to the guarantee one" );
 
-        ("-smoketests", Set smoke_tests,
+        ("--smoke-tests", Set smoke_tests,
         "Replace all ensures with false to detect inconsistent specification");
 
-        ("-ignore-unsafe", Set ignore_unsafe,
-        "Don't stop when a formula is not a safety property")
+        ("--ignore-unsafe", Set ignore_unsafe,
+        "Don't stop when a formula is not a safety property");
+
+        ("--otf-arcs-pruning", Set otf_arcs_pruning,
+        "Enable on-the-fly removal of unsatisfiable arcs");
+        ("--no-check", Set no_check, "Do not attempt to solve the generated goals");
       ]
 
     let get_input_file f =
@@ -100,6 +107,8 @@ functor
         smoke_tests = !smoke_tests;
         dump_automata = !dump_automata;
         ignore_unsafe = !ignore_unsafe;
+        otf_arcs_pruning = !otf_arcs_pruning;
+        no_check = !no_check;
       } with
       | IncorrectAtom -> failwith @@ Format.sprintf "incorrect atom '%s'" !ltl_atom
       | IncorrectAutFormat -> failwith @@ Format.sprintf "incorrect automaton format '%s'" !aut_format
