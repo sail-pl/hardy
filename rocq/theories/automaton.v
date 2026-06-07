@@ -1,4 +1,4 @@
-From Stdlib Require Import List.
+From Stdlib Require Import List Ensembles.
 
 Section Automata.
 
@@ -43,6 +43,22 @@ Section Automata.
 
     Definition reachable (atm : automaton) (n : node) : Prop :=
         reachable_from atm (init atm) n.
+
+    Definition successors (atm : automaton) (n: node) (succs: Ensemble (label * node)) : Prop :=
+         forall l m, In _ succs (l,m) <-> transition atm n l m
+    .
+
+    Definition predecessors (atm : automaton) (preds: Ensemble (node * label)) (m: node) : Prop := 
+        forall l n, In _ preds (n,l) <-> reachable atm n /\ transition atm n l m
+    .
+
+
+    (* only the initial node is allowed not to have predecessors *)
+    Hypothesis init_no_pred : 
+         forall n atm , n <> init atm -> exists preds, predecessors atm preds  n /\ preds <> Empty_set _. 
+
+
+
 
     (** Given a type [Σ] and a predicate [belongs : label -> Σ -> Prop], a finite word 
         w (a list) of elements of type [Σ] is valid for a path p if w and p have the same length

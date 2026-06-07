@@ -28,6 +28,7 @@ Module Type Verif_Domain.
     Parameter node1 node2 : Set.
 
     Definition i_p_type : Type := history * input -> Prop.
+    
     Definition o_p_type : Type := history * (input * state) -> Prop.
 
     Definition i_step_type : Type := i_p_type * node1.
