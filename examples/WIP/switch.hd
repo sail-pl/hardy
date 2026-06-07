@@ -2,7 +2,7 @@ input set reset : bool;
 output level : bool;
 var current v : bool;
 
-relies on G {!(set && reset)}
+assumes G {!(set && reset)}
 
 guarantees {set} R {set || !level}
 guarantees {set} R {set || !current}

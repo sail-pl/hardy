@@ -1,0 +1,12 @@
+input i : int;
+output o : int;
+
+
+
+// if the program does not respect the requirement, this becomes vacuously true
+assumes G { i=2 -> prev o = 2 }
+guarantees G ( {i = 2} ->  {o=2 && o=1} )
+
+loop:
+    invariant {o = 3 }
+    emit 3 to o

@@ -1,0 +1,15 @@
+output o : int;
+var 
+    x : int*int;
+
+guarantees {o=0} && {o=1}
+guarantees XX G {o = o#1 + o#2}
+
+
+setup:
+    ensures {x = (0,1)}
+    x := (0,1)
+
+loop:
+    emit fst(x) to o;
+    x := snd(x), fst(x) + snd (x);

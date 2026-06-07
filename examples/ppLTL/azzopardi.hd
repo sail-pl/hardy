@@ -11,10 +11,19 @@ guarantees G {
         O {err = 2} &&
         T H {!flag12}
     ) 
-    <=> { flag12 }
+    => { flag12 }
 }
  
 
+ //private spec
+
+
+guarantees G ( {{err1}} -> {O {err=1}})
+guarantees G ( {{err2}} -> {O {err=2}})
+
+
+//guarantees ({!{err1}} W {{err=1}})
+//guarantees ({!{err2}} W {{err=2}})
 
 setup :
     ensures { err1 = false && err2 = false }

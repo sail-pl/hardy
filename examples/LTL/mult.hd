@@ -1,0 +1,47 @@
+
+input 
+    n // we use the first value of n as configuration parameters for the environnement
+    i : int
+;
+output 
+    o : int
+;
+
+var 
+    first_instant : bool
+    first_n : int
+;
+
+// first value of i is arbitrary
+assumes X G (
+        // {prev o <> 0}  && {first n %  prev o = 0}  -> 
+        {i = first n / prev o}
+)
+
+//guarantees X G {o = prev o}
+
+
+// private specification
+guarantees X G ({!first_instant} && {first_n = first n})
+
+
+// the specification can be trivially satisfied but we intentionally make it more complicated 
+// to work with the assumption
+
+setup: 
+    ensures {first_instant}
+    first_instant := true;
+
+
+loop:
+    //invariant {o = i * first_n}
+    if first_instant then
+        first_n := n;
+        first_instant := false;
+    end
+
+    emit i * first_n to o;
+
+    
+
+
