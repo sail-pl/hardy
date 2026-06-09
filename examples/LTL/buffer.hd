@@ -24,11 +24,11 @@ assumes G !({push} && {pop})
 
 
 // buffer is full until a pop is issued
-guarantees G ( {full} -> ({pop} R ({pop} || {full}) ))
+guarantees G ( {full} -> ({full} W {pop}) )
 
 
 // buffer is empty until a push is issued
-guarantees G ((!{full}) -> ({push} R ({push} || !{full}) ))
+guarantees G ((!{full}) -> ((!{full}) W {push}))
 
 
 // if the buffer holds the current input, either it already had this input or the buffer was not full

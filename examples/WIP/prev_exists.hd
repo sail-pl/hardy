@@ -1,0 +1,35 @@
+input i : int;
+output o : int;
+
+var last_nz : int;
+
+assumes {{i = 0}} && X G {{ i >= 0 }}
+
+
+guarantees {{o = 0}} W {{i <> 0}}
+
+
+// incorrect: o = i is local to the current instant, 
+// not the one from the left-side of the implication
+// guarantees G ({i <> 0} -> ({o = i} W {i <> 0}))
+
+// what we want to write 
+// guarantees forall n. G ({i <> 0}@n -> ({o = i@n} W {i <> 0}))
+
+
+// what we would also want to write: either o is i or there exists a previous input (the most recent)  
+// where o is equal to this input and since then, the input was always 0
+// guarantees G ( {{o = i}} || {forall n. {o = i@n} S {i <> 0}@n  } )
+
+
+
+setup:
+  ensures { last_nz = 0 }
+  last_nz := 0;
+
+loop:
+  invariant {o = last_nz}
+  if i <> 0 then
+    last_nz := i;
+  end
+  emit last_nz to o;

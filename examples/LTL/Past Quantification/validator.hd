@@ -6,15 +6,18 @@ var good : bool;
 assumes G { i >= 0 }
 assumes G { bound >= 0 }
 
-guarantees { ok }
-guarantees X G ( {!ok} -> X {!ok} )                // once false, always false
-guarantees X G ({ ok } -> {forall_prev i as p, p <= bound} )  // if ok, any past value <= bound
+guarantees G ( {!ok} -> X {!ok} )  // once false, always false 
+
+guarantees X G ({ ok } <-> ({ i <= bound } && {forall_prev i as p, p <= bound}) )  // if ok, any past value <= bound
+
 
 setup:
   ensures { good = true }
   good := true;
 
 loop:
+  invariant {good = ok}
+  invariant {ok -> i <= bound}
   if i > bound then
     good := false;
   end
