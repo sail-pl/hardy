@@ -334,39 +334,17 @@ Section Reduction.
         split; assumption.
     Qed.
 
-    
+    (* converts a postcondition for instant n into a precondition for instant n+1  *)
     Definition postcond_to_precond (post: local_postcond) : local_precond := fun t => match t with
     | nil => fun _ => True (* no history *)
     | prev_inst::h =>  fun _ => 
         post h (fst (fst prev_inst), snd (fst prev_inst)) (fst (snd prev_inst), snd (snd prev_inst))
     end.
 
-
-    Definition pre_meet (P1 : local_precond) (P2 : local_precond) : local_precond := 
-        fun t c => P1 t c /\ P2 t c.
-
-    Definition post_meet (Q1 : local_postcond) (Q2 : local_postcond) : local_postcond := 
-        fun t c n => Q1 t c n /\ Q2 t c n.
-
-
-    Definition pre_join (P1 : local_precond) (P2 : local_precond) : local_precond := 
-        fun t c => P1 t c \/ P2 t c.
-
-    Definition post_join (Q1 : local_postcond) (Q2 : local_postcond) : local_postcond := 
-        fun t c n => Q1 t c n \/ Q2 t c n.
-
-    (* Definition pre_equiv (P1: local_precond) (P2 : local_precond) : local_precond :=
-        fun t c => P1 t c <-> P2 t c. *)
-
-    (* Definition post_equiv (Q1 : local_postcond) (Q2 : local_postcond) : local_postcond := 
-        fun t c n => Q1 t c n <-> Q2 t c n.
-     *)
-    Definition pre_setup : local_precond := fun t '(i,m) => t = nil /\ contract_setup C m.
-
-
+    (* disjunction of all predecesssors postcondition as precondition *)
     Inductive join_preds (a: automaton ag_aut_node ag_aut_label) tr i m : ag_aut_node -> Prop :=
     | join_preds_setup :
-        pre_setup tr (i,m) ->
+        tr = nil /\ contract_setup C m ->
         join_preds a tr i m (init a) 
 
     | join_preds_cons prev_n precond curr_n : 
@@ -376,42 +354,23 @@ Section Reduction.
     .  
 
 
-
-
-    Inductive triple_gen_ (a: automaton ag_aut_node ag_aut_label) (t: HoareTriple) n pre post tr i m o m' : Prop := 
+    Inductive triple_gen (a: automaton ag_aut_node ag_aut_label) (t: HoareTriple) n pre post tr i m o m' : Prop := 
     | triple_gen__cons :
         (* the triple precondition must be equivalent to the conjunction of the disjunction of previous postconditions and current precondition *)
-        (local_pre t tr (i,m) <->
-            (pre_meet 
-                (* postcondition from the predecessor becomes precondition for the current node *)
-                (fun t '(i,m) => join_preds a tr i m n)
-                (* add the precondition *)
-                (fun t '(i,m) => pre (private_to_input_trace t) i)) tr (i,m))
-
-            
-        -> 
-
+        (local_pre t tr (i,m) <-> (join_preds a tr i m n /\ pre (private_to_input_trace tr) i)) -> 
         (local_post t tr (i,m) (o,m') <-> post tr (i,m) (o,m'))  ->
-        
         body t = loop P ->
-        
-        triple_gen_ a t n pre post tr i m o m'
-    .
-
-    (* we have a triple for each successor of each node *)
-    Inductive triple_gen a n t pre post next_node tr i m o m': Prop :=
-    | triple_gen_cons :
-        (successor _ _ a next_node (pre,post) n  <-> triple_gen_ a t n pre post tr i m o m') ->
-        triple_gen a n t pre post next_node tr i m o m'
+        triple_gen a t n pre post tr i m o m'
     .
 
 
-    Definition valid_generated_triples : Prop := 
-        forall n, 
+    Definition valid_generated_triples   : Prop := 
+        forall n , 
         reachable ag_aut n ->
-        exists t, 
-        forall pre post next_node tr i m o m', 
-        triple_gen ag_aut n t pre post next_node tr i m o m' /\ valid_triple t tr i m o m'
+        forall pre post next_node , 
+        successor _ _ ag_aut next_node (pre,post) n  ->
+        forall tr i m o m',
+        exists t, triple_gen ag_aut t n pre post tr i m o m' /\ valid_triple t tr i m o m'
     .
 
 End Reduction.
@@ -453,18 +412,13 @@ Theorem correctness_aux P C:
     valid_generated_triples P C -> 
     valid_contract_wit C P. 
 Proof.
-    intros Hval. red in Hval.
-    intros Hvalid_setup tr Hrun. induction Hrun.
+    intros Htriples Hvalid_setup tr Hrun. induction Hrun.
 
     - (* first instant  *) 
         intros i_tr m_tr o_tr m'_tr Htr_split a_path Ha_lang.
         inversion Htr_split; subst.
         rewrite build_trace_history_cons in Ha_lang |- *.
 
-
-        (* now, we place ourselves onto the initial node of ag, which is reachable by definition *)
-        assert (Hinitreach : reachable (ag_aut C) (init (a_aut C), init (g_aut C))) by now constructor.
-        specialize (Hval _ Hinitreach).
 
         (* get current a_aut transition *)
         inversion Ha_lang as (Ha_path & Ha_path_valid) ;
@@ -496,17 +450,15 @@ Proof.
 
             exists g_curr_label, g_next_node; split; cbn; [assumption|].
 
-            (* we now show the right element of the transition is the right postcondition *)
-                            
-                        
-            destruct Hval as (triples & Htriples).
-            specialize (Htriples a_curr_label g_curr_label (a_next_node,g_next_node) nil i (setup P tt) o m') as (Htriples & Htriples_valid).
-            inversion_clear Htriples as [Htriples'].
-            unfold successor in Htriples'; apply Htriples' in Hag_trans as [Ht_pre Ht_post Ht_body].
+                               
+            assert (Hinitreach : reachable (ag_aut C) (init (a_aut C), init (g_aut C))) by now constructor.
+            destruct (Htriples _ Hinitreach a_curr_label g_curr_label (a_next_node,g_next_node) Hag_trans nil i (setup P tt) o m')
+                 as (t & Htriples_gen & Htriples_valid).
+            inversion_clear Htriples_gen as  [Ht_pre Ht_post Ht_body].
 
             (* this gives us the postcondition *)
             rewrite <- Ht_post; apply Htriples_valid; [|now rewrite Ht_body]. 
-            rewrite Ht_pre; unfold pre_meet, pre_join; cbn; split; [|assumption]. now constructor.
+            rewrite Ht_pre;  cbn; split; [|assumption]. now constructor.
         }
 
         exists (((a_curr_label,g_curr_label), (a_next_node,g_next_node))::nil). split; [reflexivity|].
@@ -566,9 +518,6 @@ Proof.
                 now exists ag_path.
         }
 
-        (* this means we have generated triples for it *)
-        destruct (Hval (a_curr_node, g_curr_node) Hag_curr_reach) as [triples Htriples].
-
         (* we have a transition in ag_aut from the current node to the next whose left projection is a_curr_node  *)
         assert (exists (g_curr_label : g_aut_label) g_next_node,
                         transition (ag_aut C) (a_curr_node,g_curr_node) (a_curr_label, g_curr_label) (a_next_node,g_next_node))
@@ -582,18 +531,15 @@ Proof.
 
         cbn in  Hag_trans_next; destruct Hag_trans_next as [ _ Hg_trans ].
 
-        specialize (Htriples  a_curr_label g_curr_label (a_next_node,g_next_node) ((prev_i, prev_m, (prev_o, m)) :: tr) i m o m') as [Htriples_gen Hvalid].
-        destruct Htriples_gen as [Htriples_gen].
+        assert (Hag_succ: successor _ _ (ag_aut C) (a_next_node, g_next_node) (a_curr_label, g_curr_label) (a_curr_node, g_curr_node)) by easy. 
 
-        (* instantiate the triple for this transition *)
-        assert (Hag_succ: successor _ _ (ag_aut C) (a_next_node, g_next_node) (a_curr_label, g_curr_label) (a_curr_node, g_curr_node)) by easy.
-        apply Htriples_gen in Hag_succ as [Hcurr_t_pre Hcurr_t_post Hcurr_t_body].
+
+        specialize (Htriples  (a_curr_node, g_curr_node) Hag_curr_reach a_curr_label g_curr_label (a_next_node,g_next_node) Hag_succ ((prev_i, prev_m, (prev_o, m)) :: tr) i m o m') 
+            as (t & Htriple_gen & Hvalid_triple);
+        destruct Htriple_gen as [Hcurr_t_pre Hcurr_t_post Hcurr_t_body].
 
         exists (((a_curr_label,g_curr_label), (a_next_node,g_next_node))::((a_prev_label,g_prev_label), (a_curr_node,g_curr_node))::ag_path).
-        split; [reflexivity|].
-        
-
-        split; cbn.
+        split; [reflexivity|]; split; cbn.
 
         + now constructor.
         + constructor; [now constructor|]; split; cbn.
@@ -601,8 +547,8 @@ Proof.
                 now  inversion_clear Htr_split; cbn.
                 
             *  rewrite <- Hcurr_t_post.
-                apply Hvalid; [|now rewrite Hcurr_t_body ]; clear Hcurr_t_body.
-                rewrite Hcurr_t_pre. unfold pre_meet, pre_join; cbn. split.
+                apply Hvalid_triple; [|now rewrite Hcurr_t_body ]; clear Hcurr_t_body.
+                rewrite Hcurr_t_pre. split.
                 -- inversion Hag_path as [X|? ? Hprev_trans X |ag_prev_node ? ag_prev_label ? ag_path' Hprev_path Hprev_trans X]; subst.
                     ++ now constructor 2 with (precond:=(a_prev_label, g_prev_label)) (prev_n:=(init (ag_aut C))).
                     ++ now constructor 2 with (precond:=(a_prev_label, g_prev_label)) (prev_n:=(ag_prev_node)).                    

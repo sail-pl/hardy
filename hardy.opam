@@ -13,7 +13,7 @@ depends: [
   "alt-ergo"
   "rocq-prover" {>= "9.2"}
   "dune" {>= "3.22"}
-  "menhir"
+  "menhir" {>= "20180523"}
   "ocamlformat" {= "0.26.1" & with-dev-setup}
   "ocaml-lsp-server" {with-dev-setup}
   "zarith"
