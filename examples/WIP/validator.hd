@@ -1,0 +1,41 @@
+input 
+  i bound : int
+  reset : bool
+;
+output ok : bool;
+
+var good : bool;
+
+assumes G { i >= 0 }
+assumes G { bound >= 0 }
+assumes X G { bound >= prev bound } // bound cannot decrease
+
+guarantees X G {forall_prev bound as nth_b, nth_b <= bound }
+
+
+guarantees G ( {!ok} -> G {!ok})
+
+
+// KO if and only if there is a previous input that was greater than the bound at this time
+guarantees G ( (!{ok}) <-> {exists_inst i as nth_i, nth_i > bound@nth_i })
+
+// if ok, any past or current value <= current bound 
+guarantees G ({ ok } -> {forall_inst i as nth_i, nth_i <= bound})  
+
+
+setup:  
+  ensures { good = true }
+  good := true;
+
+loop:
+  invariant {good = ok}
+  invariant {(ok && !reset) -> i <= bound} 
+  //invariant {reset -> good}
+  if i > bound then
+    good := false;
+  end
+  
+  //if reset then 
+//    good := true 
+//  end
+  emit good to ok;

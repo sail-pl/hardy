@@ -1,7 +1,9 @@
 (** Evolution of a variable value across instants. The initial instant is [At 0]
     and last instant is [Previous 1]. The current instant is [Previous 0]
-    Negative values have no semantics *)
-type instant = At of int | Previous of int
+    Negative values have no semantics.
+    Inside a temporal quantification, [Same id] makes the variable value depend on binder instant
+    *)
+type instant = At of int | Same of string | Previous of int
 
 (** approximation of the number of instants *)
 type min_nb_instants = { nb_instant : int; is_max : bool; }

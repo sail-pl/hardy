@@ -81,7 +81,9 @@ rule tokenize = parse
   | "invariant"             { INVARIANT }
   | "variant"               { VARIANT }
   | "forall_prev"           { FORALL_PREV }
+  | "forall_inst"           { FORALL_INST }
   | "exists_prev"           { EXISTS_PREV } 
+  | "exists_inst"           { EXISTS_INST }
   | "forall"                { FORALL }
   | "exists"                { EXISTS }
   | "("                     { LPAREN }

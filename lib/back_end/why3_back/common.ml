@@ -294,8 +294,8 @@ let rec pterm_of_fol : type a. (a expr -> P.term) -> (a expr predicate, base_ty 
           remove_bindings Seq.(cons (fst local_v) empty);
 
 
-          (* _inst < length _hist *)
-          let h_length = get_bop inst_v history_length (Program "<") |> term
+          (* 0 <= _inst < length _hist *)
+          let h_length = Tinfix (tconst 0, PH.ident @@ Ident.op_infix "<=" ,Tinfix (inst_v, PH.ident @@ Ident.op_infix "<", history_length) |> term) |> term
           in  
 
           (* _inst < length _hist /\ _  *)
@@ -327,8 +327,8 @@ let rec pterm_of_fol : type a. (a expr -> P.term) -> (a expr predicate, base_ty 
           remove_bindings Seq.(cons (fst local_v) empty);
 
 
-          (* _inst < length _hist *)
-          let h_length = get_bop inst_v history_length (Program "<") |> term
+          (* 0 <= _inst < length _hist *)
+          let h_length = Tinfix (tconst 0, PH.ident @@ Ident.op_infix "<=" ,Tinfix (inst_v, PH.ident @@ Ident.op_infix "<", history_length) |> term) |> term
           in  
 
           (* _inst < length _hist -> _  *)

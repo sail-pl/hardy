@@ -1,4 +1,7 @@
-type instant = At of int | Previous of int
+type instant = 
+  | At of int 
+  | Same of string
+  | Previous of int
 
 type min_nb_instants = { nb_instant : int; is_max : bool }
 

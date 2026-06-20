@@ -46,6 +46,7 @@ let pp_hist fmt (v, h) =
   | Some (Previous 0) | None -> pp_print_string fmt v
   | Some (Previous n) -> fprintf fmt "prev %i %s" n v
   | Some (At n) -> fprintf fmt "%s at %i" v n
+  | Some (Same id) -> fprintf fmt "%s at %s" v id
 
 (* let pp_nohist fmt (id,_) = pp_print_string fmt id *)
 
@@ -100,7 +101,7 @@ let rec pp_fol : 'a. (formatter -> 'a -> unit) -> _ -> _ -> ('a,'b) fol -> _ =
     | ExistsPrev q ->
         fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_paren q.f
     | ForallPrev q ->
-        fprintf fmt "exists_prev %s as %s. %a" q.h_var q.binder pp_paren q.f
+        fprintf fmt "forall_prev %s as %s. %a" q.h_var q.binder pp_paren q.f
   in
   aux
 

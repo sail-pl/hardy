@@ -13,6 +13,7 @@
 let tq_expr := spec_expr(
     | id = ID ; {id,None}
     | id = ID ; endrule(AT|SYMB_AT) ; n = INT ; {id,Some (At n)}
+    | id = ID ; endrule(AT|SYMB_AT) ; id_binder = ID ; {id,Some (Same id_binder)}
     | endrule(PREV | LAST) ; n = endrule(n = option(INT); {Option.value ~default:1 n}) ; id = ID ;  {id,Some (Previous n)}
     | id = ID ; SHARP ; n = INT ; {id,Some (Previous n)}
     | endrule(START | FIRST | DOLLAR) ; id = ID ;  {id,Some (At 0)}
@@ -26,7 +27,36 @@ let tq_expr_with_pred ==
 
 let fol_h(atom) :=
     located(
+    | FORALL_INST ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {
+        (* for the current instant, replace binder with original variable and remove temporal quantification for any other variable *)
+        let replace_binder = function
+        | (v,t) when String.equal v binder -> (h_var,t)
+        | (v,Some (Same id)) when String.equal id  binder -> (v, None)
+        | x ->  x
+        in 
+
+        let past =  mk_labeled ~label:f.label (ForallPrev {h_var;binder;f})
+        and curr = (map_fol_pred (map_expr Fun.id replace_binder)) f
+        
+        in
+        FOL_StdBinary (curr, LAnd, past)
+
+    }
     | FORALL_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {ForallPrev {h_var;binder;f}}
+    | EXISTS_INST ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {
+        (* for the current instant, replace binder with original variable and no temporal quantification *)
+         let replace_binder = function
+        | (v,t) when String.equal v binder -> (h_var,t)
+        | (v,Some (Same id)) when String.equal id  binder -> (v, None)
+        | x ->  x
+        in 
+
+        let past =  mk_labeled ~label:f.label (ExistsPrev {h_var;binder;f})
+        and curr = (map_fol_pred (map_expr Fun.id replace_binder)) f
+        
+        in
+        FOL_StdBinary (curr, LOr, past)
+    }
     | EXISTS_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {ExistsPrev {h_var;binder;f}}
     )
     | fol(atom)

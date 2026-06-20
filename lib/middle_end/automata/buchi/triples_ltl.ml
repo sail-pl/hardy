@@ -78,7 +78,7 @@ module M
               | Previous n ->
                   (* we are at the next instant, so previous values are 1 instant earlier *)
                   Previous (n + 1)
-              | At _ -> inst (* nothing to do if we mention a specific instant *)
+              | At _ | Same _ -> inst (* nothing to do if we mention a specific instant *)
             in
             (v, (Some inst, (cty,bty)))
     in

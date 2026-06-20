@@ -44,7 +44,11 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
                     |> term
                   in
                   tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ]
-                end
+              | Some (Same bid) ->  
+                  let n = ["_inst"] |> qualid |> tvar (* fixme: hardcoded, will not work with nesting *)
+                  in
+                  tapp ~loc (qualid [nth_h cat_t]) [ n ; tvar (qualid [ s ]) ]
+              end
   | UnOp (ENot,t) -> Tnot (translate_term t) |> term  ~loc
   | BinOp v -> (
     let t1 = translate_term v.left and t2 = translate_term v.right in
