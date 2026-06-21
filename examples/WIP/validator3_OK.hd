@@ -1,0 +1,52 @@
+input
+  i bound : int
+  reset active : bool
+;
+output ok alarm : bool;
+
+var
+  bad : bool
+  era : int
+;
+
+assumes G { i >= 0 }
+assumes G { bound >= 0 }
+assumes X G { bound >= prev bound }
+
+guarantees ({ ok } <-> ({ reset } || { !active } || { i <= bound }))
+
+guarantees X G ({ reset } -> { era = prev era + 1 })
+guarantees X G ({ !reset } -> { era = prev era })
+guarantees X G { forall_prev era as old_era, old_era <= era }
+
+guarantees G ({ reset } -> ({ ok } && { !alarm }))
+guarantees ({ alarm } <-> (!{ reset } && ({ active } && { i > bound })))
+guarantees X G ({ alarm } <-> (!{ reset } && ({ prev alarm } || ({ active } && { i > bound }))))
+guarantees G ({ alarm } <-> { exists_inst era as old_era, old_era = era && !reset@old_era && active@old_era && i@old_era > bound@old_era })
+
+guarantees G ((!{ alarm } && !{ reset }) -> ({ !alarm } W ({ reset } || ({ active } && { i > bound }))))
+guarantees G (({ alarm } && !{ reset }) -> ({ alarm } W { reset }))
+guarantees G ({ reset } -> X ({ !alarm } W ({ active } && { i > bound })))
+
+guarantees X G { forall_prev bound as old_bound, old_bound <= bound }
+
+setup:
+  ensures { bad = false }
+  ensures { era = 0 }
+  bad := false;
+  era := 0;
+
+loop:
+  invariant { bad = alarm }
+  invariant { reset -> !alarm }
+  invariant { (ok && !reset && active) -> i <= bound }
+  if reset then
+    bad := false;
+    era := era + 1;
+  else
+    if active && i > bound then
+      bad := true;
+    end
+  end
+  emit (reset || !active || i <= bound) to ok;
+  emit bad to alarm;
