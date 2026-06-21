@@ -19,8 +19,8 @@
   --unused-token HAT --unused-token QMARK 
   --unused-token ALL --unused-token ANY --unused-token AT 
   --unused-token PREV --unused-token LAST  --unused-token AS
-  --unused-token EXISTS_PREV
-  --unused-token FORALL_PREV
+  --unused-token EXISTS_PREV --unused-token EXISTS_INST
+  --unused-token FORALL_PREV --unused-token FORALL_INST
   --unused-token FIRST
   --unused-token START
   --strict
