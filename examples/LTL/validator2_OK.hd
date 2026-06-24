@@ -1,0 +1,41 @@
+input
+  i bound : int
+  reset active : bool
+;
+output ok alarm : bool;
+
+var problem : bool;
+
+assumes G { i >= 0 && bound >= 0 }
+assumes X G { bound >= prev bound }
+
+guarantees { ok } <-> ({ reset } || (!{ active }) || { i <= bound })
+
+guarantees { ok } <-> !{ alarm }
+
+guarantees X G ({ alarm } <-> 
+  ((!{ reset }) && ({ prev alarm } || ({ active } && { i > bound }))))
+
+guarantees G ({ alarm } -> ({ alarm } W { reset }))
+
+guarantees G ((!{ alarm }) -> ((!{ alarm }) W ({ active } && { i > bound })))
+  
+
+setup:
+  ensures { problem = false }
+  problem := false;
+
+loop:
+  invariant { problem = alarm }
+  invariant { reset -> ok && !alarm }
+  invariant { !(alarm && reset) }
+  invariant { (ok && !reset && active) -> i <= bound }
+  if reset then
+    problem := false;
+  else
+    if active && i > bound then
+      problem := true;
+    end
+  end
+  emit (reset || !active || i <= bound) to ok;
+  emit problem to alarm;
