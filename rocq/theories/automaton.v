@@ -108,6 +108,50 @@ Section Automata.
         - now (inversion H_valid; trivial).
     Qed.
 
+
+
+    Definition aut_complete (a: automaton): Prop := 
+        forall n, reachable a n -> exists p m, transition a n p m.
+
+
+    Definition aut_deterministic (a: automaton) :  Prop :=
+       (forall l m l' m' s,
+        transition a (init a) l m /\ belongs l s ->
+        transition a (init a) l' m' /\ belongs l' s ->
+        l = l' /\ m = m' 
+       )
+        /\
+        (
+        forall s w (x : label * node) p m m' l l', 
+        language_wit a (x::p) w -> 
+        transition a (snd x) l m /\ belongs l s ->
+        transition a (snd x) l' m' /\ belongs l' s ->
+        l = l' /\ m = m' )  
+    .
+
+    Lemma aut_deterministic_eq (a: automaton ):  
+        aut_deterministic a -> 
+        forall w p p', 
+        language_wit a p w ->
+        language_wit a p' w ->
+        p = p'
+    .
+    Proof.
+        induction w.
+        - intros. apply language_w_nil in H0,H1. now subst.
+        - intros. destruct p;[ now inversion H0|]; destruct p'; [now inversion H1|].
+            apply language_prefix_closed in H0 as H0',H1 as H1'.
+            specialize (IHw _ _ H0' H1'); subst. clear H1'. f_equal.
+            inversion H0; inversion H1. destruct H.
+            inversion H3; subst. inversion H5; subst. 
+            inversion H2; subst.
+            + inversion H4. subst.
+                specialize (H _ _ _ _ _ (conj H8 H12) (conj H9 H14)). inversion H. now subst.
+            + inversion H4; subst.
+                (* assert (language_wit a ((lbl0, m0) :: p0) w ) by auto. *)
+                epose proof (H6 _ _ _ _ _ _ _ _ H0' (conj H13 H12) (conj H18 H14)). inversion H7. now subst.
+    Qed.
+
 End Automata.
 
 Arguments init [node label].

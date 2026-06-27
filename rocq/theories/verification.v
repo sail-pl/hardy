@@ -1,6 +1,7 @@
 From Hardy Require Import automaton product.
 From Stdlib Require Import List.
 
+
 (* helper lemmas *)
 Fact split_cons {A B} (l : list (A * B)) x y: 
     List.split ((x,y) :: l) = 
@@ -51,12 +52,15 @@ Abbreviation state_trace := (@trace state).
 
 
 
+Definition instant  : Type := ((input * state) * (output * state))%type.
+
+
 (* 
     an element ((i,m)(o,m')) of a trace represent the memory m' and output o produced by the program after receiving input i and memory m
 
     invariant : for a valid run, m must be the same as previous m'
 *)
-Definition pgrm_trace : Type := @trace ((input*state)*(output*state)). 
+Definition pgrm_trace : Type := @trace instant. 
 
 Definition pgrm_trace_split : pgrm_trace -> (input_trace * state_trace) * (output_trace * state_trace)  := fun tr =>
     (List.split (fst (List.split tr)), List.split (snd (List.split tr))).
@@ -168,7 +172,7 @@ Proof.
 Qed.
 
 
-Definition build_trace_history {A : Type} : list A -> list (list A * A) := 
+Definition build_trace_history {A : Type} : @trace A -> trace_prefixes := 
     fold_right f_hist nil
 .
 
@@ -220,7 +224,7 @@ Proof.
 Qed.
 
 (* property made up of the history of previous inputs, states and outputs and current input and state *)
-Definition local_precond : Type :=  pgrm_trace -> (input*state) -> Prop.
+Definition local_precond : Type :=  pgrm_trace -> input -> Prop.
 Definition local_postcond : Type :=  pgrm_trace -> (input*state) -> (output*state) -> Prop.
 
 
@@ -234,7 +238,7 @@ Record HoareTriple : Type := mkTriple {
 
 (* what the deductive verifier proves for each triple *)
 Definition valid_triple (T:HoareTriple) tr i m o m' : Prop := 
-    local_pre T tr (i,m) -> 
+    local_pre T tr i -> 
     body T (i,m) = (o,m') ->
     local_post T tr (i,m) (o,m')  
 .
@@ -248,7 +252,7 @@ Definition sat_a (p: a_aut_label) '((t,i): @trace input * input) : Prop := p t i
 (* 'guarantees' automata transition label: predicate on trace history, current input and memory, and next output and memory  *)
 Definition g_aut_label : Type :=  pgrm_trace -> (input*state) -> (output*state) -> Prop.
 
-Definition sat_g (p: g_aut_label) '((t,(im,om')): @pgrm_trace * ((input * state) * (output * state))) : Prop :=
+Definition sat_g (p: g_aut_label) '((t,(im,om')): pgrm_trace * instant) : Prop :=
     p t im om'.
 
 
@@ -265,7 +269,7 @@ Record Contract : Type := {
 }.
 
 
-(* given a stream of inputs accepted by a_aut, the program always produces a stream of outputs accepted by g_aut *)
+(* given a stream of inputs accepted by a_aut, the program always produces a stream of inputs, outputs and memory states accepted by g_aut *)
 Definition valid_contract (C: Contract) (P: Program): Prop := 
     (contract_setup C) (setup P) ->
     forall tr, run P tr ->
@@ -275,101 +279,87 @@ Definition valid_contract (C: Contract) (P: Program): Prop :=
 .
 
 
-Definition aut_complete {N L} (a: automaton N L): Prop := 
-    forall n, reachable a n -> exists p m, transition a n p m.
-
-Lemma prod_complete {N1 N2 L1 L2} (a: automaton N1 L1) (b : automaton N2 L2) : 
-    aut_complete a -> 
-    aut_complete b ->
-    aut_complete (product a b).
-Proof.
-    intros * Ha Hb n H.
-    assert (reachable a (fst n)).
-    {
-        destruct n.
-        simpl.
-        apply reachable_left_proj in H.
-        apply H.
-    }
-    assert (reachable b (snd n)).
-    {
-        destruct n.
-        apply reachable_right_proj in H.  
-        apply H.
-    }
-    apply Ha in H0 as [f [n1 Hat]].
-    apply Hb in H1 as [g [m1 Hbt]].
-    exists (f,g), (n1,m1).
-    split; assumption.
-Qed.
-
-
-Definition aut_deterministic {N L A} (a: automaton N L) (belongs : L -> A -> Prop) : Prop := 
-    forall w p p', 
-    language_wit belongs a p w ->
-    language_wit belongs a p' w ->
-    p = p'
-.
-
-
-Lemma prod_deterministic {N1 N2 L1 L2 A B} (a: automaton N1 L1) (b : automaton N2 L2) (a_belongs : L1 -> A -> Prop) (b_belongs : L2 -> B -> Prop): 
-    aut_deterministic a a_belongs ->
-    aut_deterministic b b_belongs ->
-    aut_deterministic (product a b) (fun '(x,y) '(a,b) => a_belongs x a /\ b_belongs y b).
-Proof.
-Admitted.
-
-
 
 Section Reduction.
-    Variable P : Program.
     Variable C : Contract.
 
     Definition a_aut := contract_assumes C.
     Definition g_aut := contract_guarantees C.
-
-
-
-    (* Lemma aut_deterministic_local_choice {N L A} (a: automaton N L) (belongs : L -> A -> Prop)  : 
-        aut_deterministic a belongs ->
-        forall w n m m' p p',
-
-        exists p, path atm (init atm) p /\ 
-                valid (List.map fst p) w.
-                
-                
-        valid belongs p w ->
-        transition a n p m ->
-        transition a n p' m' -> 
-        p = p'
-    . *)
-
-
-    
-
-    Parameter a_aut_complete : aut_complete a_aut.
-    Parameter g_aut_complete : aut_complete g_aut.
-
-    Parameter a_aut_deterministic : aut_deterministic a_aut sat_a.
-    Parameter g_aut_deterministic  : aut_deterministic g_aut sat_g.
     
     Abbreviation ag_aut_node := (a_aut_node * g_aut_node)%type.
     Abbreviation ag_aut_label  := (a_aut_label * g_aut_label)%type.
 
     Definition ag_aut : automaton ag_aut_node ag_aut_label := product (contract_assumes C) (contract_guarantees C).
 
-    Fact ag_aut_complete : aut_complete ag_aut.
+    Fact ag_aut_complete : aut_complete _ _ a_aut -> aut_complete _ _ g_aut -> aut_complete _ _  ag_aut.
     Proof.
-        apply prod_complete; [exact a_aut_complete| exact g_aut_complete].
+        intros Ha Hg. now apply prod_complete.
     Qed.
 
 
-    Definition sat_ag (l: ag_aut_label) '((t,((i,m),(o,m'))): @pgrm_trace * ((input * state) * (output * state))): Prop :=
+    Definition sat_ag (l: ag_aut_label) '((t,((i,m),(o,m'))): pgrm_trace * instant): Prop :=
         sat_a (fst l) (trace_to_input_trace t,i) /\ 
         sat_g (snd l) (t,((i,m),(o,m')))
     .
 
 
+    Definition sat_ag_proj_left : pgrm_trace * instant -> input_trace * input := fun x => (trace_to_input_trace (fst x),fst (fst (snd x))).
+    Definition sat_ag_proj_right : pgrm_trace * instant -> pgrm_trace * instant := id.
+
+    Lemma sat_ag_proj_left_sat_a : forall (a : ag_aut_label) (b : pgrm_trace * instant), sat_ag a b -> 
+        sat_a (fst a) (sat_ag_proj_left b).
+    Proof.
+        intros [? ?] [? ([? ?] & ? & ?)] H; now unfold sat_ag, sat_a, sat_g in H.
+    Qed.
+
+
+    Lemma sat_ag_proj_left_cons :        
+        forall tr i_tr m_tr o_tr m'_tr a x y, 
+        (i_tr, m_tr, (o_tr, m'_tr)) = pgrm_trace_split tr ->
+         (i_tr, a) = sat_ag_proj_left (tr, (a, x, y)).
+    Proof.
+        intros. destruct tr.
+        - inversion H. now subst.
+        - destruct i. destruct p,p0. rewrite pgrm_trace_split_cons in H. cbn in *. inversion H.
+         unfold sat_ag_proj_left. f_equal.  unfold trace_to_input_trace. unfold pgrm_trace_split. cbn. destruct (split tr) eqn:X.
+        cbn. now destruct (split l) eqn:Y.
+    Qed. 
+
+
+    Lemma sat_ag_proj_left_build_trace_history : 
+        forall tr i_tr m_tr o_tr m'_tr , 
+        (i_tr, m_tr, (o_tr, m'_tr)) = pgrm_trace_split tr ->
+         build_trace_history i_tr = map sat_ag_proj_left (build_trace_history tr).
+    Proof.
+
+    induction tr.
+    - intros. now inversion H.
+    - intros. rewrite build_trace_history_cons. cbn. destruct a. destruct p , p0.
+        pose proof H as Htr_split'.
+        rewrite pgrm_trace_split_cons in H. cbn in *.
+        apply pgrm_trace_split_inv in Htr_split' as (i_tr' & m_tr' & o_tr' & m'_tr' & Htr_split' & Hit & Hmt & Hotr & Hmt').
+        subst. inversion H.
+        unfold sat_ag_proj_left at 1.
+        rewrite build_trace_history_cons. unfold sat_ag_proj_left at 1. cbn. f_equal. 
+        f_equal. subst. specialize (IHtr _ _ _ _ Htr_split'). now inversion IHtr.
+    Qed.
+
+
+    Lemma sat_ag_proj_right_sat_g : forall (a : ag_aut_label) (b : pgrm_trace * instant), sat_ag a b -> 
+        sat_g (snd a) (sat_ag_proj_right b).
+    Proof.
+        intros [? ?] [? ([? ?] & ? & ?)] H; now unfold sat_ag, sat_a, sat_g in H.
+    Qed.
+
+
+    Fact ag_aut_deterministic : aut_deterministic _ _ _ sat_a a_aut -> aut_deterministic _ _ _ sat_g g_aut -> aut_deterministic _ _ _ sat_ag ag_aut.
+    Proof.
+        unshelve eapply (prod_deterministic _ _ _ _ a_aut g_aut _ _ _ sat_ag 
+            sat_a sat_ag_proj_left _ 
+            sat_g sat_ag_proj_right _).
+        - exact sat_ag_proj_left_sat_a.
+        - exact sat_ag_proj_right_sat_g.
+    Qed.
 
 
     (* converts a postcondition for instant n into a precondition for instant n+1  *)
@@ -388,27 +378,27 @@ Section Reduction.
 
     | join_preds_cons prev_n precond curr_n : 
         predecessor _ _ ag_aut prev_n precond curr_n -> 
-        postcond_to_precond (snd precond) tr (i,m) ->
+        postcond_to_precond (snd precond) tr i ->
         join_preds tr i m curr_n
     .  
 
     (* join_succs n pre tr i m o m' is the disjunction of all successors (pre',post) with a precondition equivalent to pre such post tr i m o m' *)
     Inductive join_succs curr_node pre tr i m o m' : Prop := 
-    | join_succs_ pre' post' next_n  :
-        successor _ _ ag_aut next_n (pre',post') curr_node ->
-        pre' (trace_to_input_trace tr) i <-> pre (trace_to_input_trace tr) i ->
-        post' tr (i,m) (o,m') ->
+    | join_succs_ pre' post next_n  :
+        successor _ _ ag_aut next_n (pre',post) curr_node ->
+        (pre' (trace_to_input_trace tr) i <-> pre (trace_to_input_trace tr) i) ->
+        post tr (i,m) (o,m') ->
         join_succs curr_node pre tr i m o m'
     .  
 
 
     (* triple_gen t n pre tr i m o m' is the triple t generated for node n for the given precondition *)
-    Inductive triple_gen (t: HoareTriple) curr_node pre tr i m o m' : Prop := 
+    Inductive triple_gen (P: Program) (t: HoareTriple) curr_node pre tr i m o m' : Prop := 
     | triple_gen_cons :
         
         
         (* the triple precondition must be equivalent to the conjunction of the disjunction of previous postconditions and current precondition *)
-        (   local_pre t tr (i,m) 
+        (   local_pre t tr i 
             <-> 
             (join_preds tr i m curr_node /\ pre (trace_to_input_trace tr) i)
         ) 
@@ -419,17 +409,17 @@ Section Reduction.
             local_post t tr (i,m) (o,m') <-> join_succs curr_node pre tr i m o m'
         ) ->
         body t = loop P ->
-        triple_gen t curr_node pre tr i m o m'
+        triple_gen P t curr_node pre tr i m o m'
     .
 
 
     (* each outgoing transition is associated with one more multiple triples *)
-    Definition valid_generated_triples  : Prop := 
+    Definition valid_generated_triples (P: Program) : Prop := 
         forall n , 
         reachable ag_aut n ->
         forall pre post next_n,  successor _ _ ag_aut next_n (pre,post) n  ->
         forall tr i m o m',
-        exists t, triple_gen t n pre tr i m o m' /\ valid_triple t tr i m o m'
+        exists t, triple_gen P t n pre tr i m o m' /\ valid_triple t tr i m o m'
     .
 
 End Reduction.
@@ -438,6 +428,7 @@ End Reduction.
 Abbreviation ag_aut_node := (a_aut_node * g_aut_node)%type.
 Abbreviation ag_aut_label  := (a_aut_label * g_aut_label)%type.
 
+(* strengthened version of valid_contract to use for induction, where we keep track of the path in the automata *)
 Definition valid_contract_wit (C: Contract) (P: Program): Prop := 
     (contract_setup C) (setup P) ->
     forall i m o m' tr, 
@@ -449,8 +440,8 @@ Definition valid_contract_wit (C: Contract) (P: Program): Prop :=
         language_wit sat_a (contract_assumes C) ((a_curr_trans,a_next_node)::a_p) (build_trace_history (i::i_tr)) -> 
 
     exists ag_p, left_proj ag_p = a_p /\        
-    exists ag_curr_trans ag_next_node, 
-        language_wit sat_ag (ag_aut C) ((ag_curr_trans, ag_next_node)::ag_p) (build_trace_history (((i,m),(o,m'))::tr)) 
+    exists ag_curr_trans g_next_node, 
+        language_wit sat_ag (ag_aut C) ((ag_curr_trans, (a_next_node, g_next_node))::ag_p) (build_trace_history (((i,m),(o,m'))::tr)) 
         (* /\ (fst ag_curr_trans i_tr i <-> a_curr_trans i_tr i) *)
 .
 
@@ -460,21 +451,21 @@ Proof.
     destruct Ha_lang as (a_path & Ha_path & Ha_path_valid). destruct a_path as [|[a_curr_label a_next_node] a_path].
     -   (* empty path -> empty trace -> trivially sat *)
         cbn in Ha_path_valid. inversion Ha_path_valid. symmetry in H; apply -> build_trace_history_iff_h_nil in H. subst. destruct tr eqn:X;[easy|].
-        destruct p as [[i m] [o m']].
-        pose proof  pgrm_trace_split_cons p0 i o m m'. now rewrite H in Hsplit. 
+        destruct i as [[i m] [o m']].
+        pose proof  pgrm_trace_split_cons p i o m m'. unfold pgrm_trace_split in Hsplit, H. cbn in *. now rewrite H in Hsplit. 
 
     - destruct tr as [|[[i m] [o m']] tr];[easy|]. 
         pose proof Hsplit as Hsplit'.
         apply pgrm_trace_split_inv in Hsplit as (i_tl & m_tl & o_tl & m'_tl & Hsplit & Heq1 & Heq2 & Heq3 & Heq4); subst.
     
         specialize (Hvalid_wit Hvalid_setup _ _ _ _ _ Hrun _ _ _ _ Hsplit _ _ _ (conj Ha_path Ha_path_valid))
-         as (ag_path & Hleft_proj & [a_curr_label' g_curr_label] & [a_next_node' g_next_node] & Hag_path_valid ). 
+         as (ag_path & Hleft_proj & [a_curr_label' g_curr_label] & g_next_node & Hag_path_valid ). 
          rewrite build_trace_history_cons in *.
         inversion_clear Hag_path_valid as [Hag_path Hag_path_valid'];  cbn in *.
         exists ((g_curr_label,g_next_node)::right_proj ag_path); split. 
     
         + now apply path_right_proj in Hag_path.
-        + apply valid_right_proj  with  (sat:= sat_g) (transf:=id) in Hag_path_valid'.
+        + apply valid_right_proj  with  (sat2:= sat_g) (transf2:=id) in Hag_path_valid'.
             * cbn in *. inversion Hag_path_valid'; subst; cbn in *. rewrite map_id in H2. constructor; [|assumption].
                 replace (map fst (right_proj ag_path)) with (map snd (map fst ag_path));[assumption|].
                 clear. induction ag_path; [reflexivity|simpl; f_equal; apply IHag_path].
@@ -482,14 +473,21 @@ Proof.
             * intros * Hsat_ag. red in Hsat_ag. now destruct b as [tr' [[i0 m0 ] [o0 m'0]]].  
 Qed.
 
+Definition wf_a_aut C := aut_complete _ _ (a_aut C) /\ aut_deterministic _ _ _ sat_a (a_aut C).
+Definition wf_g_aut C := aut_complete _ _ (g_aut C) /\ aut_deterministic _ _ _ sat_g (g_aut C).
+
+
 Theorem correctness_aux P C: 
-    valid_generated_triples P C -> 
+    wf_a_aut C -> 
+    wf_g_aut C -> 
+    valid_generated_triples C P -> 
     valid_contract_wit C P. 
 Proof.
-    intros Htriples Hvalid_setup i m o m' tr. revert i m o m'. induction tr.  
+    intros [Ha_aut_complete Ha_aut_deterministic] [Hg_aut_complete Hg_aut_deterministic] Htriples Hvalid_setup i m o m' tr.
+     revert i m o m'. induction tr.  
 
     - intros i m o m' Hrun. (* first instant  *) 
-        inversion Hrun; subst.
+        inversion Hrun as [? ? ? Hloop|].  subst.
         intros i_tr m_tr o_tr m'_tr Htr_split a_path a_curr_label a_next_node Ha_lang.
         inversion Htr_split; subst.
         rewrite build_trace_history_cons in Ha_lang |- *.
@@ -502,43 +500,54 @@ Proof.
         
         (* moreover, we have a transition in the assumes automaton from the initial node to a_n *)
         inversion Ha_path as [x|? ? Ha_trans x|x]; subst.
-
-        (* we now show we also have a transition in ag_aut from the initial node to (a_n,g_n) such that
-        its right component g_postcond satisfy the program first postcondition  *)
-         assert (exists g_curr_label g_next_node, 
-            transition (ag_aut C) (init (a_aut C), init (g_aut C)) (a_curr_label,g_curr_label) (a_next_node, g_next_node) /\ 
-           (join_succs C (init (a_aut C), init (g_aut C)) a_curr_label nil i (setup P) o m')
-        ) as (g_curr_label & g_next_node & [ag_aut_trans Hsuccs]).
+        exists nil. split; [now constructor|]. 
+        
+        (* we have a transition in ag_aut from the initial node to (a_n,g_n) *)
+        assert (exists (g_curr_label : g_aut_label) g_next_node,
+                        transition (ag_aut C) (init (ag_aut C)) (a_curr_label, g_curr_label) (a_next_node,g_next_node)) 
+        as (g_curr_label & g_next_node & Hag_trans).
         {
+                assert (reachable (g_aut C) (init (g_aut C))) as H_reach by (left; reflexivity).
+                destruct (Hg_aut_complete (init (g_aut C)) H_reach) as [g [g_n H_trans]].
+                exists g, g_n; easy.
+        }
+        
+        (* this transition is reachable by definition *)
+        assert (Hinitreach : reachable (ag_aut C) (init (a_aut C), init (g_aut C))) by now constructor.
 
-            (* we have a transition in ag_aut from the initial node to (a_n,g_n) *)
-            assert (exists (g_curr_label : g_aut_label) g_next_node,
-                            transition (ag_aut C) (init (ag_aut C)) (a_curr_label, g_curr_label) (a_next_node,g_next_node)) 
-            as (g_curr_label & g_next_node & Hag_trans).
-            {
-                    assert (reachable (g_aut C) (init (g_aut C))) as H_reach by (left; reflexivity).
-                    destruct (g_aut_complete C (init (g_aut C)) H_reach) as [g [g_n H_trans]].
-                    exists g, g_n; easy.
+        (* we get the our triple *)
+        specialize (Htriples _ Hinitreach _ _ _ Hag_trans nil i (setup P) o m') as (t & Htriples_gen & Htriples_valid);
+        destruct Htriples_gen as [Hpre Hpost Ht_body].
+
+        rewrite <- Ht_body in Hloop .
+        
+        (* no predecessors when this is the first instant *)
+        assert (Hpreds : join_preds C nil i (setup P) (init (a_aut C), init (g_aut C))) by now constructor.
+
+        (* we have the hypothesis that makes our precondition hold *)
+        pose proof (conj Hpreds Ha_curr_valid) as Hpre'; apply <- Hpre in Hpre'.
+        
+        (* our triple validity implies local_post holds *)
+        specialize (Htriples_valid Hpre' Hloop).
+        
+        (* this gives us the condition on the transitions *)
+        apply Hpost in Htriples_valid; inversion Htriples_valid as [? ? [a_next_node' g_next_node'] Hsucc Hpre_equiv Hpost_valid].
+
+        (* pre' is a_curr_label and next_n is (a_next_node,g_next_node) because of determinism *)
+        assert (Heq : pre' = a_curr_label /\  a_next_node' = a_next_node ). {
+            assert (Ha_lang':  language_wit sat_a (a_aut C) ((pre',a_next_node')::nil) ((nil, i) :: build_trace_history nil)). {
+                inversion Hsucc as [Ha_succ _]; cbn in Ha_succ.
+                constructor;[now constructor |constructor; [constructor|now apply Hpre_equiv]].
             }
 
-            exists g_curr_label, g_next_node; split; cbn; [assumption|].
-                               
-            assert (Hinitreach : reachable (ag_aut C) (init (a_aut C), init (g_aut C))) by now constructor.
-            specialize (Htriples _ Hinitreach _ _ _ Hag_trans nil i (setup P) o m') as (t & Htriples_gen & Htriples_valid).
-            inversion_clear Htriples_gen as [Hpre Hpost Ht_body]. apply Hpost.
-           
-            (* this gives us the postcondition *)
-            apply Htriples_valid; [|now rewrite Ht_body]. 
-            rewrite Hpre; cbn; split; [|assumption]. now constructor.
+            pose proof (aut_deterministic_eq _ _ _ _ _ Ha_aut_deterministic _ _ _ Ha_lang Ha_lang') as H. now inversion H.
         }
 
-        exists nil. split; [now constructor|]. inversion Hsuccs as [a_curr_label' g_curr_label' [a_next_node' g_next_node'] ag_succ Ha_label_equiv Hg].
-        
-        (* ag_succ is the same path as ag_aut_trans *)
-        assert (Heq: (a_curr_label',g_curr_label') = (a_curr_label, g_curr_label) /\ (a_next_node', g_next_node') = (a_next_node, g_next_node)) by admit.
-        destruct Heq as [H1 H2]; inversion H1; inversion H2; subst.
+        destruct Heq. subst.
 
-        exists (a_curr_label, g_curr_label), (a_next_node,g_next_node). split; [now constructor|]; constructor; [now constructor|now split].
+
+        exists (a_curr_label,post), g_next_node'. split; [now constructor|constructor; [constructor|]].
+        split; cbn; [now rewrite Hpre_equiv|assumption].
 
     - intros i m o m' Hrun.  (* nth instant *)
         inversion Hrun as [|? ? ? ? ? ? ? ? Hrun' Hloop]; subst.
@@ -562,68 +571,75 @@ Proof.
             such that the trace up to the previous instant is valid
         *)
         specialize (IHtr _ _ _ _ Hrun' _ _ _ _ Htr_split); rewrite build_trace_history_cons in IHtr.
-        specialize (IHtr _ _ _ Ha_lang_prev) as (ag_path & Hag_path_left & (a_prev_label', g_prev_label) & (a_curr_node', g_curr_node) & Hag_lang_prev).
+        specialize (IHtr _ _ _ Ha_lang_prev) as (ag_path & Hag_path_left & (a_prev_label', g_prev_label) & g_curr_node & Hag_lang_prev).
         rewrite build_trace_history_cons in *.
-
-
-        inversion Hag_lang_prev as [Hag_path_prev Hag_valid_prev]; cbn in *.
-        pose proof valid_prefix_closed _ _ _ _ _ _ _ Hag_valid_prev as Hag_valid_prev_all.
-
-
-    (* because automata are deterministic, we have prev_label' = a_prev_label and a_curr_node' = a_curr_node *)
-        assert (a_prev_label' = a_prev_label /\ a_curr_node' = a_curr_node) as [H1 H2]. {
-            pose proof path_left_proj _ _ _ _ _ _ _ _ Hag_path_prev as H; cbn in H.
-            inversion Ha_path_prev.
-            -  inversion H;[|now rewrite <- H3, <- H7 in Hag_path_left]. subst. admit.
-            
-            - inversion H;[now rewrite <- H3, <- H8 in Hag_path_left|].
-                rewrite <- H3, <- H8 in Hag_path_left; inversion Hag_path_left; subst. 
-                admit.
-        } 
-
-        subst.
-
-        assert (Hag_curr_reach: reachable (ag_aut C) (a_curr_node, g_curr_node)) by (constructor 2; eauto).
-
-        pose proof ag_aut_complete _ _ Hag_curr_reach as ([a_curr_label' g_curr_label] & ag_next_node & Hag_trans).
-        inversion Hag_trans as [Ha_trans' Hg_trans]. 
-
-        inversion Ha_path as [X|?|? ? ? ? ?  _ Ha_trans]; subst. cbn in Ha_trans', Hg_trans.
-
-        assert (a_curr_label' = a_curr_label /\ a_next_node = fst ag_next_node) as [H1 H2]  by admit; subst. 
         
+        (* we extract the left and right paths *)
+        pose proof language_left_proj _ _ _ _ _ _ _ _ _ _ _ sat_ag_proj_left_sat_a _ _  Hag_lang_prev as Hag_lang_left;
+        pose proof language_right_proj _ _ _ _ _ _ _ _ _ _ _ sat_ag_proj_right_sat_g _ _  Hag_lang_prev as Hag_lang_right;
+        cbn in Hag_lang_left, Hag_lang_right. 
+
+
+        (* we show the left path in the product automaton must be the same as our assumes automaton path *)
+        erewrite <- sat_ag_proj_left_build_trace_history in Hag_lang_left; [|eauto];
+        erewrite <- sat_ag_proj_left_cons in Hag_lang_left; [|eauto].
+        pose proof (aut_deterministic_eq _ _ _ _ _ Ha_aut_deterministic  _ _ _ Hag_lang_left Ha_lang_prev) as Heq. inversion Heq; subst. clear Heq H1.
+
+
+        inversion Ha_path as [X|?|? ? ? ? ?  _ Ha_trans]; subst.
+    
+
+        (* we get the next transition in the product automaton... *)
+        inversion Hag_lang_prev as [Hag_path_prev Hag_valid_prev]. cbn in Hag_path_prev, Hag_valid_prev.
+        pose proof valid_prefix_closed _ _ _ _ _ _ _ Hag_valid_prev as Hag_valid_prev_all.
+        assert (Hag_curr_reach: reachable (ag_aut C) (a_curr_node, g_curr_node)) by (constructor 2; eauto).
+        pose proof ag_aut_complete _ Ha_aut_complete Hg_aut_complete _ Hag_curr_reach as ([a_curr_label' g_curr_label] & [a_next_node' g_next_node] & Hag_trans).
+        inversion Hag_trans as [Ha_trans' Hg_trans]. cbn in Ha_trans', Hg_trans.
+        
+
         specialize (Htriples _ Hag_curr_reach _ _ _ Hag_trans ((prev_i, prev_m, (prev_o, m)) :: tr) i m o m') as (t & Htriple_gen & Hvalid_triple).
         destruct Htriple_gen as [Ht_pre Ht_post Ht_body ].
+
+        (* we now construct the hypothesis to satisfy Ht_pre *)
+
+        assert (Hpreds: join_preds C ((prev_i, prev_m, (prev_o, m)) :: tr) i m (a_curr_node, g_curr_node)). {
+            inversion Hag_path_prev; subst.
+            + apply (join_preds_cons _ _ _ _ (init (ag_aut C)) (a_prev_label,g_prev_label) (a_curr_node,g_curr_node)).
+                * apply H0.
+                * cbn. inversion Hag_valid_prev; subst. now inversion H5.
+            + apply (join_preds_cons _ _ _ _ m0 (a_prev_label,g_prev_label) (a_curr_node,g_curr_node)).
+                * assumption.
+                * cbn. inversion Hag_valid_prev; subst. apply H6.
+        }
 
         assert (Ha_curr_sat : a_curr_label (trace_to_input_trace ((prev_i, prev_m, (prev_o, m)) :: tr)) i). {
             unfold trace_to_input_trace in Ht_pre |- * ; rewrite pgrm_trace_split_cons in Ht_pre |- *; cbn in Ht_pre |- *; subst. 
             now inversion Htr_split.
         }
-
-        assert (Hw_join :join_succs C (a_curr_node, g_curr_node) a_curr_label ((prev_i, prev_m, (prev_o, m)) :: tr) i m o m' -> g_curr_label ((prev_i, prev_m, (prev_o, m)) :: tr) (i, m) (o, m')).
-        {
-            intros Hj. inversion Hj.  
-            (* as we are deterministic, post' must be g_curr_label *) 
-            admit.            
-        }
-
+        
         exists (((a_prev_label, g_prev_label),(a_curr_node,g_curr_node))::ag_path); split; [reflexivity|].
-        exists (a_curr_label, g_curr_label), ag_next_node. split; [now constructor|]; cbn. constructor; [assumption|]; constructor; [assumption|]; cbn.
-        apply Hw_join; apply Ht_post; apply Hvalid_triple; [|now rewrite Ht_body]. apply Ht_pre; split; [|assumption].
+        exists (a_curr_label, g_curr_label), g_next_node. split; [now constructor|]; cbn. constructor;[assumption|]; split; [assumption|].
 
-        inversion Hag_path_prev; subst.
-        + apply (join_preds_cons _ _ _ _ (init (ag_aut C)) (a_prev_label,g_prev_label) (a_curr_node,g_curr_node)).
-            * apply H0.
-            * cbn. inversion Hag_valid_prev; subst. now inversion H5.
-        + apply (join_preds_cons _ _ _ _ m0 (a_prev_label,g_prev_label) (a_curr_node,g_curr_node)).
-            * apply H3.
-            * cbn. inversion Hag_valid_prev; subst. apply H6.
+        enough (join_succs C (a_curr_node, g_curr_node) a_curr_label' ((prev_i, prev_m, (prev_o, m)) :: tr) i m o m' ->
+        sat_g (g_curr_label) ((prev_i, prev_m, (prev_o, m)) :: tr, (i, m, (o, m')))).
+        + apply H. apply Ht_post. apply Hvalid_triple; [|now rewrite Ht_body].
+            apply Ht_pre; split; [assumption|]. admit.
+
+        + intros Hsuccs. inversion Hsuccs.
+            (* because we are deterministic, post is g_curr_label *)
+        destruct Hg_aut_deterministic as [_ Hdg]. red in H. destruct H as [_ H]; cbn in H.
+        assert (Hg_curr_sat : sat_g post ((prev_i, prev_m, (prev_o, m)) :: tr, ((i, m),(o, m')))) by auto.
+
+        epose proof (Hdg _ _ _ _ _ _ _ _ Hag_lang_right (conj H Hg_curr_sat) (conj Hg_trans _)). 
+        destruct H2. now subst. 
 Admitted.
 
 
 Corollary correctness P C : 
-    valid_generated_triples P C -> 
+    wf_a_aut C -> 
+    wf_g_aut C -> 
+    valid_generated_triples C P -> 
     valid_contract C P. 
 Proof.
-    intros Hvalid; apply valid_contract_wit_valid; apply correctness_aux; assumption.
+    intros Ha_wf Hg_wf Hvalid. apply valid_contract_wit_valid; apply correctness_aux; assumption.
 Qed.
