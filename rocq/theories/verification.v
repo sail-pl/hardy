@@ -489,7 +489,7 @@ Proof.
     pose proof language_left_proj _ _ _ _ _ _ _ _ _ _ _ sat_ag_proj_left_sat_a _ _ Hag_lang as Hag_lang_left.
     cbn in Hag_lang_left.
     erewrite <- sat_ag_proj_left_build_trace_history in Hag_lang_left; [|eauto].
-    now apply (aut_deterministic_eq _ _ _ _ _ Ha_det _ _ _ Hag_lang_left Ha_lang).
+    eapply aut_deterministic_eq in Ha_det; eauto.
 Qed.
 
 (* Added lemma. *)

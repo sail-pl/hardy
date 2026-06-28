@@ -130,26 +130,35 @@ Section Automata.
     .
 
     Lemma aut_deterministic_eq (a: automaton ):  
-        aut_deterministic a -> 
+        aut_deterministic a <-> 
         forall w p p', 
         language_wit a p w ->
         language_wit a p' w ->
         p = p'
     .
     Proof.
-        induction w.
-        - intros. apply language_w_nil in H0,H1. now subst.
-        - intros. destruct p;[ now inversion H0|]; destruct p'; [now inversion H1|].
-            apply language_prefix_closed in H0 as H0',H1 as H1'.
-            specialize (IHw _ _ H0' H1'); subst. clear H1'. f_equal.
-            inversion H0; inversion H1. destruct H.
-            inversion H3; subst. inversion H5; subst. 
-            inversion H2; subst.
-            + inversion H4. subst.
-                specialize (H _ _ _ _ _ (conj H8 H12) (conj H9 H14)). inversion H. now subst.
-            + inversion H4; subst.
-                (* assert (language_wit a ((lbl0, m0) :: p0) w ) by auto. *)
-                epose proof (H6 _ _ _ _ _ _ _ _ H0' (conj H13 H12) (conj H18 H14)). inversion H7. now subst.
+        split.
+        - induction w.
+            + intros. apply language_w_nil in H0,H1. now subst.
+            + intros. destruct p;[ now inversion H0|]; destruct p'; [now inversion H1|].
+                apply language_prefix_closed in H0 as H0',H1 as H1'.
+                specialize (IHw _ _ H0' H1'); subst. clear H1'. f_equal.
+                inversion H0; inversion H1. destruct H.
+                inversion H3; subst. inversion H5; subst. 
+                inversion H2; subst.
+                * inversion H4. subst.
+                    specialize (H _ _ _ _ _ (conj H8 H12) (conj H9 H14)). inversion H. now subst.
+                * inversion H4; subst.
+                    epose proof (H6 _ _ _ _ _ _ _ _ H0' (conj H13 H12) (conj H18 H14)). inversion H7. now subst.
+        - intros H. split.
+            + intros.  
+                assert (language_wit a ((l,m)::nil) (s::nil)) by now repeat constructor.
+                assert (language_wit a ((l',m')::nil) (s::nil)) by now repeat constructor.
+                specialize (H _ _ _ H2 H3). now inversion H.
+            + intros. destruct x. cbn in *. inversion H0.
+                assert (language_wit a ((l,m)::(l0,n)::p) (s::w)) by now repeat constructor.
+                assert (language_wit a ((l',m')::(l0,n)::p) (s::w)) by now repeat constructor.
+                specialize (H _ _ _ H5 H6). now inversion H.
     Qed.
 
 End Automata.
