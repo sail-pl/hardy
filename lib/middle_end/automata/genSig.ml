@@ -10,7 +10,7 @@ module type TriplesSig = sig
   type local_spec
   type temp_spec 
 
-  val generate_triples : (temp_spec, 'a, local_spec, 'b, 'c) Program.program -> automaton -> t
+  val generate_triples : (temp_spec, 'a, local_spec, 'b, 'c) Loopy.program -> automaton -> t
 end
 
 
@@ -22,9 +22,9 @@ module type S = sig
   type temp_spec
   type local_spec
   type automaton
-  type in_program = (temp_spec, unit, local_spec, Shared.ty , Shared.ty Program.env) Program.program
+  type in_program = (temp_spec, unit, local_spec, Shared.ty , Shared.ty Loopy.env) Loopy.program
 
-  val spec_to_input : Cli.config -> temp_spec list Program.hoare_pair -> tool_input
+  val spec_to_input : Cli.config -> temp_spec list Shared.hoare_pair -> tool_input
   val exec : Cli.config -> tool_input -> tool_output
   val output_to_automaton : Cli.config -> tool_output -> automaton
 end

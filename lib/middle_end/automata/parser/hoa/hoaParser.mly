@@ -61,11 +61,11 @@ let label_expr :=
     | ~=ANAME ; <NameLabel>
 
 let boolean_algebra :=     
-    | ~ = label_expr ; <Atom>
-    | BANG ; ~=boolean_algebra ; <Not>
+    | ~ = label_expr ; <BA_Atom>
+    | BANG ; ~=boolean_algebra ; <BA_Not>
     | LPAR ; ~=boolean_algebra ; RPAR ; <>
-    | e1=boolean_algebra ; AMPER ; e2=boolean_algebra ; {And (e1,e2)}
-    | e1=boolean_algebra ; BAR ; e2=boolean_algebra ; {Or (e1,e2)}
+    | e1=boolean_algebra ; AMPER ; e2=boolean_algebra ; {BA_And (e1,e2)}
+    | e1=boolean_algebra ; BAR ; e2=boolean_algebra ; {BA_Or (e1,e2)}
 
 let acceptance_cond :=
     | ACCEPT_FIN ; LPAR ; complement=boption(BANG) ; set_number=INT ; RPAR ; { SetCond {fin_occur=true; set_number; complement } }

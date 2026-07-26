@@ -6,7 +6,6 @@ open Printer
 open Why3
 open Utils
 open HardyMisc.Utils
-open Program
 
 
 module PH = Ptree_helpers
@@ -158,74 +157,6 @@ let rec translate_rexpr (e: ty expr) : P.expr =
   | String s -> P.(Econst (Constant.string_const s)) |> expr ~loc
   | Array a -> make_earray (Iarray.map translate_rexpr a)
   | Real r -> P.(Econst (Constant.real_const_from_string ~neg:false ~radix:r.radix ~int:r.num ~frac:r.frac ~exp:r.exp)) |> expr ~loc
-
-
-
-let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) stmt list) :
-    P.expr =
-  let open P in
-  let open PH in
-  let [@warning "-4"] rec tr_seq = function
-    | [] -> expr unit_val
-    | [ x ] -> tr_stmt x
-    | s ->
-        List.fold_right
-          (fun x y ->
-            match (tr_stmt x, y) with
-            | { expr_desc = Etuple []; _ }, x 
-            | x, { expr_desc = Etuple []; _ }
-              ->
-                x
-            | (_, _) -> Esequence (tr_stmt x, y) |> expr)
-          s (expr unit_val)
-  and tr_stmt (stmt : ('a, 'b) stmt) =
-    let loc = get_loc stmt.label in
-    match stmt.value with
-    | Assign (e1, e2) ->
-        let e2' = translate_rexpr e2 in
-        begin
-        match e1.value with
-        | Var (id, (cty,_)) ->
-          let e1',id =
-           begin
-            match cty with
-            | State ->
-                ([ get_cat_ty State ] |> qualid |> evar ~loc, id)
-            | Local -> ([] |> qualid |> evar ~loc, id)
-            | Input | Output as cat ->
-                failwith
-                @@ Format.sprintf
-                    "can't assign expression to stream variable '%s' (%s)" id
-                    (get_pp_string pp_cat_ty cat)
-            end in
-             Eassign [ (e1', Some (qualid [ id ]) , e2') ] |> expr ~loc
-
-        | ArrayCell a -> 
-          let array = translate_rexpr a.array
-          and idx = translate_rexpr a.idx in
-          eapp (qualid [Ident.op_set ""]) [array; idx; e2'] ~loc
-
-        | Int _ | Real _ | True | False | UnOp (_, _) | BinOp _ | Array _ | String _ | Prod _ ->
-             failwith "not an assignable expression"
-        end 
-    | Emit (e, id) ->
-        get_binding_type id (fun (cat, _) ->
-            let e1, field =
-              match cat with 
-              | Output ->
-                  ( [ get_cat_ty cat ] |> qualid |> evar,
-                    Some ([ id ] |> qualid) )
-              | Input | State | Local -> failwith @@ Format.asprintf "can't emit to %a variable '%s'" pp_cat_ty cat id
-            in
-            Eassign [ (e1, field, translate_rexpr e) ] |> expr ~loc)
-    | If (e, t, f) ->
-        let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
-        Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc
-    | While (e, inv, _v, stmt) ->
-        Ewhile (translate_rexpr e, [ tr_form inv ], [], tr_seq stmt)
-        |> expr ~loc
-  in
-  tr_seq s
 
 
 let get_bop t1 t2 = 

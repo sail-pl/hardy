@@ -1,5 +1,3 @@
-open FrontParser.ProgramSyntax
-
 (** {1 Input Program Parsing} *)
 
 
@@ -9,7 +7,7 @@ module type S = sig
 
   type local_spec (* type of the local specification *)
 
-  type t = (temp_spec, unit, local_spec, unit, parsed_env) program (* type of the program *)
+  type t = (temp_spec, unit, local_spec, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program (* type of the program *)
 
   exception Error (* parsing error *)
 

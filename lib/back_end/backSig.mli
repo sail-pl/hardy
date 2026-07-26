@@ -14,14 +14,14 @@ module type S =
     type temp_spec
     type in_pgrm =
         (temp_spec, unit, local_spec, FrontParser.SharedSyntax.ty,
-         FrontParser.SharedSyntax.ty FrontParser.ProgramSyntax.env)
-        FrontParser.ProgramSyntax.program
+         FrontParser.SharedSyntax.ty FrontParser.LoopySyntax.env)
+        FrontParser.LoopySyntax.program
     type in_setup =
         (local_spec, FrontParser.SharedSyntax.ty)
-        FrontParser.ProgramSyntax.setup
+        FrontParser.LoopySyntax.setup
     type in_body =
         (local_spec, FrontParser.SharedSyntax.ty)
-        FrontParser.ProgramSyntax.stmt list
+        FrontParser.LoopySyntax.stmt list
     type in_fun
     type in_spec
     type triple_data
@@ -37,12 +37,12 @@ module type S =
     }
     val reset : unit -> unit
     val generate_declarations :
-      FrontParser.SharedSyntax.ty FrontParser.ProgramSyntax.env ->
+      FrontParser.SharedSyntax.ty FrontParser.LoopySyntax.env ->
       out_decl list
     val generate_setup : in_setup -> out_setup
     val generate_body : in_body -> out_body
     val generate_function :
-      ((in_spec, out_body) FrontParser.ProgramSyntax.hoare_triple,
+      ((in_spec, out_body) FrontParser.SharedSyntax.hoare_triple,
        triple_data)
       HardyMisc.Utils.labeled -> out_fun
     val generate_program : processed_defs -> out_pgrm
@@ -56,7 +56,7 @@ module F :
     sig
       val translate_program :
         B.in_pgrm ->
-        ((B.in_spec, B.in_fun) FrontParser.ProgramSyntax.hoare_triple,
+        ((B.in_spec, B.in_fun) FrontParser.SharedSyntax.hoare_triple,
          B.triple_data)
         HardyMisc.Utils.labeled HardyMisc.Utils.conjunction -> B.out_pgrm
       val write_program : string -> B.out_pgrm -> unit

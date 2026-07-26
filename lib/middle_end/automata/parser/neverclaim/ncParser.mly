@@ -26,9 +26,9 @@ let automaton := NEVER; LBRACE ; states = state* ; RBRACE ; EOF ; {
 let state := l = LABEL ; COLON ; 
     content = midrule(
         (* the body can be false in case of an unsatisfiable formula, in that case, we add a false transition to the node itself *)
-        | NC_FALSE ; SEMI ; {fun l -> (l,[{pml_src={pml_state=l};pml_form=False;pml_dst={pml_state=l}}])}
+        | NC_FALSE ; SEMI ; {fun l -> (l,[{pml_src={pml_state=l};pml_form=BA_False;pml_dst={pml_state=l}}])}
         (* SKIP is used when the last state accepts everything, so we have a transition labeled true to itself *)
-        | SKIP ; {fun l -> (l, [{pml_src={pml_state=l};pml_form=True;pml_dst={pml_state=l}}])}
+        | SKIP ; {fun l -> (l, [{pml_src={pml_state=l};pml_form=BA_True;pml_dst={pml_state=l}}])}
         | IF ; tr = transition* ; FI ; SEMI ; { fun l -> (l,List.map (fun t -> t l) tr)} 
     ); {content l}
 
@@ -36,11 +36,11 @@ let transition := COLON ; COLON ; f = bform ; ARROW ; GOTO ; s2 = LABEL ;
     { fun s1 ->  {pml_src={pml_state=s1};pml_form=f;pml_dst={pml_state=s2}} }
 
 let bform := 
-    | ~ = ATOM ; <Atom>
-    | TRUE ; {True}
-    | NC_TRUE ; {True}
-    | FALSE ; {False}
-    | f1 = bform ; AND ; f2 = bform ; { And (f1,f2) }
-    | f1 = bform ; OR ; f2 = bform ; { Or (f1,f2) }
-    | ~ = preceded(NOT, bform) ; <Not>
+    | ~ = ATOM ; <BA_Atom>
+    | TRUE ; {BA_True}
+    | NC_TRUE ; {BA_True}
+    | FALSE ; {BA_False}
+    | f1 = bform ; AND ; f2 = bform ; { BA_And (f1,f2) }
+    | f1 = bform ; OR ; f2 = bform ; { BA_Or (f1,f2) }
+    | ~ = preceded(NOT, bform) ; <BA_Not>
     | ~ = delimited(LPAREN, bform, RPAREN) ; <>

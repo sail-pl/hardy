@@ -5,7 +5,6 @@ open Syntax.Fol
 open Syntax.Shared
 open Syntax.Instant
 open HardyMisc.Utils
-open Program
 
 
 module M 
@@ -263,7 +262,7 @@ module M
     in
     M.fold mk_spec m conj_empty
 
-  let generate_triples (p : _ program) (a : BProd.t) : t =
+  let generate_triples (p : _ Loopy.program) (a : BProd.t) : t =
 
     let aux (v: BProd.vertex) : t  =
       (* provide init post-condition for first node 
@@ -275,7 +274,7 @@ module M
           Option.(
             fold p.prog_setup 
             ~none:(Some true_fol) 
-            ~some:(fun setup ->
+            ~some:(fun (setup : _ Loopy.setup)->
                 fold_mjoin some
                   (fun x y -> bind (map and_fol y) (fun f -> map f x))
                   None setup.setup_ensures

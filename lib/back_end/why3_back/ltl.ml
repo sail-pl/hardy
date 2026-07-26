@@ -1,6 +1,7 @@
 (** {1 Why3 Code Generation} *)
 
 open HardyFrontEnd
+open Printer
 open Syntax
 open Shared
 open Fol
@@ -8,9 +9,75 @@ open Instant
 open Why3
 open Utils
 open HardyMisc.Utils
-open Program
 
 open Common
+
+let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) Loopy.stmt list) :
+    P.expr =
+  let open P in
+  let open PH in
+  let [@warning "-4"] rec tr_seq = function
+    | [] -> expr unit_val
+    | [ x ] -> tr_stmt x
+    | s ->
+        List.fold_right
+          (fun x y ->
+            match (tr_stmt x, y) with
+            | { expr_desc = Etuple []; _ }, x 
+            | x, { expr_desc = Etuple []; _ }
+              ->
+                x
+            | (_, _) -> Esequence (tr_stmt x, y) |> expr)
+          s (expr unit_val)
+  and tr_stmt (stmt : ('a, 'b) Loopy.stmt) =
+    let loc = get_loc stmt.label in
+    match stmt.value with
+    | Assign (e1, e2) ->
+        let e2' = translate_rexpr e2 in
+        begin
+        match e1.value with
+        | Var (id, (cty,_)) ->
+          let e1',id =
+           begin
+            match cty with
+            | State ->
+                ([ get_cat_ty State ] |> qualid |> evar ~loc, id)
+            | Local -> ([] |> qualid |> evar ~loc, id)
+            | Input | Output as cat ->
+                failwith
+                @@ Format.sprintf
+                    "can't assign expression to stream variable '%s' (%s)" id
+                    (get_pp_string pp_cat_ty cat)
+            end in
+             Eassign [ (e1', Some (qualid [ id ]) , e2') ] |> expr ~loc
+
+        | ArrayCell a -> 
+          let array = translate_rexpr a.array
+          and idx = translate_rexpr a.idx in
+          eapp (qualid [Ident.op_set ""]) [array; idx; e2'] ~loc
+
+        | Int _ | Real _ | True | False | UnOp (_, _) | BinOp _ | Array _ | String _ | Prod _ ->
+             failwith "not an assignable expression"
+        end 
+    | Emit (e, id) ->
+        get_binding_type id (fun (cat, _) ->
+            let e1, field =
+              match cat with 
+              | Output ->
+                  ( [ get_cat_ty cat ] |> qualid |> evar,
+                    Some ([ id ] |> qualid) )
+              | Input | State | Local -> failwith @@ Format.asprintf "can't emit to %a variable '%s'" pp_cat_ty cat id
+            in
+            Eassign [ (e1, field, translate_rexpr e) ] |> expr ~loc)
+    | If (e, t, f) ->
+        let f = Option.fold ~some:tr_seq f ~none:(expr unit_val) in
+        Eif (translate_rexpr e, tr_seq t, f) |> expr ~loc
+    | While (e, inv, _v, stmt) ->
+        Ewhile (translate_rexpr e, [ tr_form inv ], [], tr_seq stmt)
+        |> expr ~loc
+  in
+  tr_seq s
+
 
 
 let rec translate_term (e : (instant option * ty) expr) : P.term =
@@ -72,9 +139,9 @@ let pterm_of_inv = pterm_of_fol
 module
   M
   (T: Types.T with 
-    type ('ty,'qty) fol_t = ('ty Program.expr, 'qty option) Fol.pred_fol and
-    type base_spec_t = ((instant option * Shared.ty) Program.expr, Shared.base_ty option) Fol.pred_fol and
-    type triple_data = (triple_id : string * invariants : ((instant option * Shared.ty) Program.expr, Shared.base_ty option) Fol.pred_fol list * nb_instants : Instant.min_nb_instants) and
+    type ('ty,'qty) fol_t = ('ty expr, 'qty option) Fol.pred_fol and
+    type base_spec_t = ((instant option * Shared.ty) expr, Shared.base_ty option) Fol.pred_fol and
+    type triple_data = (triple_id : string * invariants : ((instant option * Shared.ty) expr, Shared.base_ty option) Fol.pred_fol list * nb_instants : Instant.min_nb_instants) and
     type formula_data = min_nb_instants
   )
   (Cli : Cli.CliSig)
@@ -92,9 +159,9 @@ module
 
   type formula = ((instant option * Shared.ty, Shared.base_ty)  T.fol_t, T.formula_data Types.formula_data) U.labeled
 
-  type in_pgrm = (temp_spec, unit, T.base_spec_t, ty, ty env) program
-  type in_setup = (T.base_spec_t, ty) setup
-  type in_body = (T.base_spec_t, ty) stmt list
+  type in_pgrm = (temp_spec, unit, T.base_spec_t, ty, ty Loopy.env) Loopy.program
+  type in_setup = (T.base_spec_t, ty) Loopy.setup
+  type in_body = (T.base_spec_t, ty) Loopy.stmt list
   type in_spec = formula cnf
   type in_fun = T.cnf_data Types.cnf_data
 
@@ -115,7 +182,7 @@ module
 
   let reset () = Hashtbl.clear bindings
 
-  let generate_declarations (env : ty env) : out_decl list =
+  let generate_declarations (env : ty Loopy.env) : out_decl list =
     let open P in
     let open PH in
     let mk_decl pty =

@@ -1,6 +1,6 @@
 include FrontParser
 
-module Program = FrontParser.ProgramSyntax
+module Loopy = FrontParser.LoopySyntax
 module Fol = FOLSyntax
 module Ltl = LTLSyntax
 module Ppltl = PpLTLSyntax

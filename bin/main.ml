@@ -34,7 +34,7 @@ let main
       with type automaton = Middle.automaton
       and type local_spec = Middle.local_spec
       and type temp_spec = Middle.temp_spec
-      and type t = ((in_spec, in_fun) HardyFrontEnd.Syntax.Program.hoare_triple, triple_data) labeled conjunction
+      and type t = ((in_spec, in_fun) HardyFrontEnd.Syntax.Shared.hoare_triple, triple_data) labeled conjunction
     )
     (
       module Interactive : Sig.S with 

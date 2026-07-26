@@ -1,5 +1,5 @@
 open HardyFrontEnd
-open Syntax.Program
+open Syntax.SharedSyntax
 open Syntax.Instant
 
 type 'a arc_data = {

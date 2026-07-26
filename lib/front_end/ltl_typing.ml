@@ -15,7 +15,9 @@ let fail_if_no_bindings id b = match Bindings.find_opt id b with
     | None -> Format.sprintf "variable '%s' has not been declared" id |> failwith 
 
 
-module M : Typing with 
+module M 
+
+: Typing with 
     type in_local_spec = parsed_spec_t and
     type in_temp_spec = parsed_temp_spec_t and
     type out_temp_spec = ((temp_f_prop, (InstantSyntax.instant option * Shared.ty), Shared.base_ty) temp_spec_t, temp_f_prop) U.labeled and
@@ -80,7 +82,7 @@ module M : Typing with
     in
 
     (* https://ocaml.org/manual/5.2/polymorphism.html#ss:explicit-polymorphism*)
-    let set_expr_type : 'a 'b. ('a -> 'b) -> ty Bindings.t -> 'a Program.expr -> ('b * ty) Program.expr = fun f b x ->
+    let set_expr_type : 'a 'b. ('a -> 'b) -> ty Bindings.t -> 'a expr -> ('b * ty) expr = fun f b x ->
         map_expr Fun.id (fun (id,t) -> id,(f t,fail_if_no_bindings id b)) x in
 
     let type_prog_spec f b = fun x -> map_fol_pred (set_expr_type f b) x   in

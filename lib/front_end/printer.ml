@@ -4,7 +4,7 @@ open SharedSyntax
 open FOLSyntax
 open LTLSyntax
 open PpLTLSyntax
-open ProgramSyntax
+open LoopySyntax
 open InstantSyntax
 open Format
  

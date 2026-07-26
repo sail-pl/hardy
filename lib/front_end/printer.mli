@@ -1,6 +1,6 @@
 open Format
 open FrontParser
-open ProgramSyntax
+open LoopySyntax
 open SharedSyntax
 
 (** {1 Pretty-printing of program types, expressions and specifications} *)

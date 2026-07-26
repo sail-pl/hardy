@@ -40,16 +40,16 @@ module type Typing = sig
           unit, 
           in_local_spec, 
           unit, 
-          ProgramSyntax.parsed_env
+          LoopySyntax.parsed_env
         ) 
-        Program.program -> 
+        LoopySyntax.program -> 
                   
         (
           out_temp_spec,
           unit, 
           out_local_spec, 
           Shared.ty, 
-          Shared.ty ProgramSyntax.env
-        ) Program.program
+          Shared.ty LoopySyntax.env
+        ) LoopySyntax.program
 end
 

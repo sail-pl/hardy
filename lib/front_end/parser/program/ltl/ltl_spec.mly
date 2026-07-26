@@ -5,7 +5,7 @@
 %}
 
 
-%start <(Ltl_spec.parsed_temp_spec_t, unit, Ltl_spec.parsed_spec_t, unit, ProgramSyntax.parsed_env) ProgramSyntax.program> program
+%start <(Ltl_spec.parsed_temp_spec_t, unit, Ltl_spec.parsed_spec_t, unit, LoopySyntax.parsed_env) LoopySyntax.program> program
 
 %%
 

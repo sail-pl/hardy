@@ -1,4 +1,3 @@
-module Program = ProgramSyntax
 module Fol = FOLSyntax
 module Ltl = LTLSyntax
 module Ppltl = PpLTLSyntax
@@ -13,7 +12,7 @@ module U = HardyMisc.Utils
 (** {2 type instantiation} *)
 
 
-type ('ty,'qty) fol_t = ('ty Program.expr, 'qty option) Fol.pred_fol
+type ('ty,'qty) fol_t = ('ty Shared.expr, 'qty option) Fol.pred_fol
 
 type ('ty, 'qty, 'data) inst_spec_t = (('ty ,'qty) fol_t, 'data) U.labeled Ppltl.pltl
 

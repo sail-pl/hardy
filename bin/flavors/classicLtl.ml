@@ -4,7 +4,6 @@ open HardyMiddleEnd
 open Automata
 open Buchi
 open HardyMisc.Utils
-open Program
 open FrontSig
 open Ltl_spec
 
@@ -82,7 +81,7 @@ module Parsing : Parsing.S with
   type temp_spec = parsed_temp_spec_t
   type local_spec = parsed_spec_t
 
-  type t = (temp_spec, unit, local_spec, unit, ProgramSyntax.parsed_env) program
+  type t = (temp_spec, unit, local_spec, unit, LoopySyntax.parsed_env) LoopySyntax.program
   include FrontParser.LoopyLtlParser
 end
 
@@ -100,6 +99,6 @@ module Middle = Generation.M(struct type t = Typing.out_local_spec end)(Atom)(LT
 
 module Triples = Triples_ltl.M(Ltl_spec)(Atom)(B)(BProd)
 
-module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t = base_spec_t end)(struct type t = Typing.out_temp_spec end)(Triples(Cli))
+module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t =  Middle.in_program  end)(Triples(Cli))
 
 module Back(Cli: Cli.CliSig) = HardyBackEnd.Why3_back.Ltl.M(Ltl_spec)(Cli)

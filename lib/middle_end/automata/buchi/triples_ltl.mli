@@ -5,7 +5,6 @@ open Syntax.Fol
 open Syntax.Shared
 open Syntax.Instant
 open HardyMisc.Utils
-open Program
 
 (** Construction of triples from the automata *)
 module M :

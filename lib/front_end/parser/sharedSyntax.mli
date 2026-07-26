@@ -1,4 +1,62 @@
+open HardyMisc.Utils
+
+
+(** Program Expressions *)
+
+type expr_uop = ENot
+type expr_binop = Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr
+
+type 't expr = 't expression_ locatable
+(** variables can carry extra information of type ['t] *)
+
+and 't expression_ =
+  | Int of int
+  | Real of {radix:int ; num:string ; frac:string  ; exp:string option}
+  | True
+  | False
+  | Var of string * 't
+  | UnOp of expr_uop * 't expr
+  | BinOp of {left: 't expr ; op: expr_binop ; right : 't expr}
+  | ArrayCell of {array: 't expr; idx: 't expr}
+  | Array of 't expr iarray
+  | String of string
+  | Prod of 't expr list
+
+val string_of_pgrm_op : expr_binop -> string  
+(** convert program binary operators to strings *)
+
+
+val fold_expr : ('a -> 't expr -> 'a) -> 'a ->'t expr -> 'a
+
+
+val map_expr : ('t2 expr -> 't2 expr) -> (string * 't1 -> string * 't2) -> 't1 expr -> 't2 expr 
+
+  
+val expr_vars : (string * 't) list -> 't expr -> (string * 't) list
+
+
 (** {1 Types shared between programs and logics} *)
+
+
+type 'spec hoare_pair = { requires : 'spec; ensures : 'spec }
+
+type ('spec, 'data) hoare_triple = ('spec hoare_pair, 'data) labeled
+
+val map_triple_data : ('a -> 'b) -> ('c, 'a) labeled -> ('c, 'b) labeled
+
+(** generic hoare requires/ensures pair *)
+
+type 'v variant = { variant : 'v }
+
+val variant : 'a variant -> 'a 
+
+val mk_variant : 'a -> 'a variant
+
+(** [private_var x] renames variable id [x] to a name that cannot have been
+    declared by the user *)
+val pp_private : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+
+val private_var : string -> string
 
 (** Types *)
 
@@ -19,6 +77,9 @@ val is_state : ty -> bool
 val is_input : ty -> bool
 
 val is_output : ty -> bool
+
+
+(** Standard Logic Operators *)
 
 type standard_logic_bop = Equiv | Arrow | LAnd | LOr | Program of string
 
@@ -42,12 +103,12 @@ end
 module Unit : sig type t = unit end
 
 type 'a bool_a =
-    True : 'a bool_a
-    | False : 'a bool_a
-    | Atom : 'a -> 'a bool_a
-    | And : 'a bool_a * 'a bool_a -> 'a bool_a
-    | Or : 'a bool_a * 'a bool_a -> 'a bool_a
-    | Not : 'a bool_a -> 'a bool_a
+    | BA_True : 'a bool_a
+    | BA_False : 'a bool_a
+    | BA_Atom : 'a -> 'a bool_a
+    | BA_And : 'a bool_a * 'a bool_a -> 'a bool_a
+    | BA_Or : 'a bool_a * 'a bool_a -> 'a bool_a
+    | BA_Not : 'a bool_a -> 'a bool_a
 
 val pp_boola : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a bool_a -> unit
 

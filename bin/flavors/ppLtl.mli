@@ -1,6 +1,5 @@
 open FrontParser
 open SharedSyntax
-open ProgramSyntax
 open HardyFrontEnd.FrontSig
 open HardyMisc.Utils
 
@@ -61,7 +60,7 @@ module Interactive : (_ : HardyFrontEnd.Cli.CliSig) -> Sig.S with
     type triples = (((
         (InstantSyntax.instant option * ty, base_ty) Ppltl_spec.fol_t, 
         Ppltl_spec.formula_data Types.formula_data
-    ) labeled cnf, Ppltl_spec.cnf_data Types.cnf_data) HardyFrontEnd.Syntax.Program.hoare_triple, Ppltl_spec.triple_data Types.triple_data) labeled conjunction
+    ) labeled cnf, Ppltl_spec.cnf_data Types.cnf_data) hoare_triple, Ppltl_spec.triple_data Types.triple_data) labeled conjunction
 
 
 module Back : (_ : HardyFrontEnd.Cli.CliSig) -> HardyBackEnd.BackSig.S with 

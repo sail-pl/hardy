@@ -2,14 +2,14 @@
 open HardyFrontEnd.Syntax
 open Shared
 open HardyMisc.Utils
-open Program
+open Loopy
 
 
 module type S = sig
   type local_spec
   type temp_spec 
 
-  type in_pgrm = (temp_spec, unit, local_spec, ty, ty env) Program.program
+  type in_pgrm = (temp_spec, unit, local_spec, ty, ty env) program
   type in_setup = (local_spec, ty) setup
   type in_body = (local_spec, ty) stmt list
   type in_fun 

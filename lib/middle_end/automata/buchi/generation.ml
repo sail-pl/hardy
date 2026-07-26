@@ -1,5 +1,4 @@
 open FrontParser
-open ProgramSyntax
 open HardyFrontEnd
 open HardyMisc.Utils
 open SharedSyntax
@@ -36,7 +35,7 @@ struct
   type temp_spec = (AtomStore.atom TempSpec.t, FrontSig.temp_f_prop) labeled
   type local_spec = LocalSpec.t
 
-  type in_program = (temp_spec,unit, local_spec, ty, ty env) program
+  type in_program = (temp_spec, unit, local_spec, ty, ty LoopySyntax.env) LoopySyntax.program
 
   type automaton = BProd.t
 

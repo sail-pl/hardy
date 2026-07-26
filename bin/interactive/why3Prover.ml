@@ -2,21 +2,20 @@ open HardyFrontEnd
 open HardyMisc.Utils
 open Why3
 open Syntax
-open Syntax.Program
 module P = Why3.Ptree
 module Why3Utils = HardyBackEnd.Why3_back.Utils 
 
 
-module M(BaseSpec : SIMP_TYPE)(T: SIMP_TYPE )(TriplesType : SIMP_TYPE)
+module M(ProgramType : SIMP_TYPE)(TriplesType : SIMP_TYPE)
   : Sig.S with 
-    type program = (T.t, unit, BaseSpec.t, Shared.ty, Shared.ty env) program * P.mlw_file and 
+    type program = ProgramType.t * P.mlw_file and 
     type triples = TriplesType.t
 
 
   = struct
   (* module BU = Buchi.BuchiSig.Utils (B) *)
 
-  type nonrec program = (T.t, unit, BaseSpec.t, Shared.ty, Shared.ty env) program * P.mlw_file
+  type nonrec program = ProgramType.t * P.mlw_file
   type proof_result = Success | Failure of string
   (* type automaton = B.t
   type node = B.vertex *)

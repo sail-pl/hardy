@@ -46,7 +46,7 @@ struct
   module Transition = struct
       type t =  string bool_a
       let compare = Stdlib.compare
-      let default : t = True
+      let default : t = BA_True
   end
 
   include Graph.Imperative.Digraph.ConcreteLabeled (State) (Transition)

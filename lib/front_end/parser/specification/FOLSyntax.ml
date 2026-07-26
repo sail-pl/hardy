@@ -123,12 +123,12 @@ let exists_fol (vars : (string * 'qty) list) (f : ('a, 'b) fol) : ('a, 'b) fol =
 
 let fol_of_bool_a (convert_atom : 'a -> ('b, 'c) fol) (f: 'a bool_a) : ('b, 'c) fol =
   let rec aux = function
-  | True -> true_fol
-  | False -> false_fol
-  | Atom a -> convert_atom a
-  | And (f1, f2) -> and_fol (aux f1) (aux f2) 
-  | Or (f1,f2) -> or_fol (aux f1) (aux f2)
-  | Not f -> not_fol (aux f)
+  | BA_True -> true_fol
+  | BA_False -> false_fol
+  | BA_Atom a -> convert_atom a
+  | BA_And (f1, f2) -> and_fol (aux f1) (aux f2) 
+  | BA_Or (f1,f2) -> or_fol (aux f1) (aux f2)
+  | BA_Not f -> not_fol (aux f)
 in aux f
 
 let fol_of_cnf (convert_atom : 'a -> ('a, 'b) fol) (f: 'a cnf) : ('a, 'b) fol cnf =

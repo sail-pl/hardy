@@ -15,7 +15,9 @@ let fail_if_no_bindings id b = match Bindings.find_opt id b with
     | None -> Format.sprintf "variable '%s' has not been declared" id |> failwith 
 
 
-module M : FrontSig.Typing with 
+module M 
+
+: FrontSig.Typing with 
     type in_local_spec = parsed_spec_t and
     type in_temp_spec = parsed_temp_spec_t and
     type out_temp_spec = ((FrontSig.temp_f_prop, InstantSyntax.instant option * Shared.ty, Shared.base_ty) temp_spec_t, FrontSig.temp_f_prop) U.labeled and
@@ -31,7 +33,7 @@ module M : FrontSig.Typing with
 
 
   let type_pgrm p = 
-    let open Program in
+    let open LoopySyntax in
     let bindings : ty Bindings.t = 
         let open Bindings in
         let check_dup = fun x (cat1,_) (cat2,_) -> 
@@ -71,7 +73,7 @@ module M : FrontSig.Typing with
     ) FrontSig.dft_temp_f_prop
     in
     (* https://ocaml.org/manual/5.2/polymorphism.html#ss:explicit-polymorphism*)
-    let set_expr_type : 'a 'b. ('a -> 'b) -> 'a Program.expr -> ('b * ty) Program.expr = fun f x ->
+    let set_expr_type : 'a 'b. ('a -> 'b) -> 'a expr -> ('b * ty) expr = fun f x ->
         map_expr Fun.id (fun (id,t) -> id,(f t,fail_if_no_bindings id bindings)) x in
 
 

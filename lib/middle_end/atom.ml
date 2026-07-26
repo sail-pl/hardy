@@ -1,5 +1,5 @@
 open HardyFrontEnd.Syntax
-open Program
+open HardyFrontEnd.Syntax.Shared
 open HardyMisc.Utils
 
 module type S = sig

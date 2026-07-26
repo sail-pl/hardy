@@ -1,7 +1,6 @@
 (** {1 Middle-end signature}*)
 
 open FrontParser.SharedSyntax
-open FrontParser.ProgramSyntax
 
 module Cli = HardyFrontEnd.Cli
 
@@ -16,7 +15,7 @@ sig
     type local_spec
     type temp_spec
     val generate_triples :
-      (temp_spec, 'a, local_spec, 'b, 'c) program ->
+      (temp_spec, 'a, local_spec, 'b, 'c) FrontParser.LoopySyntax.program ->
       automaton -> t
 end
 
@@ -42,7 +41,7 @@ sig
     (** internal automaton type *)
 
 
-    type in_program = (temp_spec, unit, local_spec, ty, ty env) program
+    type in_program = (temp_spec, unit, local_spec, ty, ty FrontParser.LoopySyntax.env) FrontParser.LoopySyntax.program
     
     val spec_to_input : Cli.config -> temp_spec list hoare_pair -> tool_input
     
@@ -56,5 +55,5 @@ val translate_spec :
     (module TriplesSig with type automaton = 'automaton and type local_spec = 'local_spec and type t = 'triples and type temp_spec = 'temp_spec) ->
     Cli.config ->
     ('temp_spec, unit, 'local_spec, ty,
-    ty env)
-    program -> 'triples
+    ty FrontParser.LoopySyntax.env)
+    FrontParser.LoopySyntax.program -> 'triples

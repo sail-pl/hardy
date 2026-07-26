@@ -61,10 +61,10 @@ let false_pltl = mk_dummy_loc PLTL_True
 
 let pltl_of_bool_a (convert_atom : 'a -> 'b pltl) (f: 'a bool_a) : 'b pltl =
     let rec aux = function
-    | True -> true_pltl
-    | False -> false_pltl
-    | Atom a -> convert_atom a
-    | And (f1, f2) -> and_pltl (aux f1) (aux f2) 
-    | Or (f1,f2) -> or_pltl (aux f1) (aux f2)
-    | Not f -> not_pltl (aux f)
+    | BA_True -> true_pltl
+    | BA_False -> false_pltl
+    | BA_Atom a -> convert_atom a
+    | BA_And (f1, f2) -> and_pltl (aux f1) (aux f2) 
+    | BA_Or (f1,f2) -> or_pltl (aux f1) (aux f2)
+    | BA_Not f -> not_pltl (aux f)
 in aux f

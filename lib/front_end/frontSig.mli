@@ -1,4 +1,3 @@
-open Syntax.ProgramSyntax
 open Syntax.SharedSyntax
 
 (** provides information about what category of identifier is mentionned inside a temporal formula *)
@@ -26,6 +25,6 @@ sig
     type out_temp_spec
 
     val type_pgrm :
-        (in_temp_spec, unit, in_local_spec, unit, parsed_env) program ->
-        (out_temp_spec, unit, out_local_spec, ty, ty env) program
+        (in_temp_spec, unit, in_local_spec, unit, Syntax.LoopySyntax.parsed_env)  Syntax.LoopySyntax.program ->
+        (out_temp_spec, unit, out_local_spec, ty, ty Syntax.LoopySyntax.env)  Syntax.LoopySyntax.program
 end

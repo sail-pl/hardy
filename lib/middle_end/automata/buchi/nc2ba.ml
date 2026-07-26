@@ -31,7 +31,7 @@ struct
     type t = string bool_a
 
     let compare = Stdlib.compare
-    let default : t =  True
+    let default : t =  BA_True
   end
 
   include Graph.Imperative.Digraph.ConcreteLabeled (State) (Transition)
@@ -76,7 +76,7 @@ struct
     let nb_lit = 
       let [@warning "-4"] rec aux f = 
         fold_formula (fun f -> match f with 
-        | And (f1,f2) | Or (f1,f2)  -> fun _ -> max (aux f1) (aux f2)
+        | BA_And (f1,f2) | BA_Or (f1,f2)  -> fun _ -> max (aux f1) (aux f2)
         | _ -> Lazy.map_val ((+) 1)
         ) (fun _ -> Lazy.map_val ((+) 1)) (Lazy.from_val 0) f 
       in aux f |> Lazy.force_val
