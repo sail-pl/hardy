@@ -10,8 +10,8 @@
  (explain false))
 
 (menhir
- (modules tokens specification/ltl specification/ppltl program/ppltl/ppltl_spec program/common)
- (merge_into pgrmPltlParser)
+ (modules tokens specification/ltl specification/ppltl program/ppltl/ppltl_spec program/loopy)
+ (merge_into loopyPltlParser)
  (flags
   --external-tokens Tokens
   --unused-token SYMB_AT --unused-token DOLLAR  --unused-token SHARP
@@ -27,8 +27,8 @@
   ))
 
 (menhir
- (modules tokens specification/ltl program/ltl/ltl_spec program/common)
- (merge_into pgrmLtlParser)
+ (modules tokens specification/ltl program/ltl/ltl_spec program/loopy)
+ (merge_into loopyLtlParser)
  (flags
   --external-tokens Tokens
   --unused-token HAT --unused-token QMARK 

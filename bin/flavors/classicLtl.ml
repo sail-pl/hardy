@@ -83,7 +83,7 @@ module Parsing : Parsing.S with
   type local_spec = parsed_spec_t
 
   type t = (temp_spec, unit, local_spec, unit, ProgramSyntax.parsed_env) program
-  include FrontParser.PgrmLtlParser
+  include FrontParser.LoopyLtlParser
 end
 
 

@@ -29,7 +29,7 @@ let fol_h(atom) :=
     located(
     | FORALL_INST ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {
         (* for the current instant, replace binder with original variable and remove temporal quantification for any other variable *)
-        let replace_binder = function
+        let [@warning "-4"] replace_binder = function
         | (v,t) when String.equal v binder -> (h_var,t)
         | (v,Some (Same id)) when String.equal id  binder -> (v, None)
         | x ->  x
@@ -45,7 +45,7 @@ let fol_h(atom) :=
     | FORALL_PREV ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {ForallPrev {h_var;binder;f}}
     | EXISTS_INST ; h_var = ID; AS ; binder = ID; COMMA ; f = fol_h(atom) ; {
         (* for the current instant, replace binder with original variable and no temporal quantification *)
-         let replace_binder = function
+         let [@warning "-4"] replace_binder = function
         | (v,t) when String.equal v binder -> (h_var,t)
         | (v,Some (Same id)) when String.equal id  binder -> (v, None)
         | x ->  x
