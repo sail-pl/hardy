@@ -3,4 +3,5 @@
 (library
  (name hardyBackEnd)
  (public_name hardy.back_end)
- (libraries why3 hardyFrontEnd hardyMiddleEnd ocamlgraph))
+ (libraries why3 hardyFrontEnd hardyMiddleEnd ocamlgraph)
+  (modules_without_implementation backSig))

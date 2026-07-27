@@ -30,6 +30,11 @@ module type MONADIC = sig
     val join : 'a t t -> 'a t
 end
 
+module type PIPELINE = sig
+  type in_t
+  type out_t
+end
+
 type ('v, 'l) labeled = { value : 'v; label : 'l }
 
 

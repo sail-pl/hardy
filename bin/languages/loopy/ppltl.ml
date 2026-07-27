@@ -4,6 +4,7 @@ open HardyMiddleEnd
 open Automata
 open Buchi
 open Hoa2ba
+open Interactive
 open HardyMisc.Utils
 open Ppltl_spec
 
@@ -68,27 +69,28 @@ module PpLTLSpec : FrontParser.SharedSyntax.BoolA
 end
 
 
-module Parsing : Parsing.S with 
-  type local_spec = parsed_spec_t and
-  type temp_spec = parsed_temp_spec_t
+module Parsing : Parsing.S with type out_t = ( Ppltl_spec.parsed_temp_spec_t, unit, (Ppltl_spec.parsed_spec_t, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program) Shared.prog_with_spec
+
 
 = struct 
   type temp_spec = parsed_temp_spec_t
   type local_spec = parsed_spec_t
+  
+  type in_t = unit
 
-  type t = (temp_spec, unit, local_spec, unit, LoopySyntax.parsed_env) LoopySyntax.program
+  type out_t = (temp_spec, unit, (local_spec, unit, LoopySyntax.parsed_env) LoopySyntax.program) Shared.prog_with_spec 
   include FrontParser.LoopyPltlParser
 end
 
 
-module Typing = HardyFrontEnd.Pltl_typing.M
+module Typing = Pltl_typing.M
 module B = Make(Atom)(Label)
 module BProd = BaProduct.Make(B)
 
-module Middle = Generation.M(struct type t = base_spec_t end)(Atom)(PpLTLSpec)(PpLTLHoaOutput)(B)(BProd)
+module Middle = Generation.M(struct type t = base_spec_t end)(struct type t = (base_spec_t, Shared.ty, Shared.ty LoopySyntax.env) LoopySyntax.program end)(Atom)(PpLTLSpec)(PpLTLHoaOutput)(B)(BProd)
 
-module Triples = Triples_ltl.M(Ppltl_spec)(Atom)(B)(BProd)
+module Triples = Triples.M(Ppltl_spec)(Atom)(B)(BProd)
 
-module Interactive(Cli : Cli.CliSig) = Why3Prover.M(struct type t = Middle.in_program end)(Triples(Cli))
+module Interactive(Cli : Cli.CliSig) = Why3Prover.M(struct type t = Middle.in_t end)(struct include Triples(Cli)  type t = out_t end)
 
-module Back = HardyBackEnd.Why3_back.Ltl.M(Ppltl_spec)
+module Back = Back.M(Ppltl_spec)

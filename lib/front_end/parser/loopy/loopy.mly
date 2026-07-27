@@ -36,11 +36,15 @@ let program :=
     )? ;
     LOOP ; ":" ; main_loop_inv = invariant* ; main_body = loption(seq_stmt) ; EOF ;
     {
+        
         {
-            prog_decls;
+            prog = {
+                prog_decls;
+                prog_setup; 
+                prog_main = {main_loop_inv ; main_body}
+            } ;
+            
             prog_spec=mk_labeled ~label:() {requires;ensures};
-            prog_setup; 
-            prog_main = {main_loop_inv ; main_body}
         }
     }
 

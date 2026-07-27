@@ -1,4 +1,5 @@
 open HardyFrontEnd
+open HardyMiddleEnd
 open FrontSig
 open Syntax
 open Syntax.Fol
@@ -9,51 +10,69 @@ open HardyMisc.Utils
 
 module M 
       (T : sig 
-          include Types.T with 
+        include Types.T with 
         type transition_data = min_nb_instants and 
         type formula_data = min_nb_instants and
         type cnf_data = min_nb_instants and
-        type base_spec_t = ((instant option * ty) expr, base_ty option) pred_fol and
+        type base_spec_t = FrontParser.Ltl_spec.base_spec_t and
         type triple_data = (triple_id : string * invariants : ((instant option * ty) expr, base_ty option) pred_fol list * nb_instants : Instant.min_nb_instants) and
-        type ('ty,'qty) fol_t = ('ty expr, 'qty option) pred_fol
+        type ('ty,'qty) fol_t = ('ty expr, 'qty option) pred_fol 
       end
       )
       (AtomStore : Atom.S  
         with type 'a t = 'a (* imperative version for simplicity *)
         with type atom = ((Instant.instant option * ty, base_ty) T.fol_t, temp_f_prop) labeled
       ) 
-      (B:  BuchiSig.S 
+      (B:  Automata.Buchi.BuchiSig.S 
       )
       (
         (* requires explicit passing because BProd is effectful *)
-        BProd: BuchiSig.S
+        BProd: Automata.Buchi.BuchiSig.S
         with 
-        type E.label = string bool_a BaProduct.arc_data and 
-        type vdata = BaProduct.vertex_data
+        type E.label = string bool_a Automata.Buchi.BaProduct.arc_data and 
+        type vdata = Automata.Buchi.BaProduct.vertex_data
         ) 
         (Cli :  Cli.CliSig)
-        : GenSig.TriplesSig with
-        type local_spec = T.base_spec_t and
-        type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) T.temp_spec_t, temp_f_prop) labeled and
+        : Automata.GenSig.TriplesSig with
         type automaton = BProd.t  and
-        type t = (( ((Instant.instant option * ty, base_ty) T.fol_t, T.formula_data Types.formula_data) labeled cnf, T.cnf_data Types.cnf_data) hoare_triple, T.triple_data Types.triple_data) labeled conjunction
+        type in_t = (
+                        (
+                            (Instant.instant option * ty, base_ty, temp_f_prop) T.temp_spec_t, 
+                            temp_f_prop
+                        ) labeled, 
+                        unit,
+                        (T.base_spec_t, ty, ty Syntax.LoopySyntax.env) Syntax.LoopySyntax.program
+                    ) prog_with_spec and
+        type out_t = (
+                        ( 
+                            (
+                                (Instant.instant option * ty, base_ty) T.fol_t, 
+                                T.formula_data Types.formula_data
+                            ) labeled cnf, 
+                            T.cnf_data Types.cnf_data
+                        ) hoare_triple, 
+                        T.triple_data Types.triple_data
+                    ) labeled conjunction
         
   = struct
-  module BUtils = BuchiSig.Utils (B)
+  module BUtils = Automata.Buchi.BuchiSig.Utils (B)
 
   (* triples are generated from the product automaton *)
   type automaton = BProd.t
 
-  type temp_spec = ((temp_f_prop, Instant.instant option * ty, base_ty) T.temp_spec_t, temp_f_prop) labeled
-
   type local_spec = T.base_spec_t
+
+  type in_t = (((Instant.instant option * ty,base_ty, temp_f_prop) T.temp_spec_t, temp_f_prop) labeled, unit,
+          (local_spec, ty, ty Syntax.LoopySyntax.env) Syntax.LoopySyntax.program) prog_with_spec
+
+
 
   (* triples contains formulas with the following type*)
   type formula = ((Instant.instant option * ty, base_ty) T.fol_t, T.formula_data Types.formula_data) labeled
 
 
   (* final form of triples *)
-  type t = ((formula cnf, T.cnf_data Types.cnf_data) hoare_triple, T.triple_data Types.triple_data) labeled conjunction
+  type out_t = ((formula cnf, T.cnf_data Types.cnf_data) hoare_triple, T.triple_data Types.triple_data) labeled conjunction
 
 
   (** [previous_instant_spec (in_e,v) init_post] produces the set of state formulas that must hold for a set of (incoming) edges [in_e] to the vertex [v],
@@ -132,7 +151,7 @@ module M
         let spec : formula = 
             let pred = spec (* map_fol_pred_ty Fun.id (map_expr Fun.id Fun.id) spec *)
             and label = Types.{formula_data={ nb_instant = 0; is_max = true }} (* we are at the first instant if we executed the setup just before *)
-            in mk_labeled ~label pred          
+            in mk_labeled ~label pred      
         in add_disjunct spec disj
       ) 
       
@@ -262,9 +281,9 @@ module M
     in
     M.fold mk_spec m conj_empty
 
-  let generate_triples (p : _ Loopy.program) (a : BProd.t) : t =
+  let generate_triples (p : in_t) (a : BProd.t) : out_t =
 
-    let aux (v: BProd.vertex) : t  =
+    let aux (v: BProd.vertex) : out_t  =
       (* provide init post-condition for first node 
         we still return [true] in case there is no setup postcondition to ensure the first instant case
         is covered
@@ -272,9 +291,9 @@ module M
       let extra_req : T.base_spec_t option =
         if BProd.is_start_node v then
           Option.(
-            fold p.prog_setup 
+            fold p.prog.prog_setup 
             ~none:(Some true_fol) 
-            ~some:(fun (setup : _ Loopy.setup)->
+            ~some:(fun (setup : _ LoopySyntax.setup)->
                 fold_mjoin some
                   (fun x y -> bind (map and_fol y) (fun f -> map f x))
                   None setup.setup_ensures
@@ -298,7 +317,7 @@ module M
           let open Format in
           let index = if i <> 0 then sprintf "_%i" i else "" in
           let id = BProd.(id_of_vertex v) ^ index in
-          let label = Types.{triple_data = (~triple_id:id,~invariants:p.prog_main.main_loop_inv, ~nb_instants:s.label.cnf_data)} in
+          let label = Types.{triple_data = (~triple_id:id,~invariants:p.prog.prog_main.main_loop_inv, ~nb_instants:s.label.cnf_data)} in
           mk_labeled ~label s)
         specs.conjuncts |> mk_conj
     in

@@ -1,0 +1,6 @@
+(include_subdirs unqualified)
+
+(library
+ (name loopyLang)
+ (public_name hardy.loopyLang)
+ (libraries hardyMiddleEnd hardyBackEnd hardyMisc interactive))

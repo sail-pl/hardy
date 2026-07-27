@@ -1,0 +1,7 @@
+(include_subdirs no)
+
+(library
+ (name interactive)
+ (public_name hardy.interactive)
+ (libraries hardyBackEnd hardyMisc why3 progress)
+ (modules_without_implementation sig))

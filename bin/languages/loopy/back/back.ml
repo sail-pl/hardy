@@ -1,6 +1,7 @@
 (** {1 Why3 Code Generation} *)
 
 open HardyFrontEnd
+open HardyBackEnd.Why3_back
 open Printer
 open Syntax
 open Shared
@@ -12,7 +13,7 @@ open HardyMisc.Utils
 
 open Common
 
-let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) Loopy.stmt list) :
+let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) LoopySyntax.stmt list) :
     P.expr =
   let open P in
   let open PH in
@@ -29,7 +30,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) Loopy.stmt list) :
                 x
             | (_, _) -> Esequence (tr_stmt x, y) |> expr)
           s (expr unit_val)
-  and tr_stmt (stmt : ('a, 'b) Loopy.stmt) =
+  and tr_stmt (stmt : ('a, 'b) LoopySyntax.stmt) =
     let loc = get_loc stmt.label in
     match stmt.value with
     | Assign (e1, e2) ->
@@ -145,30 +146,31 @@ module
     type formula_data = min_nb_instants
   )
   (Cli : Cli.CliSig)
-  : BackSig.S with 
+  : HardyBackEnd.BackSig.S with 
   type in_fun = T.cnf_data Types.cnf_data and
   type triple_data = T.triple_data Types.triple_data and
   type local_spec = T.base_spec_t and
-  type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) T.temp_spec_t, FrontSig.temp_f_prop)  labeled  and
+  type temp_spec = ((instant option * ty, base_ty,FrontSig.temp_f_prop) T.temp_spec_t, FrontSig.temp_f_prop)  labeled  and
   type in_spec = ((instant option * Shared.ty, Shared.base_ty) T.fol_t, T.formula_data Types.formula_data) labeled cnf and
-  type out_pgrm = P.mlw_file 
+  type in_t = (((instant option * ty, base_ty, FrontSig.temp_f_prop) T.temp_spec_t, FrontSig.temp_f_prop)  labeled, unit, (T.base_spec_t, ty, ty LoopySyntax.env) LoopySyntax.program) prog_with_spec and
+  type out_t = P.mlw_file 
 = struct
 
   type local_spec = T.base_spec_t
-  type temp_spec = ((FrontSig.temp_f_prop, instant option * ty, base_ty) T.temp_spec_t, FrontSig.temp_f_prop) labeled
+  type temp_spec = ((instant option * ty, base_ty, FrontSig.temp_f_prop) T.temp_spec_t, FrontSig.temp_f_prop) labeled
 
   type formula = ((instant option * Shared.ty, Shared.base_ty)  T.fol_t, T.formula_data Types.formula_data) U.labeled
 
-  type in_pgrm = (temp_spec, unit, T.base_spec_t, ty, ty Loopy.env) Loopy.program
-  type in_setup = (T.base_spec_t, ty) Loopy.setup
-  type in_body = (T.base_spec_t, ty) Loopy.stmt list
+  type in_t = (temp_spec, unit, (T.base_spec_t, ty, ty LoopySyntax.env) LoopySyntax.program) prog_with_spec
+  type in_setup = (T.base_spec_t, ty) LoopySyntax.setup
+  type in_body = (T.base_spec_t, ty) LoopySyntax.stmt list
   type in_spec = formula cnf
   type in_fun = T.cnf_data Types.cnf_data
 
   type triple_data = T.triple_data Types.triple_data
 
   type out_body = P.expr
-  type out_pgrm = P.mlw_file
+  type out_t = P.mlw_file
   type out_decl = P.decl
   type out_fun = out_decl
   type out_setup = out_decl
@@ -182,7 +184,7 @@ module
 
   let reset () = Hashtbl.clear bindings
 
-  let generate_declarations (env : ty Loopy.env) : out_decl list =
+  let generate_declarations (env : ty LoopySyntax.env) : out_decl list =
     let open P in
     let open PH in
     let mk_decl pty =
@@ -453,6 +455,21 @@ module
           :: add_opt_to_list p.processed_setup p.processed_functions )
     in
     P.Modules [ helper_m; triples_m ]
+
+
+  let translate_program 
+    (p : in_t) 
+    (triples : ((in_spec ,in_fun) hoare_triple, triple_data) labeled conjunction) 
+    : out_t =
+    reset ();
+    let processed_decls = generate_declarations p.prog.prog_decls
+    and processed_setup = Option.map generate_setup p.prog.prog_setup
+    and processed_functions = 
+      let body = generate_body p.prog.prog_main.main_body in
+      let c = map_conjuncts (map_value (map_triple_data (fun _ -> body)) >> generate_function) triples in 
+      c.conjuncts
+    in
+    generate_program {processed_setup; processed_functions ; processed_decls}
 
 
   let write_program name p = print_program p (name ^ ".mlw")

@@ -3,25 +3,18 @@
 
 (** type of the program parser *)
 module type S = sig 
-  type temp_spec (* type of the temporal specification *)
-
-  type local_spec (* type of the local specification *)
-
-  type t = (temp_spec, unit, local_spec, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program (* type of the program *)
-
+  include HardyMisc.Utils.PIPELINE
   exception Error (* parsing error *)
 
-  val program : (Lexing.lexbuf -> FrontParser.Tokens.token) -> Lexing.lexbuf -> t
+  val program : (Lexing.lexbuf -> FrontParser.Tokens.token) -> Lexing.lexbuf -> out_t
 end
 
 
-let parse_file (type temp_spec local_spec) 
+let parse_file (type t) 
   (
-    module P : S with 
-    type temp_spec = temp_spec and 
-    type local_spec = local_spec
+    module P : S with type out_t = t
   ) 
-  file : P.t =
+  file : P.out_t =
   let open FrontParser.Lexer (* we assume all parsers share the same lexer *) in
   let _text, lexbuf = MenhirLib.LexerUtil.read file in
   try

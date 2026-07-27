@@ -1,4 +1,4 @@
-%start <(Ppltl_spec.parsed_temp_spec_t, unit, Ppltl_spec.parsed_spec_t, unit, LoopySyntax.parsed_env) LoopySyntax.program> program
+%start <(Ppltl_spec.parsed_temp_spec_t, unit, (Ppltl_spec.parsed_spec_t, unit, LoopySyntax.parsed_env) program) prog_with_spec> program
 
 %%
 

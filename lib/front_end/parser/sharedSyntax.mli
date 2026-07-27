@@ -121,3 +121,6 @@ val pp_paren_atomic_boola : (Format.formatter -> 'a list -> unit) -> Format.form
 val pp_cnf_boola : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a HardyMisc.Utils.cnf -> unit
 
 val formula_depth : 'a bool_a -> int
+
+(* high-level program temporal specification *)
+type ('temp_spec, 'spec_data, 'p) prog_with_spec = {prog_spec: ('temp_spec list,'spec_data) hoare_triple ; prog : 'p}

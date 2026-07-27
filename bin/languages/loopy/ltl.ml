@@ -1,10 +1,11 @@
 open HardyFrontEnd
+open FrontSig
 open Syntax
 open HardyMiddleEnd
+open Interactive
 open Automata
 open Buchi
 open HardyMisc.Utils
-open FrontSig
 open Ltl_spec
 
 
@@ -73,15 +74,13 @@ module LTLSpec : FrontParser.SharedSyntax.BoolA
 end
 
 
-module Parsing : Parsing.S with 
-  type local_spec = parsed_spec_t and
-  type temp_spec = parsed_temp_spec_t
-
+module Parsing : Parsing.S with type out_t = (Ltl_spec.parsed_temp_spec_t, unit, (Ltl_spec.parsed_spec_t, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program) Shared.prog_with_spec
 = struct 
   type temp_spec = parsed_temp_spec_t
   type local_spec = parsed_spec_t
 
-  type t = (temp_spec, unit, local_spec, unit, LoopySyntax.parsed_env) LoopySyntax.program
+  type in_t = unit
+  type out_t = (temp_spec, unit, (local_spec, unit, LoopySyntax.parsed_env) LoopySyntax.program) Shared.prog_with_spec
   include FrontParser.LoopyLtlParser
 end
 
@@ -91,14 +90,14 @@ open Hoa2ba
   todo: change automata type using aut_format 
 *)
 
-module Typing = HardyFrontEnd.Ltl_typing.M
+module Typing = Ltl_typing.M
 module B = Make(Atom)(Label)
 module BProd = BaProduct.Make(B)
 
-module Middle = Generation.M(struct type t = Typing.out_local_spec end)(Atom)(LTLSpec)(SpinHoaOutput)(B)(BProd)
+module Middle = Generation.M(struct type t = base_spec_t end)(struct type t = (base_spec_t, Shared.ty, Shared.ty LoopySyntax.env) LoopySyntax.program end)(Atom)(LTLSpec)(SpinHoaOutput)(B)(BProd)
 
-module Triples = Triples_ltl.M(Ltl_spec)(Atom)(B)(BProd)
+module Triples = Triples.M(Ltl_spec)(Atom)(B)(BProd)
 
-module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t =  Middle.in_program  end)(Triples(Cli))
+module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t =  Middle.in_t  end)(struct include Triples(Cli) type t = out_t end)
 
-module Back(Cli: Cli.CliSig) = HardyBackEnd.Why3_back.Ltl.M(Ltl_spec)(Cli)
+module Back(Cli: Cli.CliSig) = Back.M(Ltl_spec)(Cli)

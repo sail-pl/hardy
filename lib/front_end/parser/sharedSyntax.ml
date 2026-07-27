@@ -218,3 +218,7 @@ let formula_depth f =
   let pp pp_atom = pp_boola pp_atom 
 end *)
 
+(* high-level program temporal specification *)
+type ('temp_spec, 'spec_data, 'p) prog_with_spec = {prog_spec: ('temp_spec list,'spec_data) hoare_triple ; prog : 'p}
+
+

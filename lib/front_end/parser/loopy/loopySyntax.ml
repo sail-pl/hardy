@@ -45,9 +45,8 @@ type 'ty env = {
   env_variables : 'ty Bindings.t;
 }
     
-type ('temp_spec, 'spec_data, 'inv, 't, 'decls) program = {
+type ('inv, 't, 'decls) program = {
   prog_decls : 'decls;
-  prog_spec : ('temp_spec list,'spec_data) hoare_triple;
   prog_setup : ('inv, 't) setup option;
   prog_main : ('inv, 't) main;
 }

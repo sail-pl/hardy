@@ -21,7 +21,7 @@ module type T = sig
     type ('ty, 'qty, 'data) inst_spec_t
     (** instantaneous specification of program expression *)
 
-    type ('atom_label,'ty,'qty) temp_spec_t
+    type ('ty, 'qty, 'atom_label) temp_spec_t
     (** ltl logic with fol over program expression where variables can be temporally
         quantified *)
 

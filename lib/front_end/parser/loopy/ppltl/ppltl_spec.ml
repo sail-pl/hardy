@@ -18,13 +18,13 @@ type ('ty, 'qty, 'data) inst_spec_t = (('ty ,'qty) fol_t, 'data) U.labeled Ppltl
 
 (** instantaneous specification of program expression *)
 
-type ('atom_label,'ty,'qty) temp_spec_t = ('ty, 'qty, 'atom_label) inst_spec_t Ltl.ltl
+type ('ty,'qty,'atom_label) temp_spec_t = ('ty, 'qty, 'atom_label) inst_spec_t Ltl.ltl
 (** ltl logic with fol over program expression where variables can be temporally
     quantified *)
 
 (** extra information appended to generated hoare triples *)
 
-type parsed_temp_spec_t = (unit, unit, Shared.base_ty) temp_spec_t
+type parsed_temp_spec_t = (unit, Shared.base_ty, unit) temp_spec_t
 type parsed_spec_t = (unit,Shared.base_ty) fol_t
 
 type base_spec_t = (Instant.instant option * Shared.ty,Shared.base_ty) fol_t

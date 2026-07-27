@@ -6,8 +6,15 @@ module SSyn = Syntax.Shared
 module Hist = Syntax.Instant
 
 
+(** 
+Temporal formulas are converted to automatas after proposification of their atoms and combined using automata product
+
+- [TempSpec] is the temporal specification
+- AtomStore is in charge of the proposification, [AtomStore.atom] 
+ *)
 module M
   (LocalSpec : SIMP_TYPE)
+  (Program : SIMP_TYPE)
   (AtomStore : Atom.S  with type 'a t := 'a  (* effectful version for simplicity *) )
   (TempSpec : BoolA)
   (Tool : AutSig.ToolSig with type input = string TempSpec.t) (* *)
@@ -21,11 +28,10 @@ module M
         
    : GenSig.S 
    with   
-  
-  type local_spec = LocalSpec.t and 
-  type temp_spec = (AtomStore.atom TempSpec.t, FrontSig.temp_f_prop) labeled and
-
-  type automaton = BProd.t
+    type temp_spec = (AtomStore.atom TempSpec.t, FrontSig.temp_f_prop) labeled and
+    type in_pgrm = Program.t and
+    type spec_data = unit and
+    type automaton = BProd.t
   = 
 
 struct
@@ -35,7 +41,12 @@ struct
   type temp_spec = (AtomStore.atom TempSpec.t, FrontSig.temp_f_prop) labeled
   type local_spec = LocalSpec.t
 
-  type in_program = (temp_spec, unit, local_spec, ty, ty LoopySyntax.env) LoopySyntax.program
+  type spec_data = unit
+
+  type in_pgrm = Program.t
+  
+  type in_t = (temp_spec, spec_data,in_pgrm) prog_with_spec
+  type out_t = (temp_spec, spec_data, in_pgrm) prog_with_spec
 
   type automaton = BProd.t
 

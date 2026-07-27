@@ -10,7 +10,7 @@
  (explain false))
 
 (menhir
- (modules tokens specification/ltl specification/ppltl program/ppltl/ppltl_spec program/loopy)
+ (modules tokens specification/ltl specification/ppltl loopy/ppltl/ppltl_spec loopy/loopy)
  (merge_into loopyPltlParser)
  (flags
   --external-tokens Tokens
@@ -27,7 +27,7 @@
   ))
 
 (menhir
- (modules tokens specification/ltl program/ltl/ltl_spec program/loopy)
+ (modules tokens specification/ltl loopy/ltl/ltl_spec loopy/loopy)
  (merge_into loopyLtlParser)
  (flags
   --external-tokens Tokens

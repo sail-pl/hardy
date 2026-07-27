@@ -28,28 +28,11 @@ let join_temp_f_prop p1 p2 =
 
 
 module type Typing = sig
-    type in_local_spec
-    type in_temp_spec
-    type out_local_spec
-    type out_temp_spec
+  include HardyMisc.Utils.PIPELINE
+
+  type out_local_spec
 
 
-    val type_pgrm : 
-        (
-          in_temp_spec, 
-          unit, 
-          in_local_spec, 
-          unit, 
-          LoopySyntax.parsed_env
-        ) 
-        LoopySyntax.program -> 
-                  
-        (
-          out_temp_spec,
-          unit, 
-          out_local_spec, 
-          Shared.ty, 
-          Shared.ty LoopySyntax.env
-        ) LoopySyntax.program
+  val type_pgrm : in_t -> out_t
 end
 

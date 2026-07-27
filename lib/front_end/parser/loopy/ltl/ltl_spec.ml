@@ -1,7 +1,5 @@
-module Program = LoopySyntax
 module Fol = FOLSyntax
 module Ltl = LTLSyntax
-module Ppltl = PpLTLSyntax
 module Shared = SharedSyntax
 module Instant = InstantSyntax
 module U = HardyMisc.Utils
@@ -16,7 +14,7 @@ type ('ty,'qty) fol_t = ('ty Shared.expr, 'qty option) Fol.pred_fol
 type ('ty, 'qty, 'data) inst_spec_t = (('ty ,'qty) fol_t, 'data) U.labeled
 (** instantaneous specification of program expression *)
 
-type ('atom_label,'ty,'qty) temp_spec_t = ('ty, 'qty, 'atom_label) inst_spec_t Ltl.ltl
+type ('ty,'qty, 'atom_label) temp_spec_t = ('ty, 'qty, 'atom_label) inst_spec_t Ltl.ltl
 (** ltl logic with fol over program expression where variables can be temporally
     quantified *)
 

@@ -1,6 +1,7 @@
 open FrontParser
 open Ppltl_spec
 open HardyMisc.Utils
+open HardyFrontEnd
 open Syntax.Shared
 open Syntax.Ltl
 open Syntax.Ppltl
@@ -15,22 +16,21 @@ let fail_if_no_bindings id b = match Bindings.find_opt id b with
     | None -> Format.sprintf "variable '%s' has not been declared" id |> failwith 
 
 
-module M 
-
-: FrontSig.Typing with 
-    type in_local_spec = parsed_spec_t and
-    type in_temp_spec = parsed_temp_spec_t and
-    type out_temp_spec = ((FrontSig.temp_f_prop, InstantSyntax.instant option * Shared.ty, Shared.base_ty) temp_spec_t, FrontSig.temp_f_prop) U.labeled and
-    type out_local_spec = base_spec_t
+module M : 
+    FrontSig.Typing with 
+        type in_t = (parsed_temp_spec_t, unit, (parsed_spec_t, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program) prog_with_spec
+        and type out_t = (((InstantSyntax.instant option * Shared.ty, Shared.base_ty, FrontSig.temp_f_prop) temp_spec_t, FrontSig.temp_f_prop) U.labeled, unit, (base_spec_t, ty, ty FrontParser.LoopySyntax.env) FrontParser.LoopySyntax.program) prog_with_spec
 
 = struct
     type in_temp_spec = parsed_temp_spec_t
-    type out_temp_spec = ((FrontSig.temp_f_prop, InstantSyntax.instant option * Shared.ty, Shared.base_ty) temp_spec_t, FrontSig.temp_f_prop) U.labeled
+    type out_temp_spec = ((InstantSyntax.instant option * Shared.ty, Shared.base_ty, FrontSig.temp_f_prop) temp_spec_t, FrontSig.temp_f_prop) U.labeled
     (* Instant.instant should always be None, this just allows for uniform processing  *)
 
     type in_local_spec = parsed_spec_t
     type out_local_spec = base_spec_t
 
+    type in_t = (in_temp_spec, unit, (in_local_spec, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program) prog_with_spec
+    type out_t = (out_temp_spec, unit, (out_local_spec, ty, ty FrontParser.LoopySyntax.env) FrontParser.LoopySyntax.program) prog_with_spec
 
   let type_pgrm p = 
     let open LoopySyntax in
@@ -40,9 +40,9 @@ module M
             Format.asprintf "duplicate %a and %a variable %s" Printer.pp_cat_ty cat1 Printer.pp_cat_ty cat2 x |> failwith
         in
 
-        let inputs = List.map (fun (s,t) -> (fail_if_reserved s,(Input, Some t))) p.prog_decls.env_input |> of_list
-        and outputs = List.map (fun (s,t) -> (fail_if_reserved s,(Output, Some t))) p.prog_decls.env_output |> of_list
-        and states = List.map (fun (s,t) -> (fail_if_reserved s,(State, Some t))) p.prog_decls.env_variables |> of_list in
+        let inputs = List.map (fun (s,t) -> (fail_if_reserved s,(Input, Some t))) p.prog.prog_decls.env_input |> of_list
+        and outputs = List.map (fun (s,t) -> (fail_if_reserved s,(Output, Some t))) p.prog.prog_decls.env_output |> of_list
+        and states = List.map (fun (s,t) -> (fail_if_reserved s,(State, Some t))) p.prog.prog_decls.env_variables |> of_list in
         
         union check_dup inputs outputs |> fun io -> union check_dup io states
     in
@@ -103,7 +103,7 @@ module M
     let prog_spec : (out_temp_spec list, unit) hoare_triple = 
         let type_spec checks = 
             List.map (fun (f_ltl:parsed_temp_spec_t) : out_temp_spec ->
-                let f_ltl : (FrontSig.temp_f_prop, InstantSyntax.instant option * ty, base_ty) temp_spec_t = 
+                let f_ltl : ( InstantSyntax.instant option * ty, base_ty, FrontSig.temp_f_prop) temp_spec_t = 
                     map_ltl_pred (map_pltl_pred @@ fun f_fol : ((InstantSyntax.instant option * ty ,base_ty) fol_t, FrontSig.temp_f_prop) labeled -> 
                         let fol = type_fol_expr bindings f_fol.value in
                         let prop = fold_fol_prop checks fol in 
@@ -132,13 +132,14 @@ module M
         {setup_ensures; setup_body}
 
     )
-    p.prog_setup 
+    p.prog.prog_setup 
     and prog_main = 
-        let main_body = type_fun (fun () -> None) p.prog_main.main_body
-        and main_loop_inv = List.map (type_prog_spec (fun () -> None)) p.prog_main.main_loop_inv in
+        let main_body = type_fun (fun () -> None) p.prog.prog_main.main_body
+        and main_loop_inv = List.map (type_prog_spec (fun () -> None)) p.prog.prog_main.main_loop_inv in
         {main_body; main_loop_inv}
     in
-    {prog_setup; prog_main; prog_spec; prog_decls={env_variables=bindings}}
+    let prog = {prog_setup; prog_main; prog_decls={env_variables=bindings}} in
+    {prog_spec; prog}
 end
 
 
