@@ -1,5 +1,6 @@
 include FrontParser
 
+open Specification
 module Fol = FOLSyntax
 module Ltl = LTLSyntax
 module Ppltl = PpLTLSyntax

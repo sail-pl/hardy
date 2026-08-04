@@ -2,18 +2,19 @@ open FrontParser
 open SharedSyntax
 open HardyFrontEnd.FrontSig
 open HardyMisc.Utils
+open Specification
 
 (* Specification atoms are FOL formulas *)
 module AtomicFormula :
 sig
     type t = (
-        (InstantSyntax.instant option * ty, base_ty) Ppltl_spec.fol_t, 
+        (InstantSyntax.instant option * ty, base_ty) Loopy.Ppltl.Spec.fol_t, 
         temp_f_prop
     ) labeled
 end
 
 module Parsing : HardyFrontEnd.Parsing.S with 
-    type out_t = ( Ppltl_spec.parsed_temp_spec_t, unit, (Ppltl_spec.parsed_spec_t, unit, LoopySyntax.parsed_env) LoopySyntax.program) prog_with_spec
+    type out_t = ( Loopy.Ppltl.Spec.parsed_temp_spec_t, unit, (Loopy.Ppltl.Spec.parsed_spec_t, unit, Loopy.Syntax.parsed_env) Loopy.Syntax.program) prog_with_spec
 
 
 module Typing = Pltl_typing.M
@@ -30,7 +31,7 @@ module Middle : HardyMiddleEnd.MidSig.S with
     type temp_spec = (AtomicFormula.t PpLTLSyntax.pltl LTLSyntax.ltl, temp_f_prop) labeled and
     type automaton = BProd.t and
     type spec_data = unit and
-    type in_pgrm = (Ppltl_spec.base_spec_t, ty, ty LoopySyntax.env) LoopySyntax.program
+    type in_pgrm = (Loopy.Ppltl.Spec.base_spec_t, ty, ty Loopy.Syntax.env) Loopy.Syntax.program
 
 (** Triples are a conjunction of hoare-style FOL formulas *)
 module Triples : 
@@ -40,33 +41,33 @@ module Triples :
     type out_t = (
         (
             (
-                (InstantSyntax.instant option *  ty, base_ty) Ppltl_spec.fol_t,
-                Ppltl_spec.formula_data Types.formula_data
+                (InstantSyntax.instant option *  ty, base_ty) Loopy.Ppltl.Spec.fol_t,
+                Loopy.Ppltl.Spec.formula_data Types.formula_data
             ) labeled cnf,
             
-            Ppltl_spec.cnf_data Types.cnf_data
+            Loopy.Ppltl.Spec.cnf_data Types.cnf_data
         )
         hoare_triple,
-        Ppltl_spec.triple_data Types.triple_data
+        Loopy.Ppltl.Spec.triple_data Types.triple_data
     ) labeled conjunction 
 
 
 module Interactive : (_ : HardyFrontEnd.Cli.CliSig) -> Interactive.Sig.S with
     type program = Middle.in_t * Why3.Ptree.mlw_file  and
     type triples = (((
-        (InstantSyntax.instant option * ty, base_ty) Ppltl_spec.fol_t, 
-        Ppltl_spec.formula_data Types.formula_data
-    ) labeled cnf, Ppltl_spec.cnf_data Types.cnf_data) hoare_triple, Ppltl_spec.triple_data Types.triple_data) labeled conjunction
+        (InstantSyntax.instant option * ty, base_ty) Loopy.Ppltl.Spec.fol_t, 
+        Loopy.Ppltl.Spec.formula_data Types.formula_data
+    ) labeled cnf, Loopy.Ppltl.Spec.cnf_data Types.cnf_data) hoare_triple, Loopy.Ppltl.Spec.triple_data Types.triple_data) labeled conjunction
 
 
 module Back : (_ : HardyFrontEnd.Cli.CliSig) -> HardyBackEnd.BackSig.S with 
-    type in_fun = Ppltl_spec.cnf_data Types.cnf_data and
+    type in_fun = Loopy.Ppltl.Spec.cnf_data Types.cnf_data and
     type in_spec = (
-        (InstantSyntax.instant option * ty, base_ty) Ppltl_spec.fol_t, 
-        Ppltl_spec.formula_data Types.formula_data
+        (InstantSyntax.instant option * ty, base_ty) Loopy.Ppltl.Spec.fol_t, 
+        Loopy.Ppltl.Spec.formula_data Types.formula_data
     ) labeled cnf and
     (* type local_spec = Middle.local_spec and *)
     type temp_spec = Middle.temp_spec and
-    type in_t = (((InstantSyntax.instant option * ty, base_ty, temp_f_prop) Ppltl_spec.temp_spec_t, temp_f_prop)  labeled, unit, (Ppltl_spec.base_spec_t, ty, ty LoopySyntax.env) LoopySyntax.program) prog_with_spec and
+    type in_t = (((InstantSyntax.instant option * ty, base_ty, temp_f_prop) Loopy.Ppltl.Spec.temp_spec_t, temp_f_prop)  labeled, unit, (Loopy.Ppltl.Spec.base_spec_t, ty, ty Loopy.Syntax.env) Loopy.Syntax.program) prog_with_spec and
     type out_t = Why3.Ptree.mlw_file and
-    type triple_data = Ppltl_spec.triple_data Types.triple_data
+    type triple_data = Loopy.Ppltl.Spec.triple_data Types.triple_data

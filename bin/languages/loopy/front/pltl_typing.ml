@@ -1,11 +1,12 @@
 open FrontParser
-open Ppltl_spec
+open Loopy.Ppltl.Spec
 open HardyMisc.Utils
 open HardyFrontEnd
 open Syntax.Shared
 open Syntax.Ltl
 open Syntax.Ppltl
 open Syntax.Fol
+open Specification
 
 let reserved_words = ["result" ; "old" ;  "list" ; "int"] (* todo: add more*)
 
@@ -18,8 +19,8 @@ let fail_if_no_bindings id b = match Bindings.find_opt id b with
 
 module M : 
     FrontSig.Typing with 
-        type in_t = (parsed_temp_spec_t, unit, (parsed_spec_t, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program) prog_with_spec
-        and type out_t = (((InstantSyntax.instant option * Shared.ty, Shared.base_ty, FrontSig.temp_f_prop) temp_spec_t, FrontSig.temp_f_prop) U.labeled, unit, (base_spec_t, ty, ty FrontParser.LoopySyntax.env) FrontParser.LoopySyntax.program) prog_with_spec
+        type in_t = (parsed_temp_spec_t, unit, (parsed_spec_t, unit, Loopy.Syntax.parsed_env) Loopy.Syntax.program) prog_with_spec
+        and type out_t = (((InstantSyntax.instant option * Shared.ty, Shared.base_ty, FrontSig.temp_f_prop) temp_spec_t, FrontSig.temp_f_prop) U.labeled, unit, (base_spec_t, ty, ty Loopy.Syntax.env) Loopy.Syntax.program) prog_with_spec
 
 = struct
     type in_temp_spec = parsed_temp_spec_t
@@ -29,11 +30,11 @@ module M :
     type in_local_spec = parsed_spec_t
     type out_local_spec = base_spec_t
 
-    type in_t = (in_temp_spec, unit, (in_local_spec, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program) prog_with_spec
-    type out_t = (out_temp_spec, unit, (out_local_spec, ty, ty FrontParser.LoopySyntax.env) FrontParser.LoopySyntax.program) prog_with_spec
+    type in_t = (in_temp_spec, unit, (in_local_spec, unit, Loopy.Syntax.parsed_env) Loopy.Syntax.program) prog_with_spec
+    type out_t = (out_temp_spec, unit, (out_local_spec, ty, ty Loopy.Syntax.env) Loopy.Syntax.program) prog_with_spec
 
   let type_pgrm p = 
-    let open LoopySyntax in
+    let open Loopy.Syntax in
     let bindings : ty Bindings.t = 
         let open Bindings in
         let check_dup = fun x (cat1,_) (cat2,_) -> 

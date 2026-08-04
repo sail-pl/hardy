@@ -1,4 +1,5 @@
 %{
+    open Specification
     open LTLSyntax
     open FOLSyntax
 %}

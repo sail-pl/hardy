@@ -1,4 +1,4 @@
-(include_subdirs unqualified)
+(include_subdirs  qualified)
 
 (ocamllex lexer)
 
@@ -10,7 +10,7 @@
  (explain false))
 
 (menhir
- (modules tokens specification/ltl specification/ppltl loopy/ppltl/ppltl_spec loopy/loopy)
+ (modules tokens specification/ltl specification/ppltl loopy/ppltl/spec loopy/loopy)
  (merge_into loopyPltlParser)
  (flags
   --external-tokens Tokens
@@ -27,8 +27,26 @@
   ))
 
 (menhir
- (modules tokens specification/ltl loopy/ltl/ltl_spec loopy/loopy)
+ (modules tokens specification/ltl loopy/ltl/spec loopy/loopy)
  (merge_into loopyLtlParser)
+ (flags
+  --external-tokens Tokens
+  --unused-token HAT --unused-token QMARK 
+  --unused-token UNDERSCORE  
+  --unused-token ALL --unused-token ANY --unused-token AT 
+  --unused-token ONCE 
+  --unused-token YESTERDAY 
+  --unused-token HISTORICALLY 
+  --unused-token WEAK_YESTERDAY
+  --unused-token WEAK_SINCE
+  --unused-token SINCE 
+  --unused-precedence-levels
+  --strict
+  ))
+
+(menhir
+ (modules tokens specification/ltl obby/ltl/spec obby/obby.mly)
+ (merge_into obbyLtlParser)
  (flags
   --external-tokens Tokens
   --unused-token HAT --unused-token QMARK 

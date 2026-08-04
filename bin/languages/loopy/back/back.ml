@@ -4,6 +4,7 @@ open HardyFrontEnd
 open HardyBackEnd.Why3_back
 open Printer
 open Syntax
+open Loopy
 open Shared
 open Fol
 open Instant
@@ -13,7 +14,7 @@ open HardyMisc.Utils
 
 open Common
 
-let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) LoopySyntax.stmt list) :
+let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) Syntax.stmt list) :
     P.expr =
   let open P in
   let open PH in
@@ -30,7 +31,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) LoopySyntax.stmt l
                 x
             | (_, _) -> Esequence (tr_stmt x, y) |> expr)
           s (expr unit_val)
-  and tr_stmt (stmt : ('a, 'b) LoopySyntax.stmt) =
+  and tr_stmt (stmt : ('a, 'b) Syntax.stmt) =
     let loc = get_loc stmt.label in
     match stmt.value with
     | Assign (e1, e2) ->
@@ -152,7 +153,7 @@ module
   type local_spec = T.base_spec_t and
   type temp_spec = ((instant option * ty, base_ty,FrontSig.temp_f_prop) T.temp_spec_t, FrontSig.temp_f_prop)  labeled  and
   type in_spec = ((instant option * Shared.ty, Shared.base_ty) T.fol_t, T.formula_data Types.formula_data) labeled cnf and
-  type in_t = (((instant option * ty, base_ty, FrontSig.temp_f_prop) T.temp_spec_t, FrontSig.temp_f_prop)  labeled, unit, (T.base_spec_t, ty, ty LoopySyntax.env) LoopySyntax.program) prog_with_spec and
+  type in_t = (((instant option * ty, base_ty, FrontSig.temp_f_prop) T.temp_spec_t, FrontSig.temp_f_prop)  labeled, unit, (T.base_spec_t, ty, ty Syntax.env) Syntax.program) prog_with_spec and
   type out_t = P.mlw_file 
 = struct
 
@@ -161,9 +162,9 @@ module
 
   type formula = ((instant option * Shared.ty, Shared.base_ty)  T.fol_t, T.formula_data Types.formula_data) U.labeled
 
-  type in_t = (temp_spec, unit, (T.base_spec_t, ty, ty LoopySyntax.env) LoopySyntax.program) prog_with_spec
-  type in_setup = (T.base_spec_t, ty) LoopySyntax.setup
-  type in_body = (T.base_spec_t, ty) LoopySyntax.stmt list
+  type in_t = (temp_spec, unit, (T.base_spec_t, ty, ty Syntax.env) Syntax.program) prog_with_spec
+  type in_setup = (T.base_spec_t, ty) Syntax.setup
+  type in_body = (T.base_spec_t, ty) Syntax.stmt list
   type in_spec = formula cnf
   type in_fun = T.cnf_data Types.cnf_data
 
@@ -184,7 +185,7 @@ module
 
   let reset () = Hashtbl.clear bindings
 
-  let generate_declarations (env : ty LoopySyntax.env) : out_decl list =
+  let generate_declarations (env : ty Syntax.env) : out_decl list =
     let open P in
     let open PH in
     let mk_decl pty =

@@ -58,7 +58,7 @@ end
 module LTLSpec : FrontParser.SharedSyntax.BoolA 
   with type 'a t = 'a Ltl.ltl
 = struct
-  open Specification.LTLSyntax
+  open FrontParser.Specification.LTLSyntax
 
   type 'a t = 'a ltl
   type atom = {t : 'a. 'a}
@@ -90,14 +90,14 @@ open Hoa2ba
   todo: change automata type using aut_format 
 *)
 
-module Typing = Ltl_typing.M
+(* module Typing = Ltl_typing.M *)
 module B = Make(Atom)(Label)
 module BProd = BaProduct.Make(B)
 
 module Middle = Generation.M(struct type t = Spec.base_spec_t end)(struct type t = (Spec.base_spec_t, Shared.ty, Shared.ty Loopy.Syntax.env) Loopy.Syntax.program end)(Atom)(LTLSpec)(SpinHoaOutput)(B)(BProd)
 
-module Triples = Triples.M(Spec)(Atom)(B)(BProd)
+(* module Triples = Triples.M(Spec)(Atom)(B)(BProd) *)
 
-module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t =  Middle.in_t  end)(struct include Triples(Cli) type t = out_t end)
+(* module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t =  Middle.in_t  end)(struct include Triples(Cli) type t = out_t end) *)
 
-module Back(Cli: Cli.CliSig) = Back.M(Spec)(Cli)
+(* module Back(Cli: Cli.CliSig) = Back.M(Ltl_spec)(Cli) *)

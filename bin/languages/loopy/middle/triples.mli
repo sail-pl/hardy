@@ -34,7 +34,7 @@ module M :
                                 temp_f_prop
                             ) labeled, 
                         unit,
-                        (T.base_spec_t, Shared.ty, Shared.ty Syntax.LoopySyntax.env)  Syntax.LoopySyntax.program
+                        (T.base_spec_t, Shared.ty, Shared.ty Loopy.Syntax.env)  Loopy.Syntax.program
                     ) prog_with_spec and
         type out_t = (
                         ( 

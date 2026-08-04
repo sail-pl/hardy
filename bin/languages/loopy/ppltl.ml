@@ -6,11 +6,11 @@ open Buchi
 open Hoa2ba
 open Interactive
 open HardyMisc.Utils
-open Ppltl_spec
+open Loopy.Ppltl
 
 
 module AtomicFormula = struct 
-  type t = ((Instant.instant option * Shared.ty, Shared.base_ty) fol_t, FrontSig.temp_f_prop) labeled
+  type t = ((Instant.instant option * Shared.ty, Shared.base_ty) Spec.fol_t, FrontSig.temp_f_prop) labeled
 
   let pp : Format.formatter -> t -> unit = fun fmt f -> 
     Printer.(pp_fol (pp_pred (pp_exp (fun fmt (s,_) -> Format.pp_print_string fmt s))) (Format.pp_print_option pp_base_ty)) fmt f.value
@@ -45,7 +45,7 @@ module Label : FrontParser.SharedSyntax.BoolA with type 'a t = AtomicFormula.t
 
   let pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> atom -> unit = fun _ -> AtomicFormula.pp
 
-  let atomic (a : ((Instant.instant option * Shared.ty, Shared.base_ty) fol_t, temp_f_prop) labeled) : Atom.atom = a
+  let atomic (a : ((Instant.instant option * Shared.ty, Shared.base_ty) Spec.fol_t, temp_f_prop) labeled) : Atom.atom = a
 
 end
 
@@ -53,7 +53,7 @@ module PpLTLSpec : FrontParser.SharedSyntax.BoolA
   with type 'a t = 'a Ppltl.pltl Ltl.ltl
 = struct
   open Ltl
-  open PpLTLSyntax
+  open Specification.PpLTLSyntax
 
   type 'a t = 'a Ppltl.pltl ltl
   type atom = {t : 'a. 'a}
@@ -69,16 +69,16 @@ module PpLTLSpec : FrontParser.SharedSyntax.BoolA
 end
 
 
-module Parsing : Parsing.S with type out_t = ( Ppltl_spec.parsed_temp_spec_t, unit, (Ppltl_spec.parsed_spec_t, unit, FrontParser.LoopySyntax.parsed_env) FrontParser.LoopySyntax.program) Shared.prog_with_spec
+module Parsing : Parsing.S with type out_t = ( Spec.parsed_temp_spec_t, unit, (Spec.parsed_spec_t, unit, Loopy.Syntax.parsed_env) Loopy.Syntax.program) Shared.prog_with_spec
 
 
 = struct 
-  type temp_spec = parsed_temp_spec_t
-  type local_spec = parsed_spec_t
+  type temp_spec = Spec.parsed_temp_spec_t
+  type local_spec = Spec.parsed_spec_t
   
   type in_t = unit
 
-  type out_t = (temp_spec, unit, (local_spec, unit, LoopySyntax.parsed_env) LoopySyntax.program) Shared.prog_with_spec 
+  type out_t = (temp_spec, unit, (local_spec, unit, Loopy.Syntax.parsed_env) Loopy.Syntax.program) Shared.prog_with_spec 
   include FrontParser.LoopyPltlParser
 end
 
@@ -87,10 +87,10 @@ module Typing = Pltl_typing.M
 module B = Make(Atom)(Label)
 module BProd = BaProduct.Make(B)
 
-module Middle = Generation.M(struct type t = base_spec_t end)(struct type t = (base_spec_t, Shared.ty, Shared.ty LoopySyntax.env) LoopySyntax.program end)(Atom)(PpLTLSpec)(PpLTLHoaOutput)(B)(BProd)
+module Middle = Generation.M(struct type t = Spec.base_spec_t end)(struct type t = (Spec.base_spec_t, Shared.ty, Shared.ty Loopy.Syntax.env) Loopy.Syntax.program end)(Atom)(PpLTLSpec)(PpLTLHoaOutput)(B)(BProd)
 
-module Triples = Triples.M(Ppltl_spec)(Atom)(B)(BProd)
+module Triples = Triples.M(Spec)(Atom)(B)(BProd)
 
 module Interactive(Cli : Cli.CliSig) = Why3Prover.M(struct type t = Middle.in_t end)(struct include Triples(Cli)  type t = out_t end)
 
-module Back = Back.M(Ppltl_spec)
+module Back = Back.M(Spec)

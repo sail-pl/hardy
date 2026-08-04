@@ -14,7 +14,7 @@ module M
         type transition_data = min_nb_instants and 
         type formula_data = min_nb_instants and
         type cnf_data = min_nb_instants and
-        type base_spec_t = FrontParser.Ltl_spec.base_spec_t and
+        type base_spec_t = FrontParser.Loopy.Ltl.Spec.base_spec_t and
         type triple_data = (triple_id : string * invariants : ((instant option * ty) expr, base_ty option) pred_fol list * nb_instants : Instant.min_nb_instants) and
         type ('ty,'qty) fol_t = ('ty expr, 'qty option) pred_fol 
       end
@@ -41,7 +41,7 @@ module M
                             temp_f_prop
                         ) labeled, 
                         unit,
-                        (T.base_spec_t, ty, ty Syntax.LoopySyntax.env) Syntax.LoopySyntax.program
+                        (T.base_spec_t, ty, ty Loopy.Syntax.env) Loopy.Syntax.program
                     ) prog_with_spec and
         type out_t = (
                         ( 
@@ -63,7 +63,7 @@ module M
   type local_spec = T.base_spec_t
 
   type in_t = (((Instant.instant option * ty,base_ty, temp_f_prop) T.temp_spec_t, temp_f_prop) labeled, unit,
-          (local_spec, ty, ty Syntax.LoopySyntax.env) Syntax.LoopySyntax.program) prog_with_spec
+          (local_spec, ty, ty Loopy.Syntax.env) Loopy.Syntax.program) prog_with_spec
 
 
 
@@ -293,7 +293,7 @@ module M
           Option.(
             fold p.prog.prog_setup 
             ~none:(Some true_fol) 
-            ~some:(fun (setup : _ LoopySyntax.setup)->
+            ~some:(fun (setup : _ Loopy.Syntax.setup)->
                 fold_mjoin some
                   (fun x y -> bind (map and_fol y) (fun f -> map f x))
                   None setup.setup_ensures

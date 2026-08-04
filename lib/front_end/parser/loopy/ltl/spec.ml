@@ -1,3 +1,4 @@
+open Specification
 module Fol = FOLSyntax
 module Ltl = LTLSyntax
 module Shared = SharedSyntax

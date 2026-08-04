@@ -1,5 +1,6 @@
 open Format
 open FrontParser
+open Specification
 open SharedSyntax
 
 (** {1 Pretty-printing of program types, expressions and specifications} *)

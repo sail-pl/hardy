@@ -1,7 +1,7 @@
 %{
     open HardyMisc.Utils
     open SharedSyntax
-    open Loopy.Syntax
+    open Obby.Syntax
     (* open InstantSyntax *)
 
     (* https://github.com/ocaml/dune/issues/2450 *)

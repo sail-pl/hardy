@@ -1,0 +1,6 @@
+(include_subdirs unqualified)
+
+(library
+ (name obbyLang)
+ (public_name hardy.obbyLang)
+ (libraries hardyMiddleEnd hardyBackEnd hardyMisc interactive))

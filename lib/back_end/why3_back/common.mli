@@ -73,6 +73,6 @@ val translate_binop :
   [atom_tr] to translate the formula's atoms *)
 val pterm_of_fol :
   ('a expr -> P.term) ->
-  ('a expr FrontParser.FOLSyntax.predicate,
+  ('a expr FrontParser.Specification.FOLSyntax.predicate,
    base_ty option)
-  FrontParser.FOLSyntax.fol -> P.term
+  FrontParser.Specification.FOLSyntax.fol -> P.term

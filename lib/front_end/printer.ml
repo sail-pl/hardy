@@ -1,4 +1,5 @@
 open FrontParser
+open Specification
 open HardyMisc.Utils
 open SharedSyntax
 open FOLSyntax
