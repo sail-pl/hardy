@@ -6,45 +6,47 @@ open HardyMisc.Utils
 type expr_uop = ENot
 type expr_binop = Add | Sub | Mul | Div | Gt | Lt | Gte | Lte | Eq | Neq | EAnd | EOr
 
-type 't expr = 't expression_ locatable
-(** variables can carry extra information of type ['t] *)
+type ('ext, 't) expr = ('ext, 't) expression_ locatable
+(** variables can carry extra information of type ['t] and extra expressions of type ['ext] can be added (todo: extensible variants?)*)
 
-and 't expression_ =
+and ('ext, 't) expression_ =
   | Int of int
   | Real of {radix:int ; num:string ; frac:string  ; exp:string option}
   | True
   | False
   | Var of string * 't
-  | UnOp of expr_uop * 't expr
-  | BinOp of {left: 't expr ; op: expr_binop ; right : 't expr}
-  | ArrayCell of {array: 't expr; idx: 't expr}
-  | Array of 't expr iarray
+  | UnOp of expr_uop * ('ext, 't) expr
+  | BinOp of {left: ('ext, 't) expr ; op: expr_binop ; right : ('ext, 't) expr}
+  | ArrayCell of {array: ('ext, 't) expr; idx: ('ext, 't) expr}
+  | Array of ('ext, 't) expr iarray
   | String of string
-  | Prod of 't expr list
+  | Prod of ('ext, 't) expr list
+  | Ext of 'ext
+
 
 val string_of_pgrm_op : expr_binop -> string  
 (** convert program binary operators to strings *)
 
 
-val fold_expr : ('a -> 't expr -> 'a) -> 'a ->'t expr -> 'a
+val fold_expr : ('ext -> 'a) -> ('a -> ('ext,'t) expr -> 'a) -> 'a -> ('ext,'t) expr -> 'a
 
 
-val map_expr : ('t2 expr -> 't2 expr) -> (string * 't1 -> string * 't2) -> 't1 expr -> 't2 expr 
+val map_expr : ('ext1 -> 'ext2) -> (('ext2,'t2) expr -> ('ext2,'t2) expr) -> (string * 't1 -> string * 't2) -> ('ext1,'t1) expr -> ('ext2,'t2) expr 
 
   
-val expr_vars : (string * 't) list -> 't expr -> (string * 't) list
+val expr_vars : ('ext -> (string * 't) list) -> (string * 't) list -> ('ext,'t) expr -> (string * 't) list
 
 
 (** {1 Types shared between programs and logics} *)
 
 
-type 'spec hoare_pair = { requires : 'spec; ensures : 'spec }
+type 'spec hoare_pair = { pre : 'spec; post : 'spec }
 
 type ('spec, 'data) hoare_triple = ('spec hoare_pair, 'data) labeled
 
 val map_triple_data : ('a -> 'b) -> ('c, 'a) labeled -> ('c, 'b) labeled
 
-(** generic hoare requires/ensures pair *)
+(** generic hoare pre/post pair *)
 
 type 'v variant = { variant : 'v }
 

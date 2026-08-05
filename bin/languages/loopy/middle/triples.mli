@@ -13,9 +13,9 @@ module M :
         type transition_data = min_nb_instants and 
         type formula_data = min_nb_instants and
         type cnf_data = min_nb_instants and
-        type base_spec_t = ((instant option * ty) expr, base_ty option) pred_fol and
-        type triple_data = (triple_id : string * invariants : ((instant option * ty) expr, base_ty option) pred_fol list * nb_instants : Instant.min_nb_instants) and
-        type ('ty,'qty) fol_t = ('ty expr, 'qty option) pred_fol
+        type base_spec_t = ((unit, instant option * ty) expr, base_ty option) pred_fol and
+        type triple_data = (triple_id : string * invariants : ((unit, instant option * ty) expr, base_ty option) pred_fol list * nb_instants : Instant.min_nb_instants) and
+        type ('ty,'qty) fol_t = ((unit, 'ty) expr, 'qty option) pred_fol
     )
     (_ : Atom.S with 
         type 'a t = 'a (* imperative version for simplicity *) and  

@@ -1,90 +1,11 @@
 %{
     open HardyMisc.Utils
     open SharedSyntax
-    open Obby.Syntax
-    (* open InstantSyntax *)
-
-    (* https://github.com/ocaml/dune/issues/2450 *)
-    module FrontParser = struct end
 %}
 
 
+
 %%
-
-// begin specification ------
-
-let assumes == ASSUMES ; ~ =  temporal_spec ;  <>
-
-let guarantees == GUARANTEES ; ~ =  temporal_spec ;<>
-
-let requires == REQUIRES ;  ~ = inst_spec ;  <>
-
-let ensures == ENSURES ;  ~ = inst_spec ;  <>
-
-
-let invariant == preceded(INVARIANT, inst_spec) 
-
-let variant == ~ = preceded(VARIANT, braced(pgrm_expr)); <mk_variant>
-
-// end specification ---------
-
-let program := ~ = node+; EOF; <>
-
-let node := 
-    prog_spec = midrule(
-        pre=assumes* ;
-        post=guarantees*;
-        {mk_labeled ~label:() {pre;post}} 
-    ) ;
-    NODE; node_id = UID ;
-    node_params = params ;
-    node_rtype = preceded("returns", params) ; 
-    "{" ;
-        node_vars = loption(var);
-
-        node_preamble = midrule(s = preceded(SETUP, braced(seq_stmt) )? ; {Option.value ~default:[] s} ) ;
-        node_loop_inv = invariant* ;
-        node_body = preceded(LOOP, braced(seq_stmt)) ;
-
-        node_funs = func*;
-        
-    "}" ;
-    { {prog_spec ; prog = {node_id; node_rtype; node_params; node_vars; node_preamble; node_body; node_funs}} }
-
-
-let params == delimited("(", flatten(separated_list(",", typed_decl_id)), ")") 
-
-let func :=
-    | FUNCTION ; 
-        f_name = LID ; f_args = delimited("(", separated_list(COMMA, LID) ,")") ; 
-        f_requires = requires* ;
-        f_ensures = ensures* ;
-        f_body = braced(seq_stmt) ; 
-        { {f_name; f_args; f_requires ; f_ensures ; f_body} }
-
-
-let vdecl(KIND) == v = delimited(KIND, typed_decl_id*, ";"); {List.flatten v}
-
-let var == vdecl(VAR)
-
-let typed_decl_id := ids = LID+ ; COLON ; t = ty ;  {List.map (fun id -> id,t) ids}
-
-
-let stmt := located (
-    | e1 = pgrm_expr ; ":=" ; e2 = pgrm_expr ; {Assign (e1,e2)}
-    | ~ = LID ; ~=delimited("(", tuple(pgrm_expr),")") ; <Invoke>
-)
-
-let controle_stmt := located(
-    | IF ; ~ = pgrm_expr ; THEN ; ~ = seq_stmt ; ~ = midrule(ELSE ; seq_stmt)? ; END ; <If>
-    | WHILE ; ~ = pgrm_expr ; DO ; ~ = invariant ; ~ = variant ; ~ = seq_stmt ; DONE ; <While>
-)
- 
-let seq_stmt := 
-    | x = endrule(controle_stmt | stmt) ; ";"? ; {[x]}
-    | hd = controle_stmt ; ";"? ; tl = seq_stmt ; {hd::tl}
-    | hd = stmt ; ";" ; tl = seq_stmt ; {hd::tl}
-
 
 
 %public
@@ -126,7 +47,6 @@ let pgrm_expr :=
     | simpl_expr(id = LID ; {id,()})
     | ~=delimited("(", pgrm_expr, ")") ; <>
     | located (
-        | id = LID ; args=delimited("(", tuple(pgrm_expr) ,")") ; { Ext ((Call (id,args))) }
         | array = simpl_expr(id = LID ; {id,()}) ; "[" ; idx = pgrm_expr ; "]" ; {ArrayCell {idx;array}}
         | EMARK ;  e = pgrm_expr ; %prec UNARY {UnOp (ENot,e)}
         | "[" ; "|" ; l = separated_nonempty_list(";", pgrm_expr) ; "|" ; "]" ; {Array (Iarray.of_list l)} (* array litterals cannot be empty *)

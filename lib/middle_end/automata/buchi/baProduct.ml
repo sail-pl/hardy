@@ -32,7 +32,7 @@ module Make(G : BuchiSig.S)
 
     let default : t =
       {
-        arc_f = { requires = G.Transition.default ; ensures = G.Transition.default};
+        arc_f = { pre = G.Transition.default ; post = G.Transition.default};
         (* arc_min_nb_instants = { nb_instant = 0; is_max = false }; *)
       }
   end
@@ -59,8 +59,8 @@ module Make(G : BuchiSig.S)
     G.is_start_node l1 && G.is_start_node l2
 
   let [@warning "-4"] get_edge_type (e : E.label) =
-    let req = G.get_edge_type e.arc_f.requires
-    and ens = G.get_edge_type e.arc_f.ensures in
+    let req = G.get_edge_type e.arc_f.pre
+    and ens = G.get_edge_type e.arc_f.post in
     match (req, ens) with
     | Universal, Universal -> BuchiSig.Universal
     | _, Blocking -> Blocking
@@ -81,13 +81,13 @@ module Make(G : BuchiSig.S)
       G.pp_vertex l2
 
   let pp_edge fmt (e : E.label) = 
-    match (e.arc_f.requires, e.arc_f.ensures) with
+    match (e.arc_f.pre, e.arc_f.post) with
     (* | True, True -> "Σ" (* universal edge *)
     | True, _ -> Format.sprintf "ensures: %s @," e_s
     | _, True -> Format.sprintf "requires: %s @," r_s *)
     | _ -> Format.fprintf fmt "requires: %a @, ensures : %a" 
-        G.pp_edge e.arc_f.requires 
-        G.pp_edge e.arc_f.ensures
+        G.pp_edge e.arc_f.pre 
+        G.pp_edge e.arc_f.post
 
   let is_acceptant (v : vertex) : bool =
     let l1, l2 = V.label v in
@@ -167,7 +167,7 @@ module Make(G : BuchiSig.S)
           Queue.push next_node workq;
           add_node next_node next_node_data);
         (* make the curr_node -> new_node transition *)
-        let arc_f = { requires = G.E.label r; ensures = G.E.label g } in
+        let arc_f = { pre = G.E.label r; post = G.E.label g } in
         let edge =
           E.create curr_node
             {

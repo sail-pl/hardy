@@ -19,6 +19,10 @@ let aut_format_t_of_string = function
 
 let string_of_aut_format_t = function HOA -> "HOA format" | Neverclaim -> "Neverclaim"
 
+type language_t = Loopy | Obby
+
+exception IncorrectLanguage
+let language_t_of_string = function "loopy" | "Loopy" -> Loopy | "Obby" | "obc" | "obby" | "" -> Obby | _ -> raise IncorrectLanguage
 
 
 type config = {
@@ -31,6 +35,7 @@ type config = {
   smoke_tests : bool; 
   dump_automata : bool;
   ignore_unsafe : bool;
+  language : language_t;
 }
 
 module type CliSig =  sig
@@ -49,6 +54,7 @@ functor
         (Sys.argv.(0) |> Filename.basename)
 
     let input_file = ref ""
+    let language = ref ""
     let verbose = ref false
     let no_i_a_conj = ref false
     let smoke_tests = ref false
@@ -61,7 +67,8 @@ functor
 
     let speclist =
       [
-        ("-s", Set_string ltl_atom, "What is inside an LTL specification : direct (default) or ppltl for pure past ltl");
+        ("-s", Set_string ltl_atom, "What is inside an LTL specification : direct (default) or ppltl for pure past ltl (loopy only)");
+        ("-l", Set_string language, "What input language: obby or loopy") ;
         ("-a", Set_string aut_format, "Automaton format: hoa (uses spot's ltl2tgba, default) or neverclaim (uses ltl2ba) ");
         ("-da", Set dump_automata, "Dump specification automata used to generate triples, including their dot representation");
         ("-v", Set verbose, "Debug output");
@@ -100,6 +107,7 @@ functor
         smoke_tests = !smoke_tests;
         dump_automata = !dump_automata;
         ignore_unsafe = !ignore_unsafe;
+        language = language_t_of_string !language;
       } with
       | IncorrectAtom -> failwith @@ Format.sprintf "incorrect atom '%s'" !ltl_atom
       | IncorrectAutFormat -> failwith @@ Format.sprintf "incorrect automaton format '%s'" !aut_format

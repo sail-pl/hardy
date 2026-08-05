@@ -1,0 +1,26 @@
+guarantees XG {o = prev i}
+node delay(i : int) returns (o : int) {
+    var m:int
+
+    setup {
+        m := 0;
+    }
+
+    invariant { m = i }
+    loop {
+        o := m ; 
+        m := i ;
+    }
+}
+
+guarantees XXG {o = i#2}
+node main(i : int) returns (o : int) { 
+    instances d1 d2 : delay
+
+    loop {
+        o = d1(d2(i)) // setup is implicit, decompose intermediate calls with variable
+    }
+}
+
+// returns (o:int) -> can use dot notation to extract particular outputs from node
+

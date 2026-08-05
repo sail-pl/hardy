@@ -60,9 +60,9 @@ struct
 
     (* flatten the conjunction of formulas to a single formula *)
     let fjoin : (AtomStore.atom TempSpec.t, 'a) labeled list -> AtomStore.atom TempSpec.t = fold_mjoin (fun x -> x.value) TempSpec.conj TempSpec.tt in
-    let rely = ("rely", fjoin spec.requires) in
+    let rely = ("rely", fjoin spec.pre) in
     let rely_spec = pair_map (Right proposify) rely in
-    let guarantee = ("guarantee", fjoin spec.ensures) in
+    let guarantee = ("guarantee", fjoin spec.post) in
     let guarantee_spec =
       pair_map
         (Right
@@ -79,7 +79,7 @@ struct
     in
     print_formula rely;
     print_formula guarantee;
-    { requires = rely_spec; ensures = guarantee_spec}
+    { pre = rely_spec; post = guarantee_spec}
 
   let output_file (cli : Cli.config) name ext =
     Filename.(concat cli.outdir (name ^ ext))
@@ -91,7 +91,7 @@ struct
       (name, Tool.call cli file spec)
     in
     (* transform each LTL formula to a buchi automaton  *)
-    { requires = call_tool i.requires; ensures = call_tool i.ensures}
+    { pre = call_tool i.pre; post = call_tool i.post}
 
   let automaton_to_dot (type t) (module G : BuchiSig.S with type t = t) cli
       ((name, auto) : string * G.t) =
@@ -123,7 +123,7 @@ struct
     let rely_a = 
       if cli.verbose then
         Format.printf "Creating assumptions automaton...@.";
-      pair_map (Right B.create) o.requires
+      pair_map (Right B.create) o.pre
     in
     if cli.dump_automata then 
       automaton_to_dot (module B) cli rely_a;
@@ -132,7 +132,7 @@ struct
     let guarantee_a = 
       if cli.verbose then
         Format.printf "Creating guarantees automaton...@.";
-      pair_map (Right B.create) o.ensures 
+      pair_map (Right B.create) o.post 
     in
     if cli.dump_automata then 
       automaton_to_dot (module B) cli guarantee_a;

@@ -29,10 +29,8 @@ let exp = ['e' 'E'] ['-' '+']? digit+
 let lowercase = ['a' - 'z']
 let uppercase = ['A' - 'Z']
 let letter = (lowercase | uppercase)
-let nameStartChar = lowercase | '_'
-let nameChar = nameStartChar | digit
-let name = nameStartChar (nameChar)*
-let id = lowercase (letter|digit|'_')* (* cannot begin with an uppercase because of reserved LTL keywords *)
+let lid = lowercase (letter|digit|'_')*
+let uid = uppercase (letter|digit|'_')+ (* minimum two letters to distinguish from temporal op *)
 let newline = '\r' | '\n' | "\r\n"
 
 
@@ -63,7 +61,10 @@ rule tokenize = parse
   | "output"                { OUTPUT }
   | "assumes"               { ASSUMES }
   | "guarantees"            { GUARANTEES }
-  (* | "requires"              { REQUIRES } *)
+  | "requires"              { REQUIRES }
+  | "fun"                   { FUNCTION }
+  | "node"                  { NODE }
+  | "returns"               { RETURNS }
   | "prev"                  { PREV }
   | "^"                     { HAT }
   | "any"                   { ANY }
@@ -115,6 +116,8 @@ rule tokenize = parse
   | ";"                     { SEMI }
   | ":"                     { COLON }
   | ","                     { COMMA }
+  | lid as lid              { LID lid }
+  | uid as uid              { UID uid }
   | "S"                     { SINCE }
   | "X"                     { NEXT }
   | "U"                     { UNTIL}
@@ -140,7 +143,6 @@ rule tokenize = parse
   | (digit+ as i) '.' (digit* as f) (['e' 'E'] (['-' '+']? digit+ as e))?
   | (digit* as i) '.' (digit+ as f) (['e' 'E'] (['-' '+']? digit+ as e))?
        { REAL (~radix:10,~num:i,~frac:f,~exp:(Option.map remove_leading_plus e))}
-  | id as lxm               { ID (lxm) }
   | newline                 { next_line lexbuf; tokenize lexbuf }
   | eof                     { EOF }
   | _ as char               { raise (Lexical_error (pos_range lexbuf, Format.sprintf "Unexpected character '%s'" (Char.escaped char))) }

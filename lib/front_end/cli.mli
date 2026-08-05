@@ -5,6 +5,7 @@ type ltl_atom_t = Direct | PastLTL
 
 exception IncorrectAtom
 exception IncorrectAutFormat
+exception IncorrectLanguage
 
 val ltl_atom_t_of_string : string -> ltl_atom_t
 
@@ -16,6 +17,9 @@ val aut_format_t_of_string : string -> aut_format_t
 
 val string_of_aut_format_t : aut_format_t -> string
 
+type language_t = Loopy | Obby
+
+
 type config = {
     ltl_atom : ltl_atom_t;
     aut_format : aut_format_t;
@@ -26,6 +30,7 @@ type config = {
     smoke_tests : bool;
     dump_automata : bool;
     ignore_unsafe : bool;
+    language : language_t;
 }
 (** parameters provided by the cli *)
 

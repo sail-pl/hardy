@@ -8,4 +8,4 @@
 (executable
  (public_name hardy)
  (name main)
- (libraries loopyLang interactive))
+ (libraries loopyLang obbyLang interactive))

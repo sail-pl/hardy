@@ -1,6 +1,7 @@
 %token <int> INT
 %token <(radix:int * num:string * frac:string * exp:string option)> REAL
-%token <string> ID
+%token <string> LID
+%token <string> UID
 %token <string> STRING
 
 %token TY_INT TY_REAL TY_BOOL TY_STRING TY_ARRAY TY_UNIT
@@ -22,8 +23,10 @@
 // REACTIVE
 %token SETUP LOOP EMIT TO VAR INPUT OUTPUT LAST FIRST START PREV AT ALL ANY 
 
+%token FUNCTION NODE RETURNS "returns"
+
 // SPEC
-%token ASSUMES GUARANTEES ENSURES INVARIANT VARIANT // REQUIRES 
+%token ASSUMES GUARANTEES ENSURES INVARIANT VARIANT REQUIRES 
 
 // (P)LTL
 %token YESTERDAY WEAK_YESTERDAY ONCE HISTORICALLY

@@ -10,7 +10,7 @@
  (explain false))
 
 (menhir
- (modules tokens specification/ltl specification/ppltl loopy/ppltl/spec loopy/loopy)
+ (modules tokens common specification/ltl specification/ppltl loopy/ppltl/spec loopy/loopy)
  (merge_into loopyPltlParser)
  (flags
   --external-tokens Tokens
@@ -23,11 +23,13 @@
   --unused-token FORALL_PREV --unused-token FORALL_INST
   --unused-token FIRST
   --unused-token START
+  --unused-token FUNCTION --unused-token REQUIRES
+  --unused-token NODE --unused-token RETURNS --unused-token UID 
   --strict
   ))
 
 (menhir
- (modules tokens specification/ltl loopy/ltl/spec loopy/loopy)
+ (modules tokens common specification/ltl loopy/ltl/spec loopy/loopy)
  (merge_into loopyLtlParser)
  (flags
   --external-tokens Tokens
@@ -40,12 +42,14 @@
   --unused-token WEAK_YESTERDAY
   --unused-token WEAK_SINCE
   --unused-token SINCE 
+  --unused-token FUNCTION --unused-token REQUIRES
+  --unused-token NODE --unused-token RETURNS --unused-token UID 
   --unused-precedence-levels
   --strict
   ))
 
 (menhir
- (modules tokens specification/ltl obby/ltl/spec obby/obby.mly)
+ (modules tokens specification/ltl obby/ltl/spec obby/obby)
  (merge_into obbyLtlParser)
  (flags
   --external-tokens Tokens
@@ -58,6 +62,9 @@
   --unused-token WEAK_YESTERDAY
   --unused-token WEAK_SINCE
   --unused-token SINCE 
+  --unused-token INPUT --unused-token OUTPUT 
+  --unused-token ENSURES --unused-token REQUIRES 
+  --unused-token EMIT --unused-token TO
   --unused-precedence-levels
   --strict
   ))

@@ -14,6 +14,9 @@ open HardyMisc.Utils
 
 open Common
 
+
+let translate_rexpr = translate_rexpr (fun () -> failwith "unreachable")
+
 let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) Syntax.stmt list) :
     P.expr =
   let open P in
@@ -60,6 +63,8 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) Syntax.stmt list) 
 
         | Int _ | Real _ | True | False | UnOp (_, _) | BinOp _ | Array _ | String _ | Prod _ ->
              failwith "not an assignable expression"
+
+        | Ext () -> failwith "unreachable"
         end 
     | Emit (e, id) ->
         get_binding_type id (fun (cat, _) ->
@@ -82,7 +87,7 @@ let expr_of_statements (tr_form : 'a -> P.term) (s : ('a, 'b) Syntax.stmt list) 
 
 
 
-let rec translate_term (e : (instant option * ty) expr) : P.term =
+let rec translate_term (e : (unit,instant option * ty) expr) : P.term =
   let open P in
   let open PH in
   let loc = get_loc e.label in
@@ -133,6 +138,8 @@ let rec translate_term (e : (instant option * ty) expr) : P.term =
   | ArrayCell a ->
     tapp ~loc (qualid [Ident.op_get ""]) [translate_term a.array ; translate_term a.idx]
   | Prod l -> let l  = List.map translate_term l in term ~loc (Ttuple l)
+  | Ext ext -> failwith "unreachable"
+
 
 let pterm_of_fol = pterm_of_fol translate_term  
 
@@ -141,9 +148,9 @@ let pterm_of_inv = pterm_of_fol
 module
   M
   (T: Types.T with 
-    type ('ty,'qty) fol_t = ('ty expr, 'qty option) Fol.pred_fol and
-    type base_spec_t = ((instant option * Shared.ty) expr, Shared.base_ty option) Fol.pred_fol and
-    type triple_data = (triple_id : string * invariants : ((instant option * Shared.ty) expr, Shared.base_ty option) Fol.pred_fol list * nb_instants : Instant.min_nb_instants) and
+    type ('ty,'qty) fol_t = ((unit,'ty) expr, 'qty option) Fol.pred_fol and
+    type base_spec_t = ((unit, instant option * Shared.ty) expr, Shared.base_ty option) Fol.pred_fol and
+    type triple_data = (triple_id : string * invariants : ((unit, instant option * Shared.ty) expr, Shared.base_ty option) Fol.pred_fol list * nb_instants : Instant.min_nb_instants) and
     type formula_data = min_nb_instants
   )
   (Cli : Cli.CliSig)
@@ -363,7 +370,7 @@ module
                   which means they also depend on the previous input and state  
                   (state is kept from one instant to the other so it is not useful to adjust it).
               *)
-              pterm_of_fol (map_fol_pred (map_expr Fun.id (fun ((id,(_,(cat,ty))) as v) -> 
+              pterm_of_fol (map_fol_pred (map_expr Fun.id Fun.id (fun ((id,(_,(cat,ty))) as v) -> 
                 if cat = Output || cat = Input then 
                   (id,(Some (Previous 1),(cat,ty)))
                 else v
@@ -377,11 +384,11 @@ module
         | {disjuncts=[f]} -> 
             pterm_of_fol f.value :: acc
         | d ->
-            let f = fold_mjoin (fun (f:( ((instant option * ty) expr predicate, base_ty option) fol, min_nb_instants Types.formula_data ) labeled) -> 
+            let f = fold_mjoin (fun (f:( ((unit, instant option * ty) expr predicate, base_ty option) fol, min_nb_instants Types.formula_data ) labeled) -> 
                 why3_and (pterm_of_fol f.value) (length_assert f.label.formula_data) 
             ) why3_or (term Ttrue) d.disjuncts
             in f::acc 
-        ) inv spec.requires.conjuncts
+        ) inv spec.pre.conjuncts
     and sp_post =
       List.fold_left
         (fun l disj -> match disj with 
@@ -394,7 +401,7 @@ module
              (Loc.dummy_position,[pat Pwild ,f]) :: l 
           )
            (List.map (fun inv -> Loc.dummy_position,[pat Pwild , pterm_of_fol inv]) invariants)
-        spec.ensures.conjuncts  |> List.rev
+        spec.post.conjuncts  |> List.rev
     in
     { empty_spec with sp_pre; sp_post }
 

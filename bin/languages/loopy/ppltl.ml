@@ -13,7 +13,7 @@ module AtomicFormula = struct
   type t = ((Instant.instant option * Shared.ty, Shared.base_ty) Spec.fol_t, FrontSig.temp_f_prop) labeled
 
   let pp : Format.formatter -> t -> unit = fun fmt f -> 
-    Printer.(pp_fol (pp_pred (pp_exp (fun fmt (s,_) -> Format.pp_print_string fmt s))) (Format.pp_print_option pp_base_ty)) fmt f.value
+    Printer.(pp_fol (pp_pred (pp_exp Format.pp_print_nothing (fun fmt (s,_) -> Format.pp_print_string fmt s))) (Format.pp_print_option pp_base_ty)) fmt f.value
 
 end 
 

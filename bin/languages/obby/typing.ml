@@ -1,12 +1,13 @@
 open HardyFrontEnd
-open FrontParser
-open Loopy.Ltl.Spec
 open HardyMisc.Utils
+open FrontParser
 open Syntax.Shared
 open Syntax.Ltl
 open Syntax.Fol
 open FrontSig
-open Specification
+open FrontParser.Obby.Ltl
+open FrontParser.Obby.Syntax
+open FrontParser.Specification
 
 let reserved_words = ["result" ; "old" ;  "list" ; "int"] (* todo: add more*)
 
@@ -19,25 +20,25 @@ let fail_if_no_bindings id b = match Bindings.find_opt id b with
 
 module M 
 
-: Typing with type in_t = (parsed_temp_spec_t, unit, (parsed_spec_t, unit, Loopy.Syntax.parsed_env)  Loopy.Syntax.program) Shared.prog_with_spec
-    and type out_t = ((((InstantSyntax.instant option * Shared.ty), Shared.base_ty, temp_f_prop) temp_spec_t, temp_f_prop) U.labeled, unit, 
-        (base_spec_t, ty, Shared.ty Loopy.Syntax.env)  Loopy.Syntax.program) Shared.prog_with_spec
-    and type out_local_spec = base_spec_t
+: Typing with type in_t = (Spec.parsed_temp_spec_t, Spec.parsed_spec_t) program
+    and type out_t = ((((InstantSyntax.instant option * Syntax.Shared.ty), Syntax.Shared.base_ty, temp_f_prop) Spec.temp_spec_t, temp_f_prop) labeled,
+        Spec.base_spec_t)  program
+    and type out_local_spec = Spec.base_spec_t
 
 = struct
-    type in_temp_spec = parsed_temp_spec_t
-    type out_temp_spec = (((InstantSyntax.instant option * Shared.ty), Shared.base_ty, temp_f_prop) temp_spec_t, temp_f_prop) U.labeled
+    type in_temp_spec = Spec.parsed_temp_spec_t
+    type out_temp_spec = (((InstantSyntax.instant option * Syntax.Shared.ty), Syntax.Shared.base_ty, temp_f_prop) Spec.temp_spec_t, temp_f_prop) labeled
     (* Instant.instant should always be None, this just allows for uniform processing  *)
 
-    type in_local_spec = parsed_spec_t
-    type out_local_spec = base_spec_t
+    type in_local_spec = Spec.parsed_spec_t
+    type out_local_spec = Spec.base_spec_t
 
-    type in_t =  (in_temp_spec, unit, (in_local_spec, unit, Loopy.Syntax.parsed_env)  Loopy.Syntax.program ) Shared.prog_with_spec
-    type out_t = (out_temp_spec, unit, (out_local_spec, ty, ty Loopy.Syntax.env) Loopy.Syntax.program) Shared.prog_with_spec
+    type in_t = (Spec.parsed_temp_spec_t, Spec.parsed_spec_t) program
+    type out_t = (out_temp_spec, out_local_spec) program
     
 
-    let type_pgrm (p : in_t) : out_t = 
-    let open Loopy.Syntax in
+    let type_pgrm (p: in_t) : out_t = failwith "todo"
+    (* let type_pgrm (p : in_t) : out_t = 
     let bindings : ty Bindings.t = 
         let open Bindings in
         let check_dup = fun x (cat1,_) (cat2,_) -> 
@@ -159,7 +160,7 @@ module M
         {main_body; main_loop_inv}
     in
     let prog =  {prog_setup; prog_main; prog_decls={env_variables=bindings}} in
-    {prog_spec; prog}
+    {prog_spec; prog} *)
 end
 
 

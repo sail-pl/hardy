@@ -24,9 +24,10 @@ val pp_hist :
   string * InstantSyntax.instant option -> unit
 
   val pp_exp :
+  (formatter -> 'ext -> unit) ->
   (formatter -> string * 't -> unit) ->
   formatter ->
-  ('t expression_, HardyMisc.Utils.loc option)
+  (('ext,'t) expression_, HardyMisc.Utils.loc option)
   HardyMisc.Utils.labeled -> unit
 
 val pp_fol :

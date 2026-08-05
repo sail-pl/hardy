@@ -6,7 +6,7 @@ open Interactive
 open Automata
 open Buchi
 open HardyMisc.Utils
-open Loopy.Ltl
+open Obby.Ltl
 
 
 (* atoms are FOL formulas *)
@@ -16,7 +16,7 @@ module AtomicFormula = struct
     
   let pp_atom : Format.formatter -> _ -> unit =  fun fmt a ->
       Printer.( pp_fol 
-          (pp_pred @@ pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t))) 
+          (pp_pred @@ pp_exp (fun fmt e -> failwith "todo") (fun fmt (s,(t,_)) -> pp_hist fmt (s,t))) 
           (Format.pp_print_option pp_base_ty)) fmt a
 
   let pp : Format.formatter -> t -> unit = fun fmt a -> pp_atom fmt a.value
@@ -74,14 +74,13 @@ module LTLSpec : FrontParser.SharedSyntax.BoolA
 end
 
 
-module Parsing : Parsing.S with type out_t = (Spec.parsed_temp_spec_t, unit, (Spec.parsed_spec_t, unit, Loopy.Syntax.parsed_env) Loopy.Syntax.program) Shared.prog_with_spec
+module Parsing : Parsing.S with type out_t = (Spec.parsed_temp_spec_t, Spec.parsed_spec_t) Obby.Syntax.program
 = struct 
   type temp_spec = Spec.parsed_temp_spec_t
   type local_spec = Spec.parsed_spec_t
-
   type in_t = unit
-  type out_t = (temp_spec, unit, (local_spec, unit, Loopy.Syntax.parsed_env) Loopy.Syntax.program) Shared.prog_with_spec
-  include FrontParser.LoopyLtlParser
+  type out_t = (temp_spec, local_spec) Obby.Syntax.program
+  include FrontParser.ObbyLtlParser
 end
 
 
@@ -90,14 +89,21 @@ open Hoa2ba
   todo: change automata type using aut_format 
 *)
 
-(* module Typing = Ltl_typing.M *)
+module Typing = Typing.M
 module B = Make(Atom)(Label)
 module BProd = BaProduct.Make(B)
 
 module Middle = Generation.M(struct type t = Spec.base_spec_t end)(struct type t = (Spec.base_spec_t, Shared.ty, Shared.ty Loopy.Syntax.env) Loopy.Syntax.program end)(Atom)(LTLSpec)(SpinHoaOutput)(B)(BProd)
 
-(* module Triples = Triples.M(Spec)(Atom)(B)(BProd) *)
+module Triples(Cli : Cli.CliSig) : Automata.GenSig.TriplesSig = struct
+  type in_t = unit
+  type out_t = unit
+  type automaton = unit
+  let generate_triples = fun () () -> ()
+end
 
-(* module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t =  Middle.in_t  end)(struct include Triples(Cli) type t = out_t end) *)
+module Interactive(Cli: Cli.CliSig) = Why3Prover.M(struct type t =  Middle.in_t  end)(struct include Triples(Cli) type t = out_t end)
 
-(* module Back(Cli: Cli.CliSig) = Back.M(Ltl_spec)(Cli) *)
+module Back(Cli: Cli.CliSig) = struct
+  
+end

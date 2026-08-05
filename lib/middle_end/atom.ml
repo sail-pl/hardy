@@ -27,7 +27,8 @@ let atom_of_atom_id s : int =
       try String.(sub s 1 (length s - 1)) |> int_of_string with 
       | Invalid_argument err | Failure err -> failwith @@ Format.sprintf "%s (couldn't extract atom '%s')" err s
 
-let rec remove_exp_loc (e : 't expr) : 't expr =
+let rec remove_exp_loc (rm_ext: 'ext -> 'ext) (e : ('ext,'t) expr) : ('ext,'t) expr =
+  let remove_exp_loc = remove_exp_loc rm_ext in 
   let value =
     match e.value with
     | BinOp v ->
@@ -41,6 +42,7 @@ let rec remove_exp_loc (e : 't expr) : 't expr =
       ArrayCell {idx;array}
     | Array l -> Array (Iarray.map remove_exp_loc l)
     | Prod l -> Prod (List.map remove_exp_loc l)
+    | Ext ext -> Ext (rm_ext ext)
     in
   mk_dummy_loc value
 

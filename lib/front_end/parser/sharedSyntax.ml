@@ -1,7 +1,7 @@
 open HardyMisc.Utils
 
 
-type 'spec hoare_pair = { requires : 'spec; ensures : 'spec }
+type 'spec hoare_pair = { pre : 'spec; post : 'spec }
 
 type ('spec, 'data) hoare_triple = ('spec hoare_pair, 'data) labeled
 
@@ -45,48 +45,53 @@ let string_of_pgrm_op : expr_binop -> string = function
   | EAnd -> "&&"
 
 
-type 't expr = 't expression_ locatable
+type ('ext, 't) expr = ('ext, 't) expression_ locatable
 
-and 't expression_ =
+and ('ext, 't) expression_ =
   | Int of int
   | Real of {radix:int ; num:string ; frac:string  ; exp:string option}
   | True
   | False
   | Var of string * 't
-  | UnOp of expr_uop * 't expr
-  | BinOp of {left: 't expr ; op: expr_binop ; right : 't expr}
-  | ArrayCell of {array: 't expr; idx: 't expr}
-  | Array of 't expr iarray
+  | UnOp of expr_uop * ('ext, 't) expr
+  | BinOp of {left: ('ext, 't) expr ; op: expr_binop ; right : ('ext, 't) expr}
+  | ArrayCell of {array: ('ext, 't) expr; idx: ('ext, 't) expr}
+  | Array of ('ext, 't) expr iarray
   | String of string
-  | Prod of 't expr list
+  | Prod of ('ext, 't) expr list
+  | Ext of 'ext
 
 
-let rec fold_expr : type a. (a -> 't expr -> a) -> a ->'t expr -> a =
- fun j init e ->
+let rec fold_expr : type a. ('ext -> a) -> (a -> ('ext, 't) expr -> a) -> a -> ('ext, 't) expr -> a =
+ fun ej j init e ->
+  let fold_expr = fold_expr ej j in
   match e.value with
   | Int _ | Real _ | True | False | Var _ | String _  -> j init e
-  | UnOp (_,e1) -> j (fold_expr j init e1 ) e
-  | BinOp x -> j (fold_expr j (fold_expr j init x.right) x.left) e 
-  | ArrayCell v -> j (fold_expr j (fold_expr j init v.idx) v.array) e 
-  | Array arr -> Iarray.fold_left (fold_expr j) init arr
-  | Prod arr -> List.fold_left (fold_expr j) init arr
+  | UnOp (_,e1) -> j (fold_expr init e1 ) e
+  | BinOp x -> j (fold_expr (fold_expr init x.right) x.left) e 
+  | ArrayCell v -> j (fold_expr (fold_expr init v.idx) v.array) e 
+  | Array arr -> Iarray.fold_left fold_expr init arr
+  | Prod arr -> List.fold_left fold_expr init arr
+  | Ext e -> ej e
 
 
-let rec map_expr : type t1 t2. (t2 expr -> t2 expr) -> (string * t1 -> string * t2) -> t1 expr -> t2 expr =
- fun m var_map e ->
+let rec map_expr : type t1 t2 ext1 ext2. (ext1 -> ext2) -> ((ext2,t2) expr -> (ext2,t2) expr) -> (string * t1 -> string * t2) -> (ext1,t1) expr -> (ext2,t2) expr =
+ fun m_ext m var_map e ->
+  let map_expr = map_expr m_ext m var_map in 
   match e.value with
   | Int _ | Real _ | True | False | String _ as value -> m {e with value}
   | Var (id,v) -> let (id,v) = var_map (id,v) in m {e with value=Var (id,v)}
-  | UnOp (op,e1) -> m { e with value = UnOp (op,map_expr m var_map e1)}
+  | UnOp (op,e1) -> m { e with value = UnOp (op,map_expr e1)}
   | BinOp x ->
-      m { e with value = BinOp { x with left=map_expr m var_map x.left; right=map_expr m var_map x.right} }
-  | ArrayCell v -> let idx = map_expr m var_map v.idx and array = map_expr m var_map v.array in  m { e with value = ArrayCell {idx;array} }
-  | Array arr -> m { e with value = Array (Iarray.map (map_expr m var_map) arr) }
-  | Prod l -> m { e with value = Prod (List.map (map_expr m var_map) l) }
+      m { e with value = BinOp { x with left=map_expr x.left; right=map_expr x.right} }
+  | ArrayCell v -> let idx = map_expr v.idx and array = map_expr v.array in  m { e with value = ArrayCell {idx;array} }
+  | Array arr -> m { e with value = Array (Iarray.map map_expr arr) }
+  | Prod l -> m { e with value = Prod (List.map map_expr l) }
+  | Ext ext -> m { e with value = Ext (m_ext ext)}
 
   
-let [@warning "-4"] expr_vars : (string * 't) list -> 't expr -> (string * 't) list = fun x -> 
-  fold_expr (fun l e -> match e.value with Var (x, t) -> (x, t) :: l | _ -> l) x
+let [@warning "-4"] expr_vars (ext_vars: 'ext -> (string * 't) list) : (string * 't) list -> ('ext,'t) expr -> (string * 't) list = fun x -> 
+  fold_expr ext_vars (fun l e -> match e.value with Var (x, t) -> (x, t) :: l | _ -> l) x
 
 
 type standard_logic_bop =  Equiv | Arrow | LAnd | LOr | Program of string

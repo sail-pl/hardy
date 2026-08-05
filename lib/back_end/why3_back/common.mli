@@ -58,7 +58,7 @@ val nth_h : cat_ty -> string
 (** {2 Terms and Expressions Builders} *)  
 
 
-val translate_rexpr : ty expr -> P.expr
+val translate_rexpr : ('ext -> P.expr) -> ('ext,ty) expr -> P.expr
 
 (** [translate_binop app infix op e1 e2] construct an expression corresponding to the application of the binary operator [op] to [e1] and [e2].
     [app] is used when the operator is seen as a function application and [infix] when it is seen as an infix operator
@@ -72,7 +72,7 @@ val translate_binop :
 (** [pterm_of_fol atom_tr f] returns the Why3 term corresponding to the FOL formula [f], using
   [atom_tr] to translate the formula's atoms *)
 val pterm_of_fol :
-  ('a expr -> P.term) ->
-  ('a expr FrontParser.Specification.FOLSyntax.predicate,
+  (('ext,'a) expr -> P.term) ->
+  (('ext,'a) expr FrontParser.Specification.FOLSyntax.predicate,
    base_ty option)
   FrontParser.Specification.FOLSyntax.fol -> P.term

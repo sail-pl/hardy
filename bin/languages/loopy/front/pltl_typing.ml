@@ -48,7 +48,7 @@ module M :
         union check_dup inputs outputs |> fun io -> union check_dup io states
     in
 
-    let [@warning "-4"] requires_checks = fun acc (e:(InstantSyntax.instant option*ty) expr ) -> match e.value with 
+    let [@warning "-4"] requires_checks = fun acc (e:(unit, InstantSyntax.instant option*ty) expr ) -> match e.value with 
         | Var (_,(_,(Input,_))) ->
             FrontSig.{acc with mentions_input = true}
         | Var (_,(_,(Output,_))) ->
@@ -56,7 +56,7 @@ module M :
         | Var (_,(_,(State,_))) ->
             failwith "temporal assumption cannot mention state variables"
         | _ -> acc
-    and [@warning "-4"] ensures_checks = fun acc (e:(InstantSyntax.instant option*ty) expr ) -> match e.value with 
+    and [@warning "-4"] ensures_checks = fun acc (e:(unit, InstantSyntax.instant option*ty) expr ) -> match e.value with 
         | Var (_,(inst,(Input,_))) ->
             FrontSig.{acc with mentions_input = true; mentions_history = Option.is_some inst}
         | Var (_,(inst,(Output,_))) ->
@@ -66,7 +66,7 @@ module M :
         | _ -> acc    
 
     and fold_fol_prop c = fold_fol (fun acc _ -> acc) (fun acc -> function
-        | Atom e -> fold_expr c acc e
+        | Atom e -> fold_expr (fun () -> FrontSig.dft_temp_f_prop) c acc e
         | Predicate p -> 
             (*fixme: look up definition:*)
             List.fold_left c acc p.args
@@ -74,8 +74,8 @@ module M :
     ) FrontSig.dft_temp_f_prop
     in
     (* https://ocaml.org/manual/5.2/polymorphism.html#ss:explicit-polymorphism*)
-    let set_expr_type : 'a 'b. ('a -> 'b) -> 'a expr -> ('b * ty) expr = fun f x ->
-        map_expr Fun.id (fun (id,t) -> id,(f t,fail_if_no_bindings id bindings)) x in
+    let set_expr_type : 'ext 'a 'b. ('a -> 'b) -> ('ext,'a) expr -> ('ext,'b * ty) expr = fun f x ->
+        map_expr Fun.id Fun.id (fun (id,t) -> id,(f t,fail_if_no_bindings id bindings)) x in
 
 
     let type_prog_spec f = fun x ->  map_fol_pred (set_expr_type f) x in
@@ -102,7 +102,7 @@ module M :
     ) in
 
     let prog_spec : (out_temp_spec list, unit) hoare_triple = 
-        let type_spec checks = 
+        let type_spec (checks : FrontSig.temp_f_prop -> (unit, 'a) expr -> FrontSig.temp_f_prop) = 
             List.map (fun (f_ltl:parsed_temp_spec_t) : out_temp_spec ->
                 let f_ltl : ( InstantSyntax.instant option * ty, base_ty, FrontSig.temp_f_prop) temp_spec_t = 
                     map_ltl_pred (map_pltl_pred @@ fun f_fol : ((InstantSyntax.instant option * ty ,base_ty) fol_t, FrontSig.temp_f_prop) labeled -> 
@@ -110,7 +110,7 @@ module M :
                         let prop = fold_fol_prop checks fol in 
                         if FrontSig.is_static_prop prop then 
                             Format.asprintf "temporal formula %a does not contain any program variables" 
-                                Printer.(pp_fol (pp_pred (pp_exp (fun fmt (s,_) -> Format.pp_print_string fmt s))) (Format.pp_print_option pp_base_ty)) fol |> failwith
+                                Printer.(pp_fol (pp_pred (pp_exp Format.pp_print_nothing (fun fmt (s,_) -> Format.pp_print_string fmt s))) (Format.pp_print_option pp_base_ty)) fol |> failwith
                         ;
                         
                         mk_labeled ~label:prop fol
@@ -122,8 +122,8 @@ module M :
                 mk_labeled ~label:prop f_ltl
             ) 
         in
-        mk_labeled ~label:() {requires = type_spec requires_checks p.prog_spec.value.requires  ; 
-        ensures = type_spec ensures_checks p.prog_spec.value.ensures ;
+        mk_labeled ~label:() {pre = type_spec requires_checks p.prog_spec.value.pre  ; 
+        post = type_spec ensures_checks p.prog_spec.value.post ;
         }
 
     and prog_setup : (base_spec_t, ty) setup option = 

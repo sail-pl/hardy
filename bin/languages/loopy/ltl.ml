@@ -16,7 +16,7 @@ module AtomicFormula = struct
     
   let pp_atom : Format.formatter -> _ -> unit =  fun fmt a ->
       Printer.( pp_fol 
-          (pp_pred @@ pp_exp (fun fmt (s,(t,_)) -> pp_hist fmt (s,t))) 
+          (pp_pred @@ pp_exp Format.pp_print_nothing (fun fmt (s,(t,_)) -> pp_hist fmt (s,t))) 
           (Format.pp_print_option pp_base_ty)) fmt a
 
   let pp : Format.formatter -> t -> unit = fun fmt a -> pp_atom fmt a.value

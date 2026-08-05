@@ -6,14 +6,14 @@ open SharedSyntax
 (** program statements *)
 type ('inv, 't) stmt = ('inv, 't) stmt_ locatable
 and ('inv, 't) stmt_ =
-  | Assign of 't expr * 't expr
-  | Emit of 't expr * string
+  | Assign of (unit,'t) expr * (unit,'t) expr
+  | Emit of (unit,'t) expr * string
   | If of
-      't expr * ('inv, 't) stmt list * ('inv, 't) stmt list option
-  | While of 't expr * 'inv * 't expr variant * ('inv, 't) stmt list
+      (unit,'t) expr * ('inv, 't) stmt list * ('inv, 't) stmt list option
+  | While of (unit,'t) expr * 'inv * (unit,'t) expr variant * ('inv, 't) stmt list
 
 
-val map_stmt : ('e2 expr -> 'e2 expr) -> (string * 'e1 -> string * 'e2) -> (string -> string) -> ('t1 -> 't2)  -> ('t1,'e1) stmt -> ('t2,'e2) stmt 
+val map_stmt : ((unit,'e2) expr -> (unit,'e2) expr) -> (string * 'e1 -> string * 'e2) -> (string -> string) -> ('t1 -> 't2)  -> ('t1,'e1) stmt -> ('t2,'e2) stmt 
 
 
 type 'ty var_decls = (string * 'ty) list

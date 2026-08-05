@@ -15,8 +15,8 @@ module M
         type formula_data = min_nb_instants and
         type cnf_data = min_nb_instants and
         type base_spec_t = FrontParser.Loopy.Ltl.Spec.base_spec_t and
-        type triple_data = (triple_id : string * invariants : ((instant option * ty) expr, base_ty option) pred_fol list * nb_instants : Instant.min_nb_instants) and
-        type ('ty,'qty) fol_t = ('ty expr, 'qty option) pred_fol 
+        type triple_data = (triple_id : string * invariants : ((unit, instant option * ty) expr, base_ty option) pred_fol list * nb_instants : Instant.min_nb_instants) and
+        type ('ty,'qty) fol_t = ((unit, 'ty) expr, 'qty option) pred_fol 
       end
       )
       (AtomStore : Atom.S  
@@ -109,7 +109,7 @@ module M
         let nb_instant =
           add_nb_instant 1 BProd.(get_vdata (E.src e)).v_min_nb_instants
         in
-        mk_labeled ~label:Types.{transition_data=nb_instant} l.arc_f.ensures)
+        mk_labeled ~label:Types.{transition_data=nb_instant} l.arc_f.post)
       in_e
       
     (* if an input led to no restriction on the state, then there is no need
@@ -136,7 +136,7 @@ module M
     map_disjuncts (fun d ->  
         map_formula (fun a ->
           let atom = AtomStore.(map snd (get_atom a)) (* recover atoms *) in
-          (map_fol_pred @@ map_expr Fun.id replace_i) atom.value  (* adjust temporal quantification *)
+          (map_fol_pred @@ map_expr Fun.id Fun.id replace_i) atom.value  (* adjust temporal quantification *)
         ) d.value 
         |> fol_of_bool_a Fun.id (* flatten boolean algebra into fol *)
         |> mk_labeled ~label:Types.{formula_data=d.label.transition_data} (* enrich the formula with transition data *)
@@ -167,7 +167,7 @@ module M
   let [@warning "-4"] at_current_instant_replace_post (v: BProd.vdata) : ('a,'b) T.fol_t -> ('a,'b) T.fol_t =
       if v.v_min_nb_instants.is_max then
         map_fol_pred 
-          (map_expr Fun.id (fun (id, (inst,t)) ->
+          (map_expr Fun.id Fun.id (fun (id, (inst,t)) ->
               match inst with
               | Some (At n) when n = v.v_min_nb_instants.nb_instant ->
                   (* if a variable refers to the current instant, remove the instant quantification *)
@@ -220,8 +220,8 @@ module M
       List.fold_left
         (fun m e ->
           let l = BProd.E.label e in
-          let key = add_v_info l.arc_f.requires
-          and data = add_v_info l.arc_f.ensures in 
+          let key = add_v_info l.arc_f.pre
+          and data = add_v_info l.arc_f.post in 
           M.update key Option.(fold ~none:(disj_singleton data |> some) ~some:(add_disjunct data >> some)) m
           )
         M.empty out_e.disjuncts
@@ -277,7 +277,7 @@ module M
         (* if List.for_all (fun d -> List.is_empty d.disjuncts) ensures.conjuncts then
           (* discard when postcondition is true *) s
         else { requires; ensures } :: s *)
-        add_conjunct @@ mk_labeled ~label:Types.{cnf_data=vdata.v_min_nb_instants} { requires; ensures }
+        add_conjunct @@ mk_labeled ~label:Types.{cnf_data=vdata.v_min_nb_instants} { pre=requires ; post=ensures }
     in
     M.fold mk_spec m conj_empty
 

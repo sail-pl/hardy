@@ -123,10 +123,11 @@ let make_earray (a : P.expr iarray) =
   let f = Eattr (ATstr Ident.funlit, b)  in
   eapp (qualid ["init"]) [econst @@ Iarray.length a; expr f]
 
-let rec translate_rexpr (e: ty expr) : P.expr =
+let rec translate_rexpr (tr_ext : 'ext -> P.expr) (e: ('ext,ty) expr) : P.expr =
   let open P in
   let open PH in
   let loc = get_loc e.label in
+  let translate_rexpr = translate_rexpr tr_ext in 
   match e.value with
   | True -> expr ~loc Etrue
   | False -> expr ~loc Efalse
@@ -157,7 +158,7 @@ let rec translate_rexpr (e: ty expr) : P.expr =
   | String s -> P.(Econst (Constant.string_const s)) |> expr ~loc
   | Array a -> make_earray (Iarray.map translate_rexpr a)
   | Real r -> P.(Econst (Constant.real_const_from_string ~neg:false ~radix:r.radix ~int:r.num ~frac:r.frac ~exp:r.exp)) |> expr ~loc
-
+  | Ext ext -> tr_ext ext
 
 let get_bop t1 t2 = 
   let open Ptree in
@@ -171,7 +172,7 @@ let get_bop t1 t2 =
 
   
 
-let rec pterm_of_fol : type a. (a expr -> P.term) -> (a expr predicate, base_ty option) fol -> P.term =
+let rec pterm_of_fol : type ext a. ((ext,a) expr -> P.term) -> ((ext,a) expr predicate, base_ty option) fol -> P.term =
   fun translate_term { value = f; label = loc } -> 
   let pterm_of_fol = pterm_of_fol translate_term in
   let open PH in

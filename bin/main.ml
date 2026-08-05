@@ -4,7 +4,7 @@ open HardyMisc.Utils
 let main 
     (
       type parsing_out middle_pgrm middle_temp_spec middle_spec_data
-      p_temp_spec p_local_spec
+      p_temp_spec p_local_spec typing_out_t
       t_temp_spec t_local_spec
       triple_data  out_pgrm in_fun in_spec automaton
     )
@@ -16,8 +16,9 @@ let main
     )
     (
       module Typing : HardyFrontEnd.FrontSig.Typing
-        with type in_t = Parsing.out_t and
-        type out_t = (middle_temp_spec, middle_spec_data, middle_pgrm) HardyFrontEnd.Syntax.Shared.prog_with_spec
+        with type in_t = Parsing.out_t
+        and type out_t = typing_out_t
+        (* type out_t = (middle_temp_spec, middle_spec_data, middle_pgrm) HardyFrontEnd.Syntax.Shared.prog_with_spec *)
     )
     (
       module Middle : HardyMiddleEnd.MidSig.S with
@@ -76,19 +77,34 @@ let main
 let () =
   let module Cli = CliM.Init () in
   match Cli.get_config.ltl_atom with
-  | Direct -> 
-    let open LoopyLang.Ltl in 
-    let module Triples = Triples(Cli) in
-    let module Interactive = Interactive(Cli) in
-    let module Back = Back(Cli) in
-    main 
-    (module Cli)
-    (module Parsing)
-    (module Typing)
-    (module Middle)
-    (module Triples)
-    (module Interactive)
-    (module Back) 
+  | Direct -> begin
+    match Cli.get_config.language with
+    | Loopy -> 
+      let open LoopyLang.Ltl in 
+      let module Triples = Triples(Cli) in
+      let module Interactive = Interactive(Cli) in
+      let module Back = Back(Cli) in
+      main 
+      (module Cli)
+      (module Parsing)
+      (module Typing)
+      (module Middle)
+      (module Triples)
+      (module Interactive)
+      (module Back) 
+    | Obby -> 
+      let open ObbyLang.Obby in 
+      let module Triples = Triples(Cli) in
+      let module Interactive = Interactive(Cli) in
+      let module Back = Back(Cli) in
+      main 
+      (module Cli)
+      (module Parsing)
+      (module Typing)
+      (module Middle)
+      (module Triples)
+      (module Interactive)
+      (module Back) end 
   | PastLTL -> 
     let open LoopyLang.Ppltl in
     let module Triples = Triples(Cli) in

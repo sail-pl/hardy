@@ -1,0 +1,27 @@
+guarantees G {o <-> i}
+class delay {
+    state m:int
+
+    setup() {
+        m := 0;
+    }
+
+    step(i:int) returns (o:int) {
+        o := m ; 
+        m := i ;
+    }
+}
+
+guarantees XG {o = prev i}
+class delay {
+    state m:int
+
+    setup() {
+        m := 0;
+    }
+
+    step(i:int) returns (o:int) {
+        o := m ; 
+        m := i ;
+    }
+}

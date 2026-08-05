@@ -39,7 +39,8 @@ val atom_of_atom_id : string -> int
 
 (** [remove_exp_loc e] replaces all locations of expression [e] with None *)
 val remove_exp_loc :
-  't FrontParser.SharedSyntax.expr -> 't FrontParser.SharedSyntax.expr
+  ('ext -> 'ext) ->
+  ('ext,'t) FrontParser.SharedSyntax.expr -> ('ext,'t) FrontParser.SharedSyntax.expr
 
 (** Imperative instantiation of the atom signature [S] parameterized by the type [Data.t] of data an atom can hold and the type [Atom.t] of the atom  *)
 module Imperative :

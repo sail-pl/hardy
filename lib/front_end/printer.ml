@@ -50,7 +50,9 @@ let pp_hist fmt (v, h) =
 
 (* let pp_nohist fmt (id,_) = pp_print_string fmt id *)
 
-let pp_exp (print_var : _ -> _ * _ -> unit) =
+let pp_exp 
+  (pp_ext: formatter -> 'ext -> unit)
+  (print_var : formatter -> tag * 'a -> unit) =
   let [@warning "-4"] rec pp_paren fmt e = match e.value with BinOp _ | UnOp _ -> fprintf fmt "(%a)" aux e | _ -> aux fmt e
   and aux fmt e = 
     match e.value with
@@ -67,6 +69,7 @@ let pp_exp (print_var : _ -> _ * _ -> unit) =
     | ArrayCell v -> Format.fprintf fmt "%a[%a]" pp_paren v.array pp_paren v.idx
     | Prod [x] -> Format.fprintf fmt "%a" pp_paren x
     | Prod l -> Format.(fprintf fmt "(%a)" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ",@ ") pp_paren) l)
+    | Ext ext -> pp_ext fmt ext
   in 
   aux   
 
