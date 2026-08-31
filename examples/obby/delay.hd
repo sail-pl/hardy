@@ -1,24 +1,38 @@
-guarantees XG {o = prev i}
-node delay(i : int) returns (o : int) {
+guarantees {o = first} && XG {o = prev i}
+node Delay(first: int) receives (i : int) returns (o : int) {
     var m:int
 
+    ensures { m = first }
     setup {
-        m := 0;
+        m := first;
     }
 
     invariant { m = i }
+    invariant { o = old m} // needed since loop becomes a proper function in why3
     loop {
         o := m ; 
         m := i ;
     }
 }
 
-guarantees XXG {o = i#2}
-node main(i : int) returns (o : int) { 
+guarantees {o = first * 2} && X {o = second} && XXG {o = i#2}
+// private spec
+guarantees XG {d2.o = prev i}
+node Main(first second : int) receives (i : int) returns (o : int) { 
     instances d1 d2 : delay
 
+
+    setup {
+        // instances setup must be last instructions
+        d1 := new Delay(first*2);
+        d2 := new Delay(second);
+    }
+
+    invariant { d1.i = d2.o }
+    invariant { o = d1.o }
+    invariant { d2.i = i }
     loop {
-        o = d1(d2(i)) // setup is implicit, decompose intermediate calls with variable
+        o = d1(d2(i)) 
     }
 }
 

@@ -1,0 +1,251 @@
+module Delay
+  use int.Int
+  use ref.Ref
+  use seq.Seq
+  
+  type _inputs_t = { i : int }
+
+  type _outputs_t = { mutable o : int}
+
+  type _state_t = { mutable m : int}
+  
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+
+  let ref _s = any _state_t 
+
+
+  val constant first : int
+
+  let setup () = 
+    ensures { _s.m = first }
+    _s.m <- first
+
+  let loop (_i : {_inputs_t}) : _reaction_t =
+      (* invariants *)
+      ensures { _s.m = _i.i && result.react_o.o = old _s.m}
+      (* required *)
+      ensures {result.react_i = _i}
+      
+      let ref _o = any _outputs_t in 
+      _o.o <- _s.m;
+      _s.m <- _i.i;
+      return {react_i = _i ; react_o = _o}
+      
+    
+  let delay_start (_i : _inputs_t) : _reaction_t = 
+      (*temporal spec*)
+      ensures { result.react_o.o = first }
+      (* required *)
+      ensures {result.react_i = _i}
+      let ref _s = setup () in 
+      loop _i
+      
+  val ghost _prev_0_o : int
+  val ghost _prev_0_i : int
+  val ghost _prev_1_i : int
+
+  let delay_02 (_i : {_inputs_t}) : _reaction_t = 
+    ensures { result.react_o.o = _prev_0_i}
+    ensures { result.react_i = _i}
+    assume { _s.m = _prev_0_i };
+    assume {_prev_0_o = first \/ _prev_0_o = _prev_1_i};
+    loop _i 
+
+
+end
+
+
+module Main
+use int.Int
+  val constant first : int
+  val constant second : int
+  
+  let constant d1_setup : int = first * 2
+  let constant d2_setup : int = second
+  
+  clone Delay as D1 with val first = d1_setup  
+  clone Delay as D2 with val first = d2_setup
+
+  type _inputs_t = { i : int }
+  
+  type _sub_outputs_t = { mutable d1 : D1._reaction_t ; mutable d2: D2._reaction_t}
+
+  type _outputs_t = { mutable o : int }
+  
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+ 
+  type _state_t = unit
+
+  let ref _s = any _state_t
+  
+  let ref _sub = any _sub_outputs_t
+
+  let setup() : _state_t = 
+    any _state_t
+  
+  let loop_start (_i : _inputs_t) : _reaction_t = 
+    
+    (* instances postconditions *)
+    ensures { D2.(_sub.d2.react_o.o) = d2_setup }
+    ensures { D1.(_sub.d1.react_o.o) = d1_setup }
+
+    (* invariants *)
+    ensures {D1.(_sub.d1.react_i.i) = D2.(_sub.d2.react_o.o)}
+    ensures {result.react_o.o = D1.(_sub.d1.react_o.o)}
+    ensures {D2.(_sub.d2.react_i.i) = _i.i}
+    
+    (* required *)
+    ensures { result.react_i = _i}
+  
+    (* temporal spec *)
+    ensures {result.react_o.o = first * 2}
+
+    let ref _s = setup() in
+    let ref _o = any _outputs_t in 
+    
+    _sub.d2 <- D2.delay_start {D2.i = _i.i};
+    _sub.d1 <- D1.delay_start {D1.i = D2.(_sub.d2.react_o.o) };
+    
+    _o.o <- D1.(_sub.d1.react_o.o);
+    
+    return {react_i = _i; react_o =_o}
+    
+   
+  val ghost _prev_0_o : int
+  val ghost _prev_1_o : int
+  val ghost _prev_0_i : int
+  val ghost _prev_1_i : int
+  val ghost _prev_2_i : int
+  val ghost _d2_prev_1_o : int
+  val ghost _d1_prev_1_o : int
+  
+ let loop_01 (_i : _inputs_t) : _reaction_t = 
+    (* instances postconditions *)
+    ensures { D2.(_sub.d2.react_o.o) = D2._prev_0_i }
+    ensures { D1.(_sub.d1.react_o.o) = D1._prev_0_i }
+
+    
+    (* invariants *)
+    ensures {D1.(_sub.d1.react_i.i) = D2.(_sub.d2.react_o.o)}
+    ensures {result.react_o.o = D1.(_sub.d1.react_o.o)}
+    ensures {D2.(_sub.d2.react_i.i) = _i.i}
+    
+    (* required *)
+    ensures { result.react_i = _i}
+    
+    (* temporal spec *)
+    ensures {result.react_o.o = second}
+    ensures { D2.(_sub.d2.react_o.o) = _prev_0_i}
+    
+    (* previous temporal spec *)
+    assume {_prev_0_o = first * 2};
+    
+    (* previous instances postconditions *)
+    assume { D2._prev_0_o = d2_setup };
+    assume { D1._prev_0_o = d1_setup };
+    
+    (* previous invariants *)
+    assume {D1._prev_0_i = D2._prev_0_o};
+    assume {_prev_0_o = D1._prev_0_o };
+    assume {D2._prev_0_i = _prev_0_i};
+
+
+
+
+    let ref _o = any _outputs_t in 
+    
+    _sub.d2 <- D2.delay_02 {D2.i = _i.i};
+    _sub.d1 <- D1.delay_02 {D1.i = D2.(_sub.d2.react_o.o) };
+    _o.o <- D1.(_sub.d1.react_o.o);
+    
+    return {react_i = _i; react_o = _o}
+    
+  
+      
+ let loop_02 (_i : _inputs_t) : _reaction_t = 
+
+    
+    (* instances postconditions *)
+    ensures { D2.(_sub.d2.react_o.o) = D2._prev_0_i }
+    ensures { D1.(_sub.d1.react_o.o) = D1._prev_0_i }
+
+    
+    (* invariants *)
+    ensures {D1.(_sub.d1.react_i.i) = D2.(_sub.d2.react_o.o)}
+    ensures {result.react_o.o = D1.(_sub.d1.react_o.o)}
+    ensures {D2.(_sub.d2.react_i.i) = _i.i}
+    
+    (* required *)
+    ensures { result.react_i = _i}
+   
+   
+   (* temporal spec *)
+    ensures {result.react_o.o = _prev_1_i}
+    ensures { D2.(_sub.d2.react_o.o) = _prev_0_i}
+    
+    
+    (* previous temporal spec *)  
+    assume {_prev_0_o = second};
+    assume { D2._prev_0_o = _prev_1_i};
+
+    (* previous instances postconditions *)
+    assume { D2._prev_0_o = D2._prev_1_i };
+    assume { D1._prev_0_o = D1._prev_1_i };
+
+    (* previous invariants *)
+    assume {D1._prev_0_i = D2._prev_0_o};
+    assume {_prev_0_o = D1._prev_0_o };
+    assume {D2._prev_0_i = _prev_0_i};
+
+  let ref _o = any _outputs_t in 
+  
+  _sub.d2 <- D2.delay_02 {D2.i = _i.i};
+  _sub.d1 <- D1.delay_02 {D1.i = D2.(_sub.d2.react_o.o) };
+  _o.o <- D1.(_sub.d1.react_o.o);
+  
+  return {react_i = _i; react_o = _o}
+
+
+
+
+ let loop_03 (_i : _inputs_t) : _reaction_t = 
+    (* instances postconditions *)
+    ensures { D2.(_sub.d2.react_o.o) = D2._prev_0_i }
+    ensures { D1.(_sub.d1.react_o.o) = D1._prev_0_i }
+
+    
+    (* invariants *)
+    ensures {D1.(_sub.d1.react_i.i) = D2.(_sub.d2.react_o.o)}
+    ensures {result.react_o.o = D1.(_sub.d1.react_o.o)}
+    ensures {D2.(_sub.d2.react_i.i) = _i.i}
+    
+    (* required *)
+    ensures { result.react_i = _i}
+
+   (* temporal spec *)
+    ensures {result.react_o.o = _prev_1_i}
+    
+    (* previous temporal spec *)  
+    assume {_prev_0_o = _prev_2_i};
+    assume { D1._prev_0_o = _d2_prev_1_o};
+    assume { D2._prev_0_o = _prev_1_i};
+
+    (* previous instances postconditions *)
+    assume { D2._prev_0_o = D2._prev_1_i };
+    assume { D1._prev_0_o = D1._prev_1_i };
+
+    (* previous invariants *)
+    assume {D1._prev_0_i = D2._prev_0_o};
+    assume {_prev_0_o = D1._prev_0_o };
+    assume {D2._prev_0_i = _prev_0_i};
+
+
+
+  let ref _o = any _outputs_t in 
+  
+  _sub.d2 <- D2.delay_02 {D2.i = _i.i};
+  _sub.d1 <- D1.delay_02 {D1.i = D2.(_sub.d2.react_o.o) };
+  _o.o <- D1.(_sub.d1.react_o.o);
+  
+  return {react_i = _i; react_o = _o}
+end
