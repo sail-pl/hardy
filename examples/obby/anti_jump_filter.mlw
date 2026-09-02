@@ -1,0 +1,49 @@
+module ProgramHelper
+  use int.Int
+  use ref.Ref
+  use seq.Seq
+  
+  type _main_inputs_t = { i : int }
+  
+  type _main_outputs_t = { mutable o : int }
+  
+  type _main_state_t = { mutable x : int; mutable init : bool }
+  
+  type _instant_t = {
+                  ghost _i : {_main_inputs_t};
+                  ghost _o : {_main_outputs_t};
+                  ghost _s : {_main_state_t}
+                  }
+  
+  val _inputs : _inputs_t
+  
+  val _outputs : _outputs_t
+  
+  val _state : _state_t
+  
+  val ghost function _history : (seq instant_t)
+  
+  let ghost function _prev_i n proj
+  = (_i (_history[n])).proj
+  
+  let ghost function _prev_o n proj
+  = (_o (_history[n])).proj
+  
+  let ghost function _prev_s n proj
+  = (_s (_history[n])).proj
+end
+
+
+
+module Main
+  use int.Int
+  use ref.Ref
+  use array.Init
+  use ProgramHelper
+  
+  
+  val c1 : 
+  
+  
+   
+end

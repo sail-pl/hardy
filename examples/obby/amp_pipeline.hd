@@ -1,0 +1,25 @@
+assumes G { in <= 5 }
+guarantees G {inter = in + 1}
+node C1 receives (in :int) returns (inter : int) {
+    loop {
+        inter := in + 1;
+    }
+}
+
+assumes G {in <= 6}
+guarantees G {out = 2 * in}
+node C2 receives (in :int) returns (out : int) {
+    loop {
+        out := 2 * in;
+    }
+}
+
+assumes G {in <= 5}
+guarantees G { out <= 12}
+node Main receives (in:int) returns (out: int) {
+    instances c1: C1, c2: C2
+
+    loop {
+        out := c2(c1(in));
+    }
+}

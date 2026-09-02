@@ -1,0 +1,103 @@
+module C1
+  use int.Int
+  use ref.Ref
+  
+  type _inputs_t = { _in : int }
+
+  type _outputs_t = { mutable inter : int}
+
+  type _state_t = unit
+  
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+
+  let ref _s = any _state_t 
+
+  let setup () = ()
+      
+    
+  let loop (_i : _inputs_t) : _reaction_t = 
+    (*temporal spec*)
+    requires {_i._in <= 5 }
+    ensures { result.react_o.inter = _i._in + 1}
+    (* required *)
+    ensures {result.react_i = _i}
+    let ref _o = any _outputs_t in 
+      _o.inter <- _i._in +1;
+      return {react_i = _i ; react_o = _o}
+end
+
+module C2
+  use int.Int
+  use ref.Ref
+  
+  type _inputs_t = { _in : int }
+
+  type _outputs_t = { mutable inter : int}
+
+  type _state_t = unit
+  
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+
+  let ref _s = any _state_t 
+
+
+  let setup () = ()
+      
+    
+  let loop (_i : _inputs_t) : _reaction_t = 
+    (*temporal spec*)
+    requires {_i._in <= 6 }
+    ensures { result.react_o.inter = 2 * _i._in}
+    (* required *)
+    ensures {result.react_i = _i}
+    let ref _o = any _outputs_t in 
+      _o.inter <- 2* _i._in;
+      return {react_i = _i ; react_o = _o}
+end
+
+
+module Main
+use int.Int
+  use C1 as C1
+  use C2 as C2
+
+  type _inputs_t = { _in : int }
+  
+  type _sub_outputs_t = { mutable c1 : C1._reaction_t ; mutable c2: C2._reaction_t}
+
+  type _outputs_t = { mutable out: int }
+  
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+ 
+  type _state_t = unit
+
+  let ref _s = any _state_t
+  
+  let ref _sub = any _sub_outputs_t
+
+  let setup() : _state_t = 
+    any _state_t
+  
+  let loop_start (_i : _inputs_t) : _reaction_t = 
+    
+    (* instances postconditions *)
+    ensures { C2.(_sub.c2.react_o.inter) = 2 *  C2.(_sub.c2.react_i._in)}
+    ensures { C1.(_sub.c1.react_o.inter) = C1.(_sub.c1.react_i._in) + 1}
+    
+    (* required *)
+    ensures { result.react_i = _i}
+  
+    (* temporal spec *)
+    requires {_i._in <= 5}
+    ensures {result.react_o.out <= 12}
+
+    let ref _s = setup() in
+    let ref _o = any _outputs_t in 
+    
+    _sub.c1 <- C1.loop {C1._in = _i._in};
+    _sub.c2 <- C2.loop {C2._in = C1.(_sub.c1.react_o.inter) };
+    
+    _o.out <- C2.(_sub.c2.react_o.inter);
+    
+    return {react_i = _i; react_o =_o}
+end

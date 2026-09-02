@@ -37,7 +37,7 @@ module Delay
       ensures { result.react_o.o = first }
       (* required *)
       ensures {result.react_i = _i}
-      let ref _s = setup () in 
+      setup ();
       loop _i
       
   val ghost _prev_0_o : int
