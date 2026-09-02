@@ -1,49 +1,192 @@
-module ProgramHelper
+module C1
   use int.Int
   use ref.Ref
-  use seq.Seq
   
-  type _main_inputs_t = { i : int }
+  type _inputs_t = unit
+
+  type _outputs_t = { mutable out : int}
+
+  type _state_t = {st : int}
   
-  type _main_outputs_t = { mutable o : int }
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+
+  let ref _s = any _state_t 
+
+  let setup () = 
+    ensures { _s.st = 0 }
+    _s <- {st = 0}
+      
+    
+  let loop_start (_i : _inputs_t) : _reaction_t = 
+    (* invariant *)
+    ensures { result.react_o.out + 1 = _s.st }
+    (* required *)
+    ensures {result.react_i = _i}
+
+    setup();
+    let ref _o = any _outputs_t in 
+    
+    _o.out <- _s.st;
+    _s <- {st = _s.st + 1};
+
+    return {react_i = _i ; react_o = _o}
+
+  val ghost _prev_0_out : int
+
+  let loop_next (_i : _inputs_t) : _reaction_t = 
+    (* invariant *)
+    ensures { result.react_o.out + 1 = _s.st }
+    (* required *)
+    ensures {result.react_i = _i}
+
+    (* temporal spec *)
+    ensures { result.react_o.out  = _prev_0_out + 1 }
+    
+    (* previous invariants *)
+    assume {_prev_0_out + 1 = _s.st };
+
+
+    let ref _o = any _outputs_t in 
+    
+    _o.out <- _s.st;
+    _s <- {st = _s.st + 1};
+
+    return {react_i = _i ; react_o = _o}
+end
+
+module C2
+  use int.Int
+  use ref.Ref
   
-  type _main_state_t = { mutable x : int; mutable init : bool }
+  type _inputs_t = { _in : int }
+
+  type _outputs_t = { mutable out : int}
+
+  type _state_t = unit
   
-  type _instant_t = {
-                  ghost _i : {_main_inputs_t};
-                  ghost _o : {_main_outputs_t};
-                  ghost _s : {_main_state_t}
-                  }
-  
-  val _inputs : _inputs_t
-  
-  val _outputs : _outputs_t
-  
-  val _state : _state_t
-  
-  val ghost function _history : (seq instant_t)
-  
-  let ghost function _prev_i n proj
-  = (_i (_history[n])).proj
-  
-  let ghost function _prev_o n proj
-  = (_o (_history[n])).proj
-  
-  let ghost function _prev_s n proj
-  = (_s (_history[n])).proj
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+
+  let ref _s = any _state_t 
+
+
+  let setup () = ()
+      
+  let loop_start (_i : _inputs_t) : _reaction_t = 
+    (*temporal spec*)
+    ensures { result.react_o.out = _i._in}
+
+    (* required *)
+    ensures {result.react_i = _i}
+
+    let ref _o = any _outputs_t in 
+      _o.out <- _i._in;
+      return {react_i = _i ; react_o = _o}
+
+  val ghost _prev_0_i : int
+  val ghost _prev_0_out : int
+
+  let loop_next (_i : _inputs_t) : _reaction_t = 
+
+    (*temporal spec*)
+    requires {_i._in <= _prev_0_i + 2 }
+    ensures { result.react_o.out = _i._in}
+    
+    (* required *)
+    ensures {result.react_i = _i}
+
+    (* previous temporal spec *)
+    assume { _prev_0_out = _prev_0_i };
+
+
+    let ref _o = any _outputs_t in 
+      _o.out <- _i._in;
+      return {react_i = _i ; react_o = _o}
+
 end
 
 
-
 module Main
-  use int.Int
-  use ref.Ref
-  use array.Init
-  use ProgramHelper
+use int.Int
+  use C1 as C1
+  use C2 as C2
+
+  type _inputs_t = { _in : int }
   
+  type _sub_outputs_t = { mutable c1 : C1._reaction_t ; mutable c2: C2._reaction_t}
+
+  type _outputs_t = { mutable out: int }
   
-  val c1 : 
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+ 
+  type _state_t = unit
+
+  let ref _s = any _state_t
   
+  let ref _sub = any _sub_outputs_t
+
+  let setup() : _state_t = 
+    any _state_t
   
-   
+  let loop_start (_i : _inputs_t) : _reaction_t = 
+    
+    (* instances postconditions *)
+    ensures { C2.(_sub.c2.react_o.out) = C2.(_sub.c2.react_i._in) }
+    
+    (* required *)
+    ensures { result.react_i = _i}
+  
+    (* invariant *)
+    ensures { C2.(_sub.c2.react_i._in) = C1.(_sub.c1.react_o.out * 2) }
+    ensures { C2.(_sub.c2.react_o.out) = result.react_o.out }
+
+
+    let ref _s = setup() in
+    let ref _o = any _outputs_t in 
+    
+    _sub.c1 <- C1.loop_start ();
+    _sub.c2 <- C2.loop_start {C2._in = C1.(_sub.c1.react_o.out) * 2};
+    
+    _o.out <- C2.(_sub.c2.react_o.out);
+    
+    return {react_i = _i; react_o =_o}
+
+  val ghost _prev_0_i : int
+  val ghost _prev_0_out : int
+
+  let loop_next (_i : _inputs_t) : _reaction_t = 
+      
+    (* instances postconditions *)
+    ensures { C1.(_sub.c1.react_o.out) = C1._prev_0_out + 1 }
+    ensures { C2.(_sub.c2.react_o.out) = C2.(_sub.c2.react_i._in) }
+
+    (* required *)
+    ensures { result.react_i = _i}
+  
+    (* invariant *)
+    ensures { C2.(_sub.c2.react_i._in) = C1.(_sub.c1.react_o.out * 2) }
+    ensures { C2.(_sub.c2.react_o.out) = result.react_o.out }
+
+    (* temporal spec *)
+    ensures {result.react_o.out - _prev_0_out <= 2}
+
+    (* previous instances postconditions *)
+    assume { C2._prev_0_out = C2._prev_0_i };
+
+    (* previous invariant *)
+    assume { C2._prev_0_i = C1._prev_0_out * 2 };
+    assume { C2._prev_0_out = _prev_0_out };
+
+    (* previous temporal spec *)
+    assume {true};
+
+    let ref _s = setup() in
+    let ref _o = any _outputs_t in 
+    
+    _sub.c1 <- C1.loop_next ();
+    _sub.c2 <- C2.loop_next {C2._in = C1.(_sub.c1.react_o.out) * 2};
+    
+    _o.out <- C2.(_sub.c2.react_o.out);
+    
+    return {react_i = _i; react_o =_o}
+
 end

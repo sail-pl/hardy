@@ -1,0 +1,31 @@
+guarantees XG {out = prev out + 1}
+node C1 returns (out : int) {
+    var st : int
+
+    ensures { st = 0 }
+    setup { st := 0 }
+
+    invariant { out + 1 = st }
+    loop {
+        out := st;
+        st := st + 1;
+    }
+}
+
+assumes XG {in <= prev in + 2}
+guarantees G {out = in}
+node C2 receives (in :int) returns (out : int) {
+    loop {
+        out := in;
+    }
+}
+
+guarantees XG { out - pre out <= 2}
+node Main returns (out: int) {
+    instances c1: C1, c2: C2
+
+    invariant { c2.in = c1.out * 2 && c2.out = out}
+    loop {
+        out := c2 (c1 * 2);
+    }
+}
