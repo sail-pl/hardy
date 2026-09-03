@@ -1,0 +1,119 @@
+module C1
+  use int.Int
+  use ref.Ref
+  
+  type _inputs_t = {raw : int}
+
+  type _outputs_t = {mutable data : int; mutable valid : bool}
+
+  type _state_t = unit
+  
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+
+  let ref _s = any _state_t 
+
+  let setup () = ()
+      
+    
+  let loop_start (_i : _inputs_t) : _reaction_t = 
+    (* required *)
+    ensures {result.react_i = _i}
+
+    (* temporal spec *)
+    ensures {result.react_o.valid -> result.react_o.data <= 100}
+
+    setup();
+    let ref _o = any _outputs_t in 
+    
+    _o.data <- _i.raw * 2;
+    _o.valid <- _o.data <= 50;
+
+    return {react_i = _i ; react_o = _o}
+end
+
+module C2
+  use int.Int
+  use ref.Ref
+  
+  type _inputs_t = { data : int ; valid : bool}
+
+  type _outputs_t = { mutable safe_out : int}
+
+  type _state_t = unit
+  
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+
+  let ref _s = any _state_t 
+
+
+  let setup () = ()
+      
+  let loop_start (_i : _inputs_t) : _reaction_t = 
+    (*temporal spec*)
+    requires {_i.valid -> _i.data <= 100}
+    ensures { _i.valid -> result.react_o.safe_out = _i.data}
+    ensures { (not _i.valid) -> result.react_o.safe_out = 0}
+
+    (* required *)
+    ensures {result.react_i = _i}
+
+    let ref _o = any _outputs_t in 
+
+      (if (_i.valid) then
+          _o.safe_out <- _i.data
+       else 
+          _o.safe_out <- 0
+      );
+
+      return {react_i = _i ; react_o = _o}
+end
+
+
+module Main
+use int.Int
+  use C1 as C1
+  use C2 as C2
+
+  type _inputs_t = { raw : int }
+  
+  type _sub_outputs_t = { mutable c1 : C1._reaction_t ; mutable c2: C2._reaction_t}
+
+  type _outputs_t = { mutable safe_out: int }
+  
+  type _reaction_t = {react_i: _inputs_t ; react_o : _outputs_t}
+ 
+  type _state_t = unit
+
+  let ref _s = any _state_t
+  
+  let ref _sub = any _sub_outputs_t
+
+  let setup() : _state_t = 
+    any _state_t
+  
+  let loop_start (_i : _inputs_t) : _reaction_t = 
+    
+    (* instances postconditions *)
+    ensures {C1.(_sub.c1.react_o.valid -> _sub.c1.react_o.data <= 100)}
+    
+    ensures {C2.(_sub.c2.react_i.valid -> _sub.c2.react_o.safe_out = _sub.c2.react_i.data)}
+    ensures {C2.(not (_sub.c2.react_i.valid) -> _sub.c2.react_o.safe_out = 0)}
+    
+
+    
+    (* required *)
+    ensures { result.react_i = _i}
+  
+    (* temporal spec *)
+    ensures {result.react_o.safe_out <= 100}
+
+    let ref _s = setup() in
+    let ref _o = any _outputs_t in 
+    
+    _sub.c1 <- C1.loop_start {C1.raw = _i.raw};
+    _sub.c2 <- C2.loop_start {C2.data = C1.(_sub.c1.react_o.data); C2.valid = C1.(_sub.c1.react_o.valid)};
+    
+    _o.safe_out <- C2.(_sub.c2.react_o.safe_out);
+    
+    return {react_i = _i; react_o =_o}
+end
