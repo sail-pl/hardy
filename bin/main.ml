@@ -55,7 +55,7 @@ let main
   =
   let module Front = HardyFrontEnd in
   let module I = Interactive.TUI.F (I) in  
-  let translate_spec = HardyMiddleEnd.MidSig.translate_spec (module Middle) (module Triples) in
+  let _translate_spec = HardyMiddleEnd.MidSig.translate_spec (module Middle) (module Triples) in
 
   let config = Cli.get_config in
   if not Sys.(file_exists config.outdir) then Sys.mkdir config.outdir 0o755;
@@ -66,7 +66,8 @@ let main
   Format.printf "Typing program and spec...@.";
   Typing.type_pgrm p |> fun t_pgrm ->
   Format.printf "Translating spec...@.";
-  translate_spec config t_pgrm |> fun triples ->
+  (* translate_spec config t_pgrm |> fun triples -> *)
+  failwith "todo" |> fun triples ->
   Format.printf "Translating program...@.";
   Back.translate_program t_pgrm triples |> fun pgrm ->
   Format.printf "Writing program...@.";
@@ -96,15 +97,16 @@ let () =
       let open ObbyLang.Obby in 
       let module Triples = Triples(Cli) in
       let module Interactive = Interactive(Cli) in
-      let module Back = Back(Cli) in
-      main 
+      let module Back = Back(Cli) in ()
+      (* main 
       (module Cli)
       (module Parsing)
       (module Typing)
       (module Middle)
       (module Triples)
       (module Interactive)
-      (module Back) end 
+      (module Back)  *)
+    end 
   | PastLTL -> 
     let open LoopyLang.Ppltl in
     let module Triples = Triples(Cli) in
