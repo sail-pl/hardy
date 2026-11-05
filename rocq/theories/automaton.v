@@ -1,4 +1,4 @@
-From Stdlib Require Import List Ensembles.
+From Stdlib Require Import List.
 
 Section Automata.
 

@@ -1,4 +1,4 @@
 (rocq.theory
  (name Hardy)
- (theories Stdlib)
+ (theories Stdlib MMaps)
  (generate_project_file))
